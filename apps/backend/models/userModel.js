@@ -1,0 +1,50 @@
+const mongoose = require("mongoose");
+const bcrypt=require("bcrypt");
+const jwt=require("jsonwebtoken");
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, "Name is required"],
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+      minlength: 6,
+    },
+    role: {
+      type: String,
+      enum: ["admin", "staff"],
+      required: true,
+    },
+  },
+  { timestamps: true }
+);
+userSchema.methods.getJWT = async function () {
+  const user = this;
+  const payload = { userId: user.id, email: user.email };
+  const secretKey = "MYsec";
+  const token = jwt.sign(payload, secretKey);
+
+  return token;
+};
+userSchema.methods.validatePassword = async function (passwordby) {
+  const user = this;
+  const hashPass = user.password;
+  const passwordValid = await bcrypt.compare(passwordby, hashPass);
+
+  return passwordValid;
+};
+const User = mongoose.model("User", userSchema);
+
+module.exports = {
+  User,
+};
