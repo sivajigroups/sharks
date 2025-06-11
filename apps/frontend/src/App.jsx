@@ -7,6 +7,7 @@ import SalesInventory from "./pages/SalesInventory";
 import Customers from "./pages/Customers";
 import Branch from "./pages/Branch";
 import RentalOrdersPage from "./pages/RentalOrderPage";
+import Notifications from "./pages/Notification";
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           <Route path="customers" element={<Customers/>}/>
           <Route path="branches" element={<Branch />} />
           <Route path="rentalOrder" element={<RentalOrdersPage/>}/>
+          <Route path="notification" element={<Notifications/>}/>
         </Route>
       </Routes>
     </Router>

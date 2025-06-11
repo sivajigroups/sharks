@@ -4,8 +4,14 @@ const {
   insertCustomer,
   getAllCustomers,
   deleteCustomer,
+  insertInventory,
+  getAllInventory,
 } = require("../controllers/staffController");
 const staffRouter = express.Router();
+
+staffRouter.post("/inventory",userAuth,insertInventory);
+staffRouter.get("/inventory",userAuth,getAllInventory);
+
 staffRouter.post("/customer/details", userAuth, insertCustomer);
 staffRouter.get("/customer/details", userAuth, getAllCustomers);
 staffRouter.delete("/customer/details/:id", userAuth, deleteCustomer);

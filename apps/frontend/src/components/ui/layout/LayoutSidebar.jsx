@@ -25,7 +25,7 @@ const LayoutSidebar = () => {
       items: [
         { title: "Dashboard", icon: Home, url: "/layout/dashboard" },
         { title: "Reports", icon: BarChart2, url: "/layout/report" },
-        { title: "Notifications", icon: MessageCircle, url: "#" },
+        { title: "Notifications", icon: MessageCircle, url: "/layout/notification" },
       ],
     },
     {
