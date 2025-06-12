@@ -38,11 +38,11 @@ const getAllBranches = async (req, res) => {
   try {
      const user = req.user;
 
-    if (user.role !== "admin") {
-      return res.status(401).json({
-        message: "You are not authorized to add branch",
-      });
-    }
+    // if (user.role !== "admin") {
+    //   return res.status(401).json({
+    //     message: "You are not authorized to add branch",
+    //   });
+    // }
     const branches = await Branch.find();
     res.json(branches);
   } catch (err) {

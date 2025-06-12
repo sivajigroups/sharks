@@ -4,9 +4,14 @@ const { User } = require("../models/userModel");
 
 const signupUser = async (req, res) => {
   try {
-    const { name, email, role, password } = req.body;
+    const { name, email, role, password, branchId } = req.body;
     if (!name || !email || !password || !role) {
       return res.status(400).json({ message: "All fields are required." });
+    }
+    if (role === "staff" && !branchId) {
+      return res
+        .status(400)
+        .json({ message: "Branch ID is required for staff." });
     }
 
     const existingUser = await User.findOne({ email });
@@ -21,13 +26,16 @@ const signupUser = async (req, res) => {
       email,
       password: hashPassword,
       role,
+      branchId:role==="staff"?branchId:null,
     });
 
     await data.save();
     res.json({
-      message: "Created Sucessfully",
+      message: "User Created Sucessfully",
       data: data,
     });
+   // console.log("Request body:", req.body);
+
   } catch (err) {
     res.status(400).send(err.message);
   }
@@ -35,33 +43,41 @@ const signupUser = async (req, res) => {
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email: email });
+
+    const user = await User.findOne({ email: email }).populate("branchId");
     if (!user) {
-      throw new Error("user is not in the data");
+      throw new Error("User not found");
     }
+
     const passwordValid = await user.validatePassword(password);
 
-    if (passwordValid) {
-      const token = await user.getJWT();
-      res.cookie("token", token);
-      //console.log(token);
-      res.json({
-        message: "Login successful",
-        token,
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
-      });
-    } else {
-      throw new Error("login Failed");
+    if (!passwordValid) {
+      throw new Error("Invalid credentials");
     }
+
+    const token = await user.getJWT();
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: false, // Set to true in production with HTTPS
+    });
+
+    res.json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        branch: user.role === "staff" ? user.branchId : null,
+      },
+    });
+
   } catch (err) {
     res.status(400).send(err.message);
   }
 };
+
 const logoutUser = async (req, res) => {
   try {
     res.clearCookie("token");

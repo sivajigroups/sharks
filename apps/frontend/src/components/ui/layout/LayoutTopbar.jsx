@@ -46,7 +46,8 @@ const LayoutTopbar = () => {
       </div>
 
       <div className="flex items-center gap-6">
-        <p>{branch}</p>
+        {role.toLowerCase()=="staff" && <p>{branch?.name || "No Branch"}</p>}
+
         {role.toLowerCase() === "admin" && (
           <>
             <Bell className="w-5 h-5 text-red-600" title="Notifications" />
