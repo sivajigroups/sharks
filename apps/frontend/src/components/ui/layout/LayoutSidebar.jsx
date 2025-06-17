@@ -1,9 +1,19 @@
-import React from "react"
-import { useSelector } from "react-redux"
+import React from "react";
+import { useSelector } from "react-redux";
 import {
-  Home, Boxes, ShoppingCart, Wrench, FileText, Users,
-  Building, CheckSquare, Settings, BarChart2, MessageCircle
-} from "lucide-react"
+  Home,
+  Boxes,
+  ShoppingCart,
+  Wrench,
+  FileText,
+  Users,
+  Building,
+  CheckSquare,
+  Settings,
+  BarChart2,
+  MessageCircle,
+  UserRoundPen,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -13,11 +23,11 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { Link } from "react-router-dom"
+} from "@/components/ui/sidebar";
+import { Link } from "react-router-dom";
 
 const LayoutSidebar = () => {
-  const role = useSelector((state) => state.auth.role) // get role from redux
+  const role = useSelector((state) => state.auth.role); // get role from redux
 
   const adminSidebar = [
     {
@@ -25,23 +35,39 @@ const LayoutSidebar = () => {
       items: [
         { title: "Dashboard", icon: Home, url: "/layout/dashboard" },
         { title: "Reports", icon: BarChart2, url: "/layout/report" },
-        { title: "Notifications", icon: MessageCircle, url: "/layout/notification" },
+        {
+          title: "Notifications",
+          icon: MessageCircle,
+          url: "/layout/notification",
+        },
       ],
     },
     {
       label: "Inventory",
       items: [
-        { title: "Sales Inventory", icon: ShoppingCart, url: "/layout/salesInfo" },
-        { title: "Rental Inventory", icon: Boxes, url: "#" },
-        { title: "Service Inventory", icon: Wrench, url: "#" },
+        {
+          title: "Sales Inventory",
+          icon: ShoppingCart,
+          url: "/layout/salesInfo",
+        },
+        { title: "Rental Inventory", icon: Boxes, url: "/layout/rentalInfo" },
+        {
+          title: "Service Inventory",
+          icon: Wrench,
+          url: "/layout/serviceInfo",
+        },
       ],
     },
     {
       label: "Orders",
       items: [
         { title: "Rental Orders", icon: FileText, url: "/layout/rentalOrder" },
-        { title: "Sales Orders", icon: FileText, url: "#" },
-        { title: "Service Orders", icon: FileText, url: "#" },
+        { title: "Sales Orders", icon: FileText, url: "/layout/salesOrder" },
+        {
+          title: "Service Orders",
+          icon: FileText,
+          url: "/layout/serviceOrder",
+        },
       ],
     },
     {
@@ -53,12 +79,10 @@ const LayoutSidebar = () => {
       ],
     },
     {
-      label: "Settings",
-      items: [
-        { title: "App Settings", icon: Settings, url: "#" },
-      ],
+      label: "Administration",
+      items: [{ title: "Profile", icon: UserRoundPen, url: "/layout/users" }],
     },
-  ]
+  ];
 
   const staffSidebar = [
     {
@@ -66,7 +90,7 @@ const LayoutSidebar = () => {
       items: [
         { title: "Dashboard", icon: Home, url: "/layout/dashboard" },
         { title: "Rentals", icon: FileText, url: "#" },
-        { title: "Returns", icon:FileText, url: "#" },
+        { title: "Returns", icon: FileText, url: "#" },
         { title: "Sales", icon: ShoppingCart, url: "#" },
         { title: "Service", icon: Wrench, url: "#" },
       ],
@@ -84,9 +108,9 @@ const LayoutSidebar = () => {
         { title: "Customer List", icon: Users, url: "/layout/customers" },
       ],
     },
-  ]
+  ];
 
-  const sidebarToRender = role === "admin" ? adminSidebar : staffSidebar
+  const sidebarToRender = role === "admin" ? adminSidebar : staffSidebar;
 
   return (
     <Sidebar>
@@ -100,7 +124,7 @@ const LayoutSidebar = () => {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <Link to={item.url}>
-                      <item.icon className="mr-2 h-4 w-4" />
+                        <item.icon className="mr-2 h-4 w-4" />
                         <span>{item.title}</span>
                       </Link>
                       {/* <a href={item.url}>
@@ -116,7 +140,7 @@ const LayoutSidebar = () => {
         ))}
       </SidebarContent>
     </Sidebar>
-  )
-}
+  );
+};
 
-export default LayoutSidebar
+export default LayoutSidebar;

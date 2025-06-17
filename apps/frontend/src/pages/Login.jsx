@@ -6,6 +6,7 @@ import { Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { login } from "@/redux/authSlice";
+import { toast } from "sonner";
 
 export default function AuthForm() {
   const [isSignup, setIsSignup] = useState(false); // 👈 Toggle mode
@@ -83,6 +84,12 @@ export default function AuthForm() {
         );
         navigate("/layout/dashboard");
       } else {
+        setName("");
+        setEmail("");
+        setPassword("");
+        setRole("");
+        setBranch("");
+         toast.success("Signed up successfully!");
         setIsSignup(false); // Switch to login after successful signup
       }
     } catch (err) {
@@ -111,7 +118,7 @@ export default function AuthForm() {
         <form className="space-y-5" onSubmit={handleAuth}>
           {isSignup && (
             <div>
-              <Label>Name</Label>
+              <Label className="py-2">Name</Label>
               <div className="relative">
                 <User
                   className="absolute left-3 top-3 text-gray-500"
@@ -130,7 +137,7 @@ export default function AuthForm() {
           )}
 
           <div>
-            <Label>Email</Label>
+            <Label className="py-2">Email</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-3 text-gray-500" size={20} />
               <Input
@@ -144,7 +151,7 @@ export default function AuthForm() {
           </div>
 
           <div>
-            <Label>Password</Label>
+            <Label className="py-2">Password</Label>
             <div className="relative">
               <Lock className="absolute left-3 top-3 text-gray-500" size={20} />
               <Input
@@ -164,7 +171,7 @@ export default function AuthForm() {
           </div>
           {isSignup && (
             <div>
-              <Label>Role</Label>
+              <Label className="py-2">Role</Label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}

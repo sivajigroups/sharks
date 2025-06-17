@@ -32,6 +32,11 @@ const userSchema = new mongoose.Schema(
         return this.role === "staff";
       },
     },
+    approved: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
   },
   { timestamps: true }
 );

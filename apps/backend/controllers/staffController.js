@@ -1,3 +1,4 @@
+const { Attendance } = require("../models/attendanceModel");
 const { Customer } = require("../models/customerModel");
 const { Inventory } = require("../models/Inventory/inventoryModel");
 const insertInventory = async (req, res) => {
@@ -114,9 +115,9 @@ const updateInventory = async (req, res) => {
 
 const insertCustomer = async (req, res) => {
   try {
-    const { name, phone, address, idProofType } = req.body;
+    const { name, phone, address, alternatePhone,idProofType,idProofNumber } = req.body;  
 
-    if (!name || !phone || !address || !idProofType) {
+    if (!name || !phone || !address || !idProofType  || !idProofNumber) {
       return res.status(400).json({
         message: "Please fill all the fields",
       });
@@ -132,6 +133,8 @@ const insertCustomer = async (req, res) => {
       phone,
       address,
       idProofType,
+      alternatePhone,
+      idProofNumber
     });
 
     await customerSave.save();
@@ -168,6 +171,116 @@ const deleteCustomer = async (req, res) => {
   }
 };
 
+
+const insertCheckin = async (req, res) => {
+  try {
+    const { branch } = req.body;
+    const user = req.user;
+    if (user.role !== "staff") {
+      return res.status(401).json({
+        message: "You are not Checkin",
+      });
+    }
+    const alreadyCheckedIn = await Attendance.findOne({
+      userId: user._id,
+      date: {
+        $gte: new Date(new Date().setHours(0, 0, 0, 0)),
+        $lt: new Date(new Date().setHours(23, 59, 59, 999)),
+      },
+      checkOut: null,
+    });
+
+    if (alreadyCheckedIn) {
+      return res.status(400).json({
+        message: "You have already checked in and not checked out yet",
+      });
+    }
+    const attendanceSave = new Attendance({
+      userId: user._id,
+      branchId: branch,
+      date: new Date(),
+      checkIn: new Date(),
+    });
+    await attendanceSave.save();
+    res.send("Checkin Sucessfully");
+  } catch (err) {
+    res.status(400).json({
+      message: "Error in adding check-in",
+      error: err.message,
+    });
+  }
+};
+const insertCheckout = async (req, res) => {
+  try {
+    const { branch } = req.body;
+    const user = req.user;
+    if (user.role !== "staff") {
+      return res.status(401).json({
+        message: "You are not Checkin",
+      });
+    }
+    const attendance = await Attendance.findOne({
+      userId: user._id,
+      branchId: branch,
+    });
+    if (!attendance) {
+      return res.status(400).json({
+        message: "No Checkin Found",
+      });
+    }
+    attendance.checkOut = new Date();
+    await attendance.save();
+    res.send("Checkout Sucessfully");
+  } catch (err) {
+    res.status(400).json({
+      messge: "Error in adding Customer",
+      error: err.messge,
+    });
+  }
+};
+const calculateAttendance = async (req, res) => {
+  try {
+    const user = req.user;
+
+    if (user.role !== "admin") {
+      return res.status(401).json({
+        message: "You are not authorized to view attendance",
+      });
+    }
+
+    const records = await Attendance.find({
+      checkIn: { $ne: null },
+      checkOut: { $ne: null },
+    }).populate("userId");
+    const uniqueStaffIds = new Set();
+    const attendanceSummary = records.map((record) => {
+      const durationMs = new Date(record.checkOut) - new Date(record.checkIn);
+      const hours = Math.floor(durationMs / (1000 * 60 * 60));
+      const minutes = Math.floor((durationMs / (1000 * 60)) % 60);
+      if (record.userId?._id) {
+        uniqueStaffIds.add(record.userId._id.toString());
+      }
+      return {
+        name: record.userId.name,
+        id: record.userId._id,
+        email: record.userId.email,
+        date: record.date.toISOString().split("T")[0],
+        hoursWorked: `${hours}h ${minutes}m`,
+      };
+    });
+
+    res.json({
+      totalStaffs: uniqueStaffIds.size,
+      attendance: attendanceSummary,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: "Error calculating attendance",
+      error: err.message,
+    });
+  }
+};
+
 module.exports={
     getAllCustomers,
     insertCustomer,
@@ -175,5 +288,8 @@ module.exports={
     insertInventory,
     getAllInventory,
     updateInventory,
-    deleteInventory
+    deleteInventory,
+    insertCheckin,
+    insertCheckout,
+    calculateAttendance,
 }

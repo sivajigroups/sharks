@@ -12,15 +12,8 @@ import {
   DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { toast } from "sonner";
+import ReTable from "@/components/shared/ReTable";
 
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
@@ -32,6 +25,21 @@ const Customers = () => {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [idProofType, setIdProofType] = useState("");
+  const [alternatePhone, setAlternatePhone] = useState("");
+  const [street, setStreet] = useState("");
+  const [area, setArea] = useState("");
+  const [city, setCity] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [idProofNumber, setIdProofNumber] = useState("");
+
+  const customerColumns = [
+    { key: "name", label: "Name" },
+    { key: "phone", label: "Phone" },
+    { key: "alternatePhone", label: "Alt Phone" },
+    { key: "address", label: "Address" },
+    { key: "idProofType", label: "ID Type" },
+    { key: "idProofNumber", label: "ID Number" },
+  ];
 
   // Fetch customers from API
   const fetchCustomers = async () => {
@@ -74,12 +82,33 @@ const Customers = () => {
 
   // Handle adding a new customer
   const handleInsert = async () => {
-    if (!name || !phone || !address || !idProofType) {
+    if (
+      !name ||
+      !phone ||
+      !street ||
+      !area ||
+      !city ||
+      !pincode ||
+      !idProofType ||
+      !idProofNumber
+    ) {
       alert("Please fill all fields.");
       return;
     }
 
-    const body = { name, phone, address, idProofType };
+    const body = {
+      name,
+      phone,
+      alternatePhone,
+      address: {
+        street,
+        area,
+        city,
+        pincode,
+      },
+      idProofType,
+      idProofNumber,
+    };
 
     try {
       const response = await fetch(
@@ -106,6 +135,12 @@ const Customers = () => {
       setPhone("");
       setAddress("");
       setIdProofType("");
+      setAlternatePhone("");
+      setStreet("");
+      setArea("");
+      setCity("");
+      setPincode("");
+      setIdProofNumber("");
 
       // Refresh customer list
       fetchCustomers();
@@ -169,21 +204,50 @@ const Customers = () => {
                 onChange={(e) => setPhone(e.target.value)}
               />
               <Input
-                placeholder="Address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Alternate Phone"
+                value={alternatePhone}
+                onChange={(e) => setAlternatePhone(e.target.value)}
               />
+
+              <Input
+                placeholder="Street"
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+              />
+              <Input
+                placeholder="Area"
+                value={area}
+                onChange={(e) => setArea(e.target.value)}
+              />
+              <Input
+                placeholder="City"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+              />
+              <Input
+                placeholder="Pincode"
+                value={pincode}
+                onChange={(e) => setPincode(e.target.value)}
+              />
+
               <select
                 value={idProofType}
                 onChange={(e) => setIdProofType(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
                 <option value="">Select ID Proof</option>
-                <option value="Aadhaar">Aadhaar</option>{" "}
-                {/* corrected spelling */}
+                <option value="Aadhaar">Aadhaar</option>
                 <option value="PAN">PAN</option>
-                <option value="Passport">Passport</option>
+                <option value="Voter ID">Voter ID</option>
+                <option value="Driving License">Driving License</option>
               </select>
+
+              <Input
+                placeholder="ID Proof Number"
+                value={idProofNumber}
+                onChange={(e) => setIdProofNumber(e.target.value)}
+              />
+
               <DialogClose asChild>
                 <Button className="mt-2 w-full" onClick={handleInsert}>
                   Save
@@ -202,73 +266,11 @@ const Customers = () => {
       ) : (
         <Card>
           <CardContent className="p-4 overflow-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead>ID Type</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCustomers.length > 0 ? (
-                  filteredCustomers.map((cust, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell>{cust.name}</TableCell>
-                      <TableCell>{cust.phone}</TableCell>
-                      <TableCell>{cust.address}</TableCell>
-                      <TableCell>{cust.idProofType}</TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm">
-                          View
-                        </Button>
-                        <Button variant="secondary" size="sm">
-                          Edit
-                        </Button>
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="destructive" size="sm">
-                              Delete
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>
-                                Are you absolutely sure?
-                              </DialogTitle>
-                            </DialogHeader>
-                            <div className="flex justify-end gap-2">
-                              <DialogClose asChild>
-                                <Button variant="outline">Cancel</Button>
-                              </DialogClose>
-                              <Button
-                                className="w-[30%]"
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDelete(cust._id)}
-                              >
-                                Confirm Delete
-                              </Button>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center text-muted-foreground"
-                    >
-                      No customers found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <ReTable
+              data={filteredCustomers}
+              columns={customerColumns}
+              onDelete={handleDelete}
+            />
           </CardContent>
         </Card>
       )}

@@ -1,0 +1,202 @@
+import React, { useState } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+const ReTable = ({ data, columns, onDelete, onEdit }) => {
+  const [editItem, setEditItem] = useState(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [formState, setFormState] = useState({});
+
+  const openEditDialog = (item) => {
+    setEditItem(item);
+
+    const flattened = {
+      ...item,
+      street: item.address?.street || "",
+      area: item.address?.area || "",
+      city: item.address?.city || "",
+      pincode: item.address?.pincode || "",
+    };
+
+    setFormState(flattened);
+    setIsEditOpen(true);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormState((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditSubmit = () => {
+    const { street, area, city, pincode, ...rest } = formState;
+
+    const updatedData = {
+      ...rest,
+      address: { street, area, city, pincode },
+    };
+
+    onEdit(editItem._id, updatedData);
+    setIsEditOpen(false);
+  };
+
+  return (
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-black rounded-2xl hover:bg-gray-500">
+            {columns.map((col) => (
+              <TableHead
+                key={col.key}
+                className="text-white uppercase font-semibold text-sm tracking-wider"
+              >
+                {col.label}
+              </TableHead>
+            ))}
+            <TableHead className="text-white text-right uppercase font-semibold text-sm tracking-wider">
+              Actions
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+
+        <TableBody>
+          {data.length > 0 ? (
+            data.map((item, idx) => (
+              <TableRow key={idx}>
+                {columns.map((col) => (
+                  <TableCell key={col.key}>
+                    {(() => {
+                      const value = item[col.key];
+                      if (typeof value === "object" && value !== null) {
+                        if (col.key === "address") {
+                          return `${value.street}, ${value.area}, ${value.city} - ${value.pincode}`;
+                        }
+                        return JSON.stringify(value); // fallback
+                      }
+                      return value;
+                    })()}
+                  </TableCell>
+                ))}
+                <TableCell className="text-right space-x-2">
+                  <Button variant="outline" size="sm">View</Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => openEditDialog(item)}
+                  >
+                    Edit
+                  </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="destructive" size="sm">
+                        Delete
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Are you absolutely sure?</DialogTitle>
+                      </DialogHeader>
+                      <div className="flex justify-end gap-2">
+                        <DialogClose asChild>
+                          <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button
+                          className="w-[30%]"
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => onDelete(item._id)}
+                        >
+                          Confirm Delete
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell
+                colSpan={columns.length + 1}
+                className="text-center text-muted-foreground"
+              >
+                No records found.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Record</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            {columns.map((col) =>
+              col.key === "address" ? (
+                <div key="address-group" className="grid grid-cols-2 gap-2">
+                  <Input
+                    name="street"
+                    placeholder="Street"
+                    value={formState.street || ""}
+                    onChange={handleChange}
+                  />
+                  <Input
+                    name="area"
+                    placeholder="Area"
+                    value={formState.area || ""}
+                    onChange={handleChange}
+                  />
+                  <Input
+                    name="city"
+                    placeholder="City"
+                    value={formState.city || ""}
+                    onChange={handleChange}
+                  />
+                  <Input
+                    name="pincode"
+                    placeholder="Pincode"
+                    value={formState.pincode || ""}
+                    onChange={handleChange}
+                  />
+                </div>
+              ) : (
+                <Input
+                  key={col.key}
+                  name={col.key}
+                  placeholder={col.label}
+                  value={formState[col.key] || ""}
+                  onChange={handleChange}
+                />
+              )
+            )}
+            <DialogClose asChild>
+              <Button className="mt-2 w-full" onClick={handleEditSubmit}>
+                Save Changes
+              </Button>
+            </DialogClose>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
+export default ReTable;

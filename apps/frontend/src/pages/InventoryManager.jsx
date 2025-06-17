@@ -1,9 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useEffect } from "react";
-import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -15,8 +13,17 @@ import {
 } from "@/components/ui/dialog";
 import ReTable from "@/components/shared/ReTable";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
 
-const SalesInventory = () => {
+const categories = [
+  "Power Tools",
+  "Hand Tools",
+  "Safety Gear",
+  "Electrical",
+  "Cleaning",
+];
+
+const InventoryManager = ({ type, title }) => {
   const [inventories, setInventories] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -24,17 +31,16 @@ const SalesInventory = () => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
-  const [type, setType] = useState("sales");
   const [quantity, setQuantity] = useState("");
-  const [salePrice, setSalePrice] = useState("");
-  const [branch, setBranch] = useState("60f7a9d2c8f5a22b9c123456"); // default or from dropdown
+  const [price, setPrice] = useState("");
+  const [branch, setBranch] = useState("60f7a9d2c8f5a22b9c123456");
   const [barcode, setBarcode] = useState("");
 
   const fetchInventories = async () => {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:4000/api/inventory?type=sales",
+        `http://localhost:4000/api/inventory?type=${type}`,
         {
           method: "GET",
           credentials: "include",
@@ -44,7 +50,6 @@ const SalesInventory = () => {
       if (!response.ok) throw new Error("Failed to fetch Inventory");
 
       const data = await response.json();
-      console.log(data);
       setInventories(data.data);
       setError("");
     } catch (error) {
@@ -53,13 +58,10 @@ const SalesInventory = () => {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     fetchInventories();
-  }, []);
-  const handleEdit = (id, updatedItem) => {
-    // Implement your update logic here (e.g., API call)
-    console.log("Edit", id, updatedItem);
-  };
+  }, [type]);
 
   const handleInsert = async () => {
     try {
@@ -69,10 +71,16 @@ const SalesInventory = () => {
         category,
         type,
         quantity: Number(quantity),
-        salePrice: Number(salePrice),
         branch,
         barcode,
       };
+      if (type === "sales") {
+        newItem.salePrice = Number(price);
+      } else if (type === "rental") {
+        newItem.pricePerDay = Number(price);
+      } else if (type === "service") {
+        newItem.serviceStatus = "pending"; // or get from input if needed
+      }
       const response = await fetch("http://localhost:4000/api/inventory", {
         method: "POST",
         headers: {
@@ -82,19 +90,17 @@ const SalesInventory = () => {
         body: JSON.stringify(newItem),
       });
       if (!response.ok) throw new Error("Failed to insert Inventory");
-      await fetchInventories(); // Refresh the inventory list
+      await fetchInventories();
       toast.success("Inventory item added successfully!");
       setName("");
       setDescription("");
       setCategory("");
-      setType("sales");
       setQuantity("");
-      setSalePrice("");
-      setBranch("60f7a9d2c8f5a22b9c123456"); // Reset to default or selected branch
+      setPrice("");
+      setBranch("60f7a9d2c8f5a22b9c123456");
       setBarcode("");
-      //  const data = await response.json();
     } catch (error) {
-      console.error("Error Inserting Inventory:", error.message);
+      toast.error("Error inserting inventory: " + error.message);
     }
   };
 
@@ -109,12 +115,16 @@ const SalesInventory = () => {
       );
 
       if (!response.ok) throw new Error("Failed to delete Inventory");
-      toast.error("Customer deleted successfully!");
-      // Refresh inventory list
+      toast.error("Inventory deleted successfully!");
       await fetchInventories();
     } catch (error) {
-      console.error("Error Deleting Inventory:", error.message);
+      toast.error("Error deleting inventory: " + error.message);
     }
+  };
+
+  const handleEdit = (id, updatedItem) => {
+    console.log("Edit", id, updatedItem);
+    // API update logic can go here
   };
 
   const columns = [
@@ -122,10 +132,13 @@ const SalesInventory = () => {
     { key: "barcode", label: "Code" },
     { key: "category", label: "Category" },
     { key: "quantity", label: "Quantity" },
-    { key: "salePrice", label: "Rate/Day (₹)" },
+    type === "sales"
+      ? { key: "salePrice", label: "Sale Price (₹)" }
+      : type === "rental"
+        ? { key: "pricePerDay", label: "Rate/Day (₹)" }
+        : { key: "serviceStatus", label: "Service Status" },
     { key: "updatedAt", label: "Last Updated" },
   ];
-const categories = ["Power Tools", "Hand Tools", "Safety Gear", "Electrical", "Cleaning"];
 
   const filterInventory = searchTerm
     ? inventories.filter((inventory) =>
@@ -141,7 +154,7 @@ const categories = ["Power Tools", "Hand Tools", "Safety Gear", "Electrical", "C
   return (
     <div className="min-h-screen p-6 bg-gray-100 dark:bg-gray-900 space-y-6 w-308">
       <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-        Inventory & Services Overview
+        {title}
       </h1>
       <div className="flex items-center justify-between">
         <Input
@@ -154,8 +167,7 @@ const categories = ["Power Tools", "Hand Tools", "Safety Gear", "Electrical", "C
         <Dialog>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Inventory
+              <Plus className="mr-2 h-4 w-4" /> Add Inventory
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -176,7 +188,6 @@ const categories = ["Power Tools", "Hand Tools", "Safety Gear", "Electrical", "C
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
-              <div className="space-y-1">
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
@@ -189,23 +200,23 @@ const categories = ["Power Tools", "Hand Tools", "Safety Gear", "Electrical", "C
                   </option>
                 ))}
               </select>
-</div>
               <Input
-                placeholder="Type (rental/sale)"
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-              />
-              <Input
-                type="number"
                 placeholder="Quantity"
+                type="number"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
               />
               <Input
-                type="number"
-                placeholder="Sale Price(₹)"
-                value={salePrice}
-                onChange={(e) => setSalePrice(e.target.value)}
+                placeholder={
+                  type === "sales"
+                    ? "Sale Price (₹)"
+                    : type === "rental"
+                      ? "Price per Day (₹)"
+                      : "Service Status"
+                }
+                type={type === "service" ? "text" : "number"}
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
               />
               <Input
                 placeholder="Branch ID"
@@ -217,7 +228,6 @@ const categories = ["Power Tools", "Hand Tools", "Safety Gear", "Electrical", "C
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
               />
-
               <DialogClose asChild>
                 <Button className="w-full mt-2" onClick={handleInsert}>
                   Save Inventory
@@ -241,4 +251,4 @@ const categories = ["Power Tools", "Hand Tools", "Safety Gear", "Electrical", "C
   );
 };
 
-export default SalesInventory;
+export default InventoryManager;
