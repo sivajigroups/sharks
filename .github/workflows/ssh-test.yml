@@ -11,13 +11,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Setup SSH key and known hosts
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Load secrets from files
       run: |
         mkdir -p ~/.ssh
-        echo "${{ secrets.EC2_PEM_KEY }}" > ~/.ssh/id_rsa
+        cp secrets/ec2_key.pem ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-    - name: Connect to EC2
-      run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "echo 'Connected to EC2 via GitHub Actions'"
+        export EC2_HOST=$(cat secrets/ec2_host.txt)
+        export EC2_USER=$(cat secrets/ec2_user.txt)
+
+        echo "Connecting to $EC2_USER@$EC2_HOST"
+        ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+        ssh -o StrictHostKeyChecking=no "$EC2_USER@$EC2_HOST" "echo 'Connected via file-based secrets'"
