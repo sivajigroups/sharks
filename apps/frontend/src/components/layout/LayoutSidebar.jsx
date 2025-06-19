@@ -61,7 +61,7 @@ const LayoutSidebar = () => {
     {
       label: "Orders",
       items: [
-        { title: "Rental Orders", icon: FileText, url: "/layout/rentalOrder" },
+        { title: "Rental Orders", icon: FileText, url: "/layout/rentalOrder/new" },
         { title: "Sales Orders", icon: FileText, url: "/layout/salesOrder" },
         {
           title: "Service Orders",

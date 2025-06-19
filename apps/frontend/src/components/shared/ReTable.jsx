@@ -18,7 +18,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const ReTable = ({ data, columns, onDelete, onEdit }) => {
+const ReTable = ({
+  data,
+  columns,
+  onDelete,
+  onEdit,
+  showViewButton = true,
+  showEdirButton = true,
+}) => {
   const [editItem, setEditItem] = useState(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [formState, setFormState] = useState({});
@@ -81,7 +88,11 @@ const ReTable = ({ data, columns, onDelete, onEdit }) => {
                 {columns.map((col) => (
                   <TableCell key={col.key}>
                     {(() => {
-                      const value = item[col.key];
+                      const value = col.key.includes(".")
+                        ? col.key
+                            .split(".")
+                            .reduce((obj, key) => obj?.[key], item)
+                        : item[col.key];
                       if (typeof value === "object" && value !== null) {
                         if (col.key === "address") {
                           return `${value.street}, ${value.area}, ${value.city} - ${value.pincode}`;
@@ -93,14 +104,27 @@ const ReTable = ({ data, columns, onDelete, onEdit }) => {
                   </TableCell>
                 ))}
                 <TableCell className="text-right space-x-2">
-                  <Button variant="outline" size="sm">View</Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => openEditDialog(item)}
-                  >
-                    Edit
-                  </Button>
+                  {showViewButton && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        (window.location.href = `/layout/staff/${item._id}`)
+                      }
+                    >
+                      View
+                    </Button>
+                  )}
+                  {showEdirButton && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => openEditDialog(item)}
+                    >
+                      Edit
+                    </Button>
+                  )}
+
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button variant="destructive" size="sm">

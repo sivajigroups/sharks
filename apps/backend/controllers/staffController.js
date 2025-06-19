@@ -170,8 +170,39 @@ const deleteCustomer = async (req, res) => {
       .json({ message: "Error deleting customer", error: error.message });
   }
 };
+const editCustomer=async(req,res)=>{
+  try {
+    const { id } = req.params;
+    const { name, phone, address, alternatePhone, idProofType, idProofNumber } = req.body;
 
+    if (!name || !phone || !address || !idProofType || !idProofNumber) {
+      return res.status(400).json({
+        message: "Please fill all the fields",
+      });
+    }
 
+    const customer = await Customer.findById(id);
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    customer.name = name;
+    customer.phone = phone;
+    customer.address = address;
+    customer.alternatePhone = alternatePhone;
+    customer.idProofType = idProofType;
+    customer.idProofNumber = idProofNumber;
+
+    await customer.save();
+
+    res.json({ message: "Customer updated successfully", customer });
+  } catch (error) {
+    res.status(400).json({
+      message: "Error updating Customer",
+      error: error.message,
+    });
+  }
+}
 const insertCheckin = async (req, res) => {
   try {
     const { branch } = req.body;
@@ -285,6 +316,7 @@ module.exports={
     getAllCustomers,
     insertCustomer,
     deleteCustomer,
+    editCustomer,
     insertInventory,
     getAllInventory,
     updateInventory,

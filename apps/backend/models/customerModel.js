@@ -2,38 +2,31 @@ const mongoose = require("mongoose");
 
 const customerSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-    },
-    phone: {
-      type: String,
-      required: true,
-    },
-    alternatePhone: {
-      type: String,
-    },
+    name: { type: String, required: true },
+    phone: { type: String, required: true },
+    alternatePhone: { type: String },
     address: {
-      street: { type: String, required: true },
-      area: { type: String, required: true },
-      city: { type: String, required: true },
-      pincode: { type: String, required: true },
+      street: String,
+      area: String,
+      city: String,
+      pincode: String,
     },
     idProofType: {
       type: String,
       enum: ["Aadhaar", "PAN", "Voter ID", "Driving License"],
-      required: true,
     },
-    idProofNumber: {
-      type: String,
-      required: true,
+    idProofNumber: String,
+    lastVisitDate: { type: Date, default: Date.now },
+    membershipPoints: { type: Number, default: 0 },
+    followUp: {
+      nextDate: Date,
+      purpose: String,
+      reasonInactive: String,
+      remarks: String,
     },
   },
   { timestamps: true }
 );
 
 const Customer = mongoose.model("Customer", customerSchema);
-
-module.exports = {
-  Customer,
-};
+module.exports = { Customer };

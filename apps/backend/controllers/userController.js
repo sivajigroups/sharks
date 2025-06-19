@@ -98,6 +98,58 @@ const signupUser = async (req, res) => {
   }
 };
 
+const createUserByAdmin=async(req,res)=>{
+  try {
+    const { name, email, role, password, branchId,phone } = req.body;
+
+    if (!name || !email || !password || !role, !phone) {
+      return res.status(400).json({ message: "All fields are required." });
+    }
+
+    if (role === "staff" && !branchId) {
+      return res
+        .status(400)
+        .json({ message: "Branch ID is required for staff." });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ message: "Email already registered." });
+    }
+
+    const hashPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new User({
+      name,
+      email,
+      password: hashPassword,
+      role,
+      branchId: role === "staff" ? branchId : null,
+      approved: true,
+      phone
+    });
+
+    await newUser.save();
+
+    res.json({
+      message: "User created successfully.",
+      data: newUser,
+    });
+  } catch (err) {
+    res.status(400).send(err.message);
+  }
+}
+const getStaffById = async (req, res) => {
+  try {
+    const staff = await User.findById(req.params.id).populate("branchId");
+    if (!staff || staff.role !== "staff") {
+      return res.status(404).json({ message: "Staff not found" });
+    }
+    res.json(staff);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -168,4 +220,5 @@ module.exports = {
   logoutUser,
   approveUser,
   rejectUser,
+  createUserByAdmin,
 };

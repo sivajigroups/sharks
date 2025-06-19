@@ -148,6 +148,25 @@ const Customers = () => {
       alert("Error adding customer: " + error.message);
     }
   };
+  const handleEdit = async (id, updatedData) => {
+  try {
+    const res = await fetch(`http://localhost:4000/api/customer/details/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(updatedData),
+    });
+
+    const result = await res.json();
+
+    if (!res.ok) throw new Error(result.message);
+    toast.success("Customer updated successfully!");
+    fetchCustomers();
+  } catch (err) {
+    toast.error("Error updating: " + err.message);
+  }
+};
+
   const handleDelete = async (id) => {
     try {
       const res = await fetch(
@@ -270,6 +289,8 @@ const Customers = () => {
               data={filteredCustomers}
               columns={customerColumns}
               onDelete={handleDelete}
+              onEdit={handleEdit} // 👈 Add this
+              showViewButton={false} // 👈 Add this
             />
           </CardContent>
         </Card>

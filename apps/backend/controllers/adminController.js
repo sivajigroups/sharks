@@ -119,31 +119,37 @@ const getAllStaff = async (req, res) => {
       .json({ message: "Error fetching staff", error: error.message });
   }
 };
-
-const updateStaff = async (req,res) => {
-  const { id } = req.params;
-  const { name, email, branchId, role } = req.body;
+const getStaffById = async (req, res) => {
   try {
-    const user = await User.findById(id);
-    if (!user || !user.role == "staff") {
+    const staff = await User.findById(req.params.id).populate("branchId");
+    if (!staff || staff.role !== "staff") {
+      return res.status(404).json({ message: "Staff not found" });
+    }
+    res.json(staff);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const updateStaff = async (req, res) => {
+  try {
+    const staffId = req.params.id;
+    const updateFields = req.body;
+
+    const updated = await User.findByIdAndUpdate(staffId, updateFields, {
+      new: true,
+    }).populate("branchId");
+
+    if (!updated) {
       return res.status(404).json({ message: "Staff not found" });
     }
 
-    user.name = name || user.name;
-    user.email = email || user.email;
-    user.role = role || user.role;
-
-    if (user.role === "staff") {
-      user.branchId = branchId || user.branchId;
-    } else {
-      user.branchId = undefined; // remove branchId if no longer staff
-    }
-
-    await user.save();
-
-    res.json({ message: "Staff updated successfully", data: user });
-  } catch (error) {
-     res.status(500).json({ message: "Error updating staff", error: error.message });
+    res.json({
+      message: "Staff updated successfully",
+      data: updated,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -155,4 +161,5 @@ module.exports = {
   updateBranch,
   getAllStaff,
   updateStaff,
+  getStaffById,
 };

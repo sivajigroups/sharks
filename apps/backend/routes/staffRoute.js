@@ -10,6 +10,7 @@ const {
   insertCheckout,
   calculateAttendance,
   deleteInventory,
+  editCustomer,
 } = require("../controllers/staffController");
 const staffRouter = express.Router();
 
@@ -20,6 +21,7 @@ staffRouter.delete("/inventory/:id",deleteInventory);
 staffRouter.post("/customer/details", userAuth, insertCustomer);
 staffRouter.get("/customer/details", userAuth, getAllCustomers);
 staffRouter.delete("/customer/details/:id", userAuth, deleteCustomer);
+staffRouter.put("/customer/details/:id", userAuth, editCustomer); // Assuming this is for editing customer details
 
 
 staffRouter.post("/checkin", userAuth, insertCheckin);

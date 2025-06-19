@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Plus, Search, Filter, Calendar, ChevronDown, MoreVertical, Printer, FileText, Download
@@ -26,6 +26,8 @@ const OrderManager = ({ type, title, newOrderPath }) => {
       total: 2500
     },
   ]);
+// useEffect();
+
 
   const [searchTerm, setSearchTerm] = useState('');
 

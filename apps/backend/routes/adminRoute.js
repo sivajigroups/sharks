@@ -1,5 +1,5 @@
 const express=require("express");
-const { addingBranch, getAllBranches, getBranchById, deleteBranch, updateBranch, getAllStaff, updateStaff } = require("../controllers/adminController");
+const { addingBranch, getAllBranches, getBranchById, deleteBranch, updateBranch, getAllStaff, updateStaff, getStaffById } = require("../controllers/adminController");
 const { userAuth } = require("../middleware/auth");
 const adminRouter=express.Router();
 
@@ -12,6 +12,7 @@ adminRouter.delete("/branch/:id",userAuth,deleteBranch);
 adminRouter.patch("/branch/:id",updateBranch);
 
 adminRouter.get("/staff/details",userAuth,getAllStaff);
-adminRouter.patch("/staff/details/:id",updateStaff);
+adminRouter.put("/staff/details/:id",updateStaff);
+adminRouter.get("/staff/details/:id",userAuth ,getStaffById);
 
 module.exports=adminRouter;

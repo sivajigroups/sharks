@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
-import Layout from "./components/ui/layout/Layout";
+import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import Report from "./pages/Report";
 import SalesInventory from "./pages/SalesInventory";
@@ -12,6 +12,8 @@ import StaffPage from "./pages/StaffPage";
 import Attendance from "./pages/Attendance";
 import InventoryManager from "./pages/InventoryManager";
 import OrderManager from "./pages/orders/orderManager";
+import StaffDetail from "./pages/StaffDetail";
+import NewOrder from "./pages/orders/NewOrder";
 
 function App() {
   return (
@@ -28,7 +30,8 @@ function App() {
           <Route path="customers" element={<Customers />} />
           <Route path="branches" element={<Branch />} />
           {/* <Route path="rentalOrder" element={<RentalOrdersPage />} /> */}
-          <Route path="rentalOrder" element={<OrderManager type="rental" title="Rental Orders" newOrderPath="/layout/rentalOrder/new" />} />
+          {/* <Route path="rentalOrder" element={<OrderManager type="rental" title="Rental Orders" newOrderPath="/layout/rentalOrder/new" />} /> */}
+          <Route path="rentalOrder/new" element={<NewOrder />} />
           <Route path="salesOrder" element={<OrderManager type="sales" title="Sales Orders" newOrderPath="/layout/rentalOrder/new" />} />
           <Route path="serviceOrder" element={<OrderManager type="service" title="Rental Orders" newOrderPath="/layout/rentalOrder/new" />} />
           <Route path="notification" element={<Notifications />} />
@@ -37,6 +40,8 @@ function App() {
           <Route path="/layout/salesInfo" element={<InventoryManager type="sales" title="Sales Inventory" />} />
           <Route path="/layout/rentalInfo" element={<InventoryManager type="rental" title="Rental Inventory" />} />
           <Route path="/layout/serviceInfo" element={<InventoryManager type="service" title="Service Inventory" />} />
+          <Route path="/layout/staff/:id" element={<StaffDetail />} />
+
         </Route>
       </Routes>
     </Router>
