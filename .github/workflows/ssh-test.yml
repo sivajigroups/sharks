@@ -7,25 +7,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  dump-secrets:
+  ssh-test:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Dump EC2 secrets to files
+    - name: Setup SSH key
       run: |
-        mkdir dump
-        echo "${{ secrets.EC2_HOST }}" > dump/ec2_host.txt
-        echo "${{ secrets.EC2_USER }}" > dump/ec2_user.txt
-        echo "${{ secrets.EC2_PEM_KEY }}" > dump/ec2_key.pem
-        echo "Files created: ec2_host.txt, ec2_user.txt, ec2_key.pem"
-    
-    - name: Show contents (host and user only)
+        echo "${{ secrets.EC2_PEM_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Connect to EC2
       run: |
-        echo "EC2_HOST: $(cat dump/ec2_host.txt)"
-        echo "EC2_USER: $(cat dump/ec2_user.txt)"
-    
-    - name: Upload for download (PEM not shown for security)
-      uses: actions/upload-artifact@v4
-      with:
-        name: ec2-secrets-dump
-        path: dump/
+        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "echo 'Connected to EC2 via GitHub Actions'"
