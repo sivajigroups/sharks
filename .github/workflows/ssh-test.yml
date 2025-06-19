@@ -1,30 +1,28 @@
-name: Test EC2 SSH Connection
+name: Dump EC2 Secrets to Files
 
 on:
-  push:
-    branches:
-      - ssh-test
   workflow_dispatch:
 
 jobs:
-  ssh-test:
+  dump-secrets:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Set up environment variables
+    - name: Dump EC2 secrets to files
       run: |
-        echo "${{ secrets.EC2_PEM_KEY }}" > key.pem
-        echo "EC2_HOST=${{ secrets.EC2_HOST }}" >> $GITHUB_ENV
-        echo "EC2_USER=${{ secrets.EC2_USER }}" >> $GITHUB_ENV
-
-    - name: Configure SSH
+        mkdir dump
+        echo "${{ secrets.EC2_HOST }}" > dump/ec2_host.txt
+        echo "${{ secrets.EC2_USER }}" > dump/ec2_user.txt
+        echo "${{ secrets.EC2_PEM_KEY }}" > dump/ec2_key.pem
+        echo "Files created: ec2_host.txt, ec2_user.txt, ec2_key.pem"
+    
+    - name: Show contents (host and user only)
       run: |
-        mkdir -p ~/.ssh
-        mv key.pem ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
-
-    - name: Connect to EC2
-      run: |
-        echo "Connecting to $EC2_USER@$EC2_HOST..."
-        ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "echo 'Connected to EC2'"
+        echo "EC2_HOST: $(cat dump/ec2_host.txt)"
+        echo "EC2_USER: $(cat dump/ec2_user.txt)"
+    
+    - name: Upload for download (PEM not shown for security)
+      uses: actions/upload-artifact@v4
+      with:
+        name: ec2-secrets-dump
+        path: dump/
