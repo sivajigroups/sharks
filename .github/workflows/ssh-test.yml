@@ -11,18 +11,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Setup SSH
+    - name: Create SSH key and connect
       run: |
         mkdir -p ~/.ssh
         echo "${{ secrets.EC2_PEM_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
 
-        echo "HOST=${{ secrets.EC2_HOST }}"
-        echo "USER=${{ secrets.EC2_USER }}"
+        echo "Host ec2-target" >> ~/.ssh/config
+        echo "  HostName ${{ secrets.EC2_HOST }}" >> ~/.ssh/config
+        echo "  User ${{ secrets.EC2_USER }}" >> ~/.ssh/config
+        echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+        echo "  StrictHostKeyChecking no" >> ~/.ssh/config
 
-        HOST="${{ secrets.EC2_HOST }}"
-        USER="${{ secrets.EC2_USER }}"
-
-        ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
-        ssh -o StrictHostKeyChecking=no "$USER@$HOST" "echo 'Connected to EC2 via inline test'"
-
+        ssh ec2-target "echo 'Connected to EC2 without ssh-keyscan'"
