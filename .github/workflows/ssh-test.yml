@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Setup SSH key
+    - name: Setup SSH key and known hosts
       run: |
+        mkdir -p ~/.ssh
         echo "${{ secrets.EC2_PEM_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        mkdir -p ~/.ssh
         ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
     - name: Connect to EC2
