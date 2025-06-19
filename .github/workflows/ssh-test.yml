@@ -9,25 +9,28 @@ on:
 jobs:
   ssh-test:
     runs-on: ubuntu-latest
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+      EC2_PEM_KEY: ${{ secrets.EC2_PEM_KEY }}
 
     steps:
     - name: ✅ DEBUG: Check if EC2_HOST is set
       run: |
-        if [ -z "${{ secrets.EC2_HOST }}" ]; then
+        if [ -z "$EC2_HOST" ]; then
           echo "❌ EC2_HOST is EMPTY"
           exit 1
         else
-          echo "✅ EC2_HOST is set"
+          echo "✅ EC2_HOST is set to: $EC2_HOST"
         fi
 
     - name: 🔐 Setup SSH with PEM
       run: |
         mkdir -p ~/.ssh
-        echo "${{ secrets.EC2_PEM_KEY }}" > ~/.ssh/id_rsa
+        echo "$EC2_PEM_KEY" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        echo "${{ secrets.EC2_HOST }}" | tee -a ~/.ssh/known_hosts > /dev/null
-        ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+        ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
 
     - name: 🚀 Connect to EC2 and test
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "echo '✅ Connected to EC2!'"
+        ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "echo '✅ Connected to EC2!'"
