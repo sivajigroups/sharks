@@ -1,0 +1,20 @@
+name: Test EC2 SSH Connection
+
+on:
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
+
+jobs:
+  ssh-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Setup SSH with PEM
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_PEM_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Connect to EC2 and echo something
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "echo '✅ Connected to EC2!'"
