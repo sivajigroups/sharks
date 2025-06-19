@@ -11,18 +11,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Load secrets from files
+    - name: Setup SSH
       run: |
         mkdir -p ~/.ssh
-        cp secrets/ec2_key.pem ~/.ssh/id_rsa
+        echo "${{ secrets.EC2_PEM_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
 
-        export EC2_HOST=$(cat secrets/ec2_host.txt)
-        export EC2_USER=$(cat secrets/ec2_user.txt)
+        echo "HOST=${{ secrets.EC2_HOST }}"
+        echo "USER=${{ secrets.EC2_USER }}"
 
-        echo "Connecting to $EC2_USER@$EC2_HOST"
-        ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
-        ssh -o StrictHostKeyChecking=no "$EC2_USER@$EC2_HOST" "echo 'Connected via file-based secrets'"
+        HOST="${{ secrets.EC2_HOST }}"
+        USER="${{ secrets.EC2_USER }}"
+
+        ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+        ssh -o StrictHostKeyChecking=no "$USER@$HOST" "echo 'Connected to EC2 via inline test'"
+
