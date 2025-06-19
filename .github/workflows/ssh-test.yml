@@ -1,6 +1,9 @@
 name: Dump EC2 Secrets to Files
 
 on:
+  push:
+    branches:
+      - ssh-test
   workflow_dispatch:
 
 jobs:
@@ -26,4 +29,3 @@ jobs:
       with:
         name: ec2-secrets-dump
         path: dump/
-# sjdhsdsjh
