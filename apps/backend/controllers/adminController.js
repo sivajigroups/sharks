@@ -94,21 +94,40 @@ const updateBranch = async (req, res) => {
   try {
     const user = req.user;
 
-    if (user.role !== "admin") {
-      return res.status(401).json({
-        message: "You are not authorized to add branch",
-      });
+    // if (!user || user.role !== "admin") {
+    //   return res.status(401).json({
+    //     message: "You are not authorized to update branch",
+    //   });
+    // }
+
+    const { id } = req.params;
+    const updateData = req.body;
+
+    if (!id || !updateData) {
+      return res.status(400).json({ message: "Missing ID or update data" });
     }
-    const updated = await Branch.findByIdAndUpdate(req.params.id, req.body, {
+
+    const updated = await Branch.findByIdAndUpdate(id, updateData, {
       new: true,
+      runValidators: true, // Ensures schema validation
     });
-    res.json({ message: "Branch updated successfully", updated });
+
+    if (!updated) {
+      return res.status(404).json({ message: "Branch not found" });
+    }
+
+    res.status(200).json({
+      message: "Branch updated successfully",
+      data: updated,
+    });
   } catch (err) {
-    res
-      .status(400)
-      .json({ message: "Error updating branch", error: err.message });
+    res.status(500).json({
+      message: "Error updating branch",
+      error: err.message,
+    });
   }
 };
+
 const getAllStaff = async (req, res) => {
   try {
     const staffs = await User.find({ role: "staff" }).populate("branchId");
