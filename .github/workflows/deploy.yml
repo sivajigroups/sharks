@@ -36,20 +36,30 @@ jobs:
           sudo apt update
           sudo apt install -y ansible
 
-      # - name: Rsync Code to Server
-      #   run: |
-      #     host_ip=$(awk '{print $1}' inventory.ini)
-      #     ansible "$host_ip" -i inventory.ini -m synchronize -a "src=./ dest=/home/deploy-folder/ delete=yes recursive=yes" \
-      #       --private-key=deploy_key
+      - name: Rsync Code to Server
+        run: |
+          host_ip=$(awk '{print $1}' inventory.ini)
+          ansible "$host_ip" -i inventory.ini -m synchronize -a "src=./ dest=/home/deploy-folder/ delete=yes recursive=yes" \
+            --private-key=deploy_key
 
-      - name: Build Frontend and Deploy to /var/www/html/shark
+      - name: Build Frontend and Deploy to /var/www/html/
         run: |
           host_ip=$(awk '{print $1}' inventory.ini)
           ansible "$host_ip" -i inventory.ini -m shell -a "\
             cd /home/deploy-folder/apps/frontend && \
             npm install && \
             npx vite build && \
-            sudo mkdir -p /var/www/html/shark && \
-            sudo rm -rf /var/www/html/shark/* && \
+            sudo rm -rf /var/www/html/* && \
             sudo cp -r dist/* /var/www/html/" \
+            --private-key=deploy_key
+
+      - name: Copy Backend and Start with PM2
+        run: |
+          host_ip=$(awk '{print $1}' inventory.ini)
+          ansible "$host_ip" -i inventory.ini -m shell -a "\
+            mkdir -p /home/lakshmikanth/backend && \
+            cp -r /home/deploy-folder/apps/backend/* /home/lakshmikanth/backend/ && \
+            cd /home/lakshmikanth/backend && \
+            npm install && \
+            pm2 startOrRestart server.js || pm2 start server.js --name backend-server" \
             --private-key=deploy_key
