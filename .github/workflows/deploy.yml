@@ -36,11 +36,11 @@ jobs:
           sudo apt update
           sudo apt install -y ansible
 
-      - name: Rsync Code to Server
-        run: |
-          host_ip=$(awk '{print $1}' inventory.ini)
-          ansible "$host_ip" -i inventory.ini -m synchronize -a "src=./ dest=/home/deploy-folder/ delete=yes recursive=yes" \
-            --private-key=deploy_key
+      # - name: Rsync Code to Server
+      #   run: |
+      #     host_ip=$(awk '{print $1}' inventory.ini)
+      #     ansible "$host_ip" -i inventory.ini -m synchronize -a "src=./ dest=/home/deploy-folder/ delete=yes recursive=yes" \
+      #       --private-key=deploy_key
 
       - name: Build Frontend and Deploy to /var/www/html/shark
         run: |
@@ -51,5 +51,5 @@ jobs:
             npx vite build && \
             sudo mkdir -p /var/www/html/shark && \
             sudo rm -rf /var/www/html/shark/* && \
-            sudo cp -r dist/* /var/www/html/shark/" \
+            sudo cp -r dist/* /var/www/html/" \
             --private-key=deploy_key
