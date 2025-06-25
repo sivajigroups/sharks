@@ -31,7 +31,7 @@ jobs:
         run: |
           echo "${{ secrets.deploy_server_inventory }}" > inventory.ini
 
-      - name: Extract Host IP from Inventory and Add to known_hosts
+      - name: Extract Host IP and Add to known_hosts
         run: |
           host_ip=$(awk '{print $1}' inventory.ini)
           echo "Connecting to IP: $host_ip"
@@ -42,9 +42,20 @@ jobs:
           sudo apt update
           sudo apt install -y ansible
 
-      - name: Rsync Code to Server via Ansible
+      - name: Sync Code to Server
         run: |
           host_ip=$(awk '{print $1}' inventory.ini)
           ansible "$host_ip" -i inventory.ini -m synchronize -a "src=./ dest=/home/deploy-folder/ delete=yes recursive=yes" \
             --private-key=deploy_key
 
+      - name: Build Frontend and Deploy to /var/www/html/shark
+        run: |
+          host_ip=$(awk '{print $1}' inventory.ini)
+          ansible "$host_ip" -i inventory.ini -m shell -a "\
+            cd /home/deploy-folder/apps/frontend && \
+            npm install && \
+            npx vite build && \
+            sudo mkdir -p /var/www/html/shark && \
+            sudo rm -rf /var/www/html/shark/* && \
+            sudo cp -r dist/* /var/www/html/" \
+            --private-key=deploy_key
