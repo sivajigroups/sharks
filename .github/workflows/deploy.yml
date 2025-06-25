@@ -1,15 +1,9 @@
 name: Deploy to Remote Server
 
 on:
-  workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Select branch to deploy'
-        required: true
-        default: 'onstep'
-        type: choice
-        options:
-          - onstep
+  push:
+    branches:
+      - onstep
 
 jobs:
   deploy:
@@ -19,7 +13,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch }}
+          ref: onstep
 
       - name: Setup SSH Key
         run: |
@@ -42,7 +36,7 @@ jobs:
           sudo apt update
           sudo apt install -y ansible
 
-      - name: Sync Code to Server
+      - name: Rsync Code to Server
         run: |
           host_ip=$(awk '{print $1}' inventory.ini)
           ansible "$host_ip" -i inventory.ini -m synchronize -a "src=./ dest=/home/deploy-folder/ delete=yes recursive=yes" \
@@ -57,5 +51,5 @@ jobs:
             npx vite build && \
             sudo mkdir -p /var/www/html/shark && \
             sudo rm -rf /var/www/html/shark/* && \
-            sudo cp -r dist/* /var/www/html/" \
+            sudo cp -r dist/* /var/www/html/shark/" \
             --private-key=deploy_key
