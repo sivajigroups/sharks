@@ -33,7 +33,7 @@ jobs:
 
       - name: Extract Host IP from Inventory and Add to known_hosts
         run: |
-          host_ip=$(awk -F'ansible_host=' '{print $2}' inventory.ini | awk '{print $1}')
+          host_ip=$(awk '{print $1}' inventory.ini)
           echo "Connecting to IP: $host_ip"
           ssh-keyscan -H "$host_ip" >> ~/.ssh/known_hosts
 
@@ -44,7 +44,7 @@ jobs:
 
       - name: Rsync Code to Server via Ansible
         run: |
-          host_ip=$(awk -F'ansible_host=' '{print $2}' inventory.ini | awk '{print $1}')
+          host_ip=$(awk '{print $1}' inventory.ini)
           ansible "$host_ip" -i inventory.ini -m synchronize -a "src=./ dest=/home/ delete=yes recursive=yes" \
             --private-key=deploy_key
 
