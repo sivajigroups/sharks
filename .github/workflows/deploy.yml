@@ -1,0 +1,51 @@
+name: Deploy to Remote Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Select branch to deploy'
+        required: true
+        default: 'main'
+        type: choice
+        options:
+          - main
+          - develop
+          - feature/test
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup SSH Key
+        run: |
+          echo "${{ secrets.DEPLOY_KEY }}" > deploy_key
+          chmod 600 deploy_key
+          mkdir -p ~/.ssh
+
+      - name: Create Ansible Inventory File
+        run: |
+          echo "${{ secrets.deploy_server_inventory }}" > inventory.ini
+
+      - name: Extract Host IP from Inventory and Add to known_hosts
+        run: |
+          host_ip=$(awk -F'ansible_ssh_host=' '{print $2}' inventory.ini | awk '{print $1}')
+          echo "Connecting to IP: $host_ip"
+          ssh-keyscan -H "$host_ip" >> ~/.ssh/known_hosts
+
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+
+      - name: Rsync Code to Server via Ansible
+        run: |
+          ansible all -i inventory.ini -m synchronize -a "src=./ dest=/home/ delete=yes recursive=yes" \
+            --private-key=deploy_key
+
