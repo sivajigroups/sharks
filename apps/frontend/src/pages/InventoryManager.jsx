@@ -40,7 +40,7 @@ const InventoryManager = ({ type, title }) => {
     setLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:4000/api/inventory?type=${type}`,
+        `https://api.sivajigroups.com/api/inventory?type=${type}`,
         {
           method: "GET",
           credentials: "include",
@@ -81,7 +81,7 @@ const InventoryManager = ({ type, title }) => {
       } else if (type === "service") {
         newItem.serviceStatus = "pending"; // or get from input if needed
       }
-      const response = await fetch("http://localhost:4000/api/inventory", {
+      const response = await fetch("https://api.sivajigroups.com/api/inventory", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -107,7 +107,7 @@ const InventoryManager = ({ type, title }) => {
   const handleDelete = async (id) => {
     try {
       const response = await fetch(
-        `http://localhost:4000/api/inventory/${id}`,
+        `https://api.sivajigroups.com/api/inventory/${id}`,
         {
           method: "DELETE",
           credentials: "include",

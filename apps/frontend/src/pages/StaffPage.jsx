@@ -38,7 +38,7 @@ const StaffPage = () => {
   const fetchStaff = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:4000/api/staff/details", {
+      const res = await fetch("https://api.sivajigroups.com/api/staff/details", {
         method: "GET",
         credentials: "include",
       });
@@ -68,7 +68,7 @@ const StaffPage = () => {
     const body = { name, email, password, role, branchId, phone };
 
     try {
-      const res = await fetch("http://localhost:4000/api/create/staff", {
+      const res = await fetch("https://api.sivajigroups.com/api/create/staff", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -92,7 +92,7 @@ const StaffPage = () => {
 
   const handleDelete = async (id) => {
     try {
-      const res = await fetch(`http://localhost:4000/api/staff/details/${id}`, {
+      const res = await fetch(`https://api.sivajigroups.com/api/staff/details/${id}`, {
         method: "DELETE",
         credentials: "include",
       });

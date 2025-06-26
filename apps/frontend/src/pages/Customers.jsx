@@ -46,7 +46,7 @@ const Customers = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:4000/api/customer/details",
+        "https://api.sivajigroups.com/api/customer/details",
         {
           method: "GET",
           credentials: "include",
@@ -112,7 +112,7 @@ const Customers = () => {
 
     try {
       const response = await fetch(
-        "http://localhost:4000/api/customer/details",
+        "https://api.sivajigroups.com/api/customer/details",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -150,7 +150,7 @@ const Customers = () => {
   };
   const handleEdit = async (id, updatedData) => {
   try {
-    const res = await fetch(`http://localhost:4000/api/customer/details/${id}`, {
+    const res = await fetch(`https://api.sivajigroups.com/api/customer/details/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -170,7 +170,7 @@ const Customers = () => {
   const handleDelete = async (id) => {
     try {
       const res = await fetch(
-        `http://localhost:4000/api/customer/details/${id}`,
+        `https://api.sivajigroups.com/api/customer/details/${id}`,
         {
           method: "DELETE",
           credentials: "include",

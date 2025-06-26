@@ -22,7 +22,7 @@ const LayoutTopbar = () => {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch("http://localhost:4000/api/logout", {
+      const response = await fetch("https://api.sivajigroups.com/api/logout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
