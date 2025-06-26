@@ -2,28 +2,34 @@ import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
 
-const NewOrder = ({ type = "rental" }) => {
+const NewOrder = () => {
   const [customers, setCustomers] = useState([]);
   const [tools, setTools] = useState([]);
   const [selectedToolId, setSelectedToolId] = useState("");
   const [toolDetails, setToolDetails] = useState({});
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [toolSearch, setToolSearch] = useState("");
 
   const [customerId, setCustomerId] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [purchaseDate, setPurchaseDate] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("Pending");
   const [pendingAmount, setPendingAmount] = useState("");
-  const [followUp, setFollowUp] = useState({
-    nextDate: "",
-    purpose: "",
-    reasonInactive: "",
-    remarks: "",
-  });
 
-  // Fetch customers
+  const filteredCustomers = customers.filter((c) =>
+    `${c.name} ${c.phone}`.toLowerCase().includes(customerSearch.toLowerCase())
+  );
+
+  const filteredTools = tools.filter(
+    (t) =>
+      `${t.name} ${t.barcode}`
+        .toLowerCase()
+        .includes(toolSearch.toLowerCase()) && t.type === "rental"
+  );
+
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
@@ -40,31 +46,27 @@ const NewOrder = ({ type = "rental" }) => {
     fetchCustomers();
   }, []);
 
-  // Fetch tools
-useEffect(() => {
-  const fetchTools = async () => {
-    try {
-      const res = await fetch("http://localhost:4000/api/inventory", {
-        credentials: "include",
-      });
-      const data = await res.json();
-
-      if (Array.isArray(data.data)) {
-        setTools(data.data); // ✅ set array inside `data`
-      } else {
-        console.error("Inventory API did not return a valid data array:", data);
+  useEffect(() => {
+    const fetchTools = async () => {
+      try {
+        const res = await fetch("http://localhost:4000/api/inventory", {
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (Array.isArray(data.data)) {
+          setTools(data.data);
+        } else {
+          console.error("Inventory API did not return a valid data array:", data);
+          setTools([]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch inventory:", err);
         setTools([]);
       }
-    } catch (err) {
-      console.error("Failed to fetch inventory:", err);
-      setTools([]);
-    }
-  };
-  fetchTools();
-}, []);
+    };
+    fetchTools();
+  }, []);
 
-
-  // When tool is selected, set details
   useEffect(() => {
     const tool = tools.find((t) => t._id === selectedToolId);
     if (tool) setToolDetails(tool);
@@ -78,32 +80,21 @@ useEffect(() => {
 
     const body = {
       customerId,
-      type,
+      type: "rental",
       toolId: selectedToolId,
       quantity,
-      rental:
-        type === "rental"
-          ? {
-              startDate,
-              endDate,
-              ratePerDay: toolDetails.pricePerDay,
-            }
-          : undefined,
-      purchase:
-        type === "purchase"
-          ? {
-              date: purchaseDate,
-              price: toolDetails.salePrice,
-            }
-          : undefined,
+      rental: {
+        startDate,
+        endDate,
+        ratePerDay: toolDetails.pricePerDay,
+      },
       payment: {
         status: paymentStatus,
         pendingAmount,
       },
-      followUp,
     };
 
-    const res = await fetch("http://localhost:4000/api/orders", {
+    const res = await fetch("http://localhost:4000/api/transaction", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -119,133 +110,122 @@ useEffect(() => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-4">
-      <h1 className="text-xl font-bold">New {type} Order</h1>
+    <div className="max-w-6xl mx-auto p-4 space-y-4 w-250">
+      <h1 className="text-xl font-bold">New Rental Order</h1>
 
-      {/* Customer Selection */}
-      <select
-        value={customerId}
-        onChange={(e) => setCustomerId(e.target.value)}
-        className="w-full border p-2"
-      >
-        <option value="">Select Customer</option>
-        {customers.map((c) => (
-          <option key={c._id} value={c._id}>
-            {c.name} ({c.phone})
-          </option>
-        ))}
-      </select>
-
-      {/* Tool Selection */}
-      <select
-        value={selectedToolId}
-        onChange={(e) => setSelectedToolId(e.target.value)}
-        className="w-full border p-2"
-      >
-        <option value="">Select Tool</option>
-        {Array.isArray(tools) &&
-          tools
-            .filter((t) => t.type === type)
-            .map((t) => (
-              <option key={t._id} value={t._id}>
-                {t.name} ({t.barcode}) - {t.category}
-              </option>
-            ))}
-      </select>
-
-      {/* Auto-Filled Fields */}
-      {toolDetails && selectedToolId && (
-        <>
-          <Input readOnly value={toolDetails.barcode || ""} placeholder="Tool Code" />
-          <Input readOnly value={toolDetails.brand || ""} placeholder="Brand" />
-          {type === "rental" && (
-            <Input readOnly value={toolDetails.pricePerDay || ""} placeholder="Rate Per Day" />
-          )}
-          {type === "purchase" && (
-            <Input readOnly value={toolDetails.salePrice || ""} placeholder="Sale Price" />
-          )}
-        </>
-      )}
-
-      <Input
-        placeholder="Quantity"
-        type="number"
-        value={quantity}
-        onChange={(e) => setQuantity(e.target.value)}
-      />
-
-      {type === "rental" && (
-        <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Customer Selection */}
+        <div className="relative col-span-1">
+          <Label className="py-3">Customer</Label>
           <Input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            type="text"
+            placeholder="Search Customer (name or phone)"
+            value={customerSearch}
+            onChange={(e) => setCustomerSearch(e.target.value)}
           />
+          {customerSearch && (
+            <div className="absolute z-10 bg-white border w-full max-h-48 overflow-y-auto shadow-lg">
+              {filteredCustomers.map((c) => (
+                <div
+                  key={c._id}
+                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => {
+                    setCustomerId(c._id);
+                    setCustomerSearch(`${c.name} (${c.phone})`);
+                  }}
+                >
+                  {c.name} ({c.phone})
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Tool Selection */}
+        <div className="relative col-span-1">
+          <Label className="py-3">Tool</Label>
           <Input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
+            type="text"
+            placeholder="Search Tool (name or barcode)"
+            value={toolSearch}
+            onChange={(e) => setToolSearch(e.target.value)}
           />
-        </>
-      )}
+          {toolSearch && (
+            <div className="absolute z-10 bg-white border w-full max-h-48 overflow-y-auto shadow-lg">
+              {filteredTools.map((t) => (
+                <div
+                  key={t._id}
+                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => {
+                    setSelectedToolId(t._id);
+                    setToolSearch(`${t.name} (${t.barcode})`);
+                  }}
+                >
+                  {t.name} ({t.barcode}) - {t.category}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-      {type === "purchase" && (
-        <Input
-          type="date"
-          value={purchaseDate}
-          onChange={(e) => setPurchaseDate(e.target.value)}
-        />
-      )}
+        {/* Tool Details */}
+        {toolDetails && selectedToolId && (
+          <>
+            <div className="col-span-1">
+              <Label className="py-3">Tool Code</Label>
+              <Input readOnly value={toolDetails.barcode || ""} />
+            </div>
+            <div className="col-span-1">
+              <Label className="py-3">Rate Per Day</Label>
+              <Input readOnly value={toolDetails.pricePerDay || ""} />
+            </div>
+          </>
+        )}
 
-      {/* Payment Info */}
-      <select
-        value={paymentStatus}
-        onChange={(e) => setPaymentStatus(e.target.value)}
-        className="w-full border p-2"
-      >
-        <option value="Paid">Paid</option>
-        <option value="Partial">Partial</option>
-        <option value="Pending">Pending</option>
-      </select>
+        {/* Rental Period */}
+        <div className="col-span-1">
+          <Label className="py-3">Start Date</Label>
+          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        </div>
+        <div className="col-span-1">
+          <Label className="py-3">End Date</Label>
+          <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        </div>
 
-      <Input
-        placeholder="Pending Amount"
-        value={pendingAmount}
-        onChange={(e) => setPendingAmount(e.target.value)}
-      />
+        {/* Quantity */}
+        <div className="col-span-1">
+          <Label className="py-3">Quantity</Label>
+          <Input
+            type="number"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+          />
+        </div>
 
-      {/* Follow-Up Info */}
-      <Input
-        type="date"
-        placeholder="Next Follow-up Date"
-        value={followUp.nextDate}
-        onChange={(e) =>
-          setFollowUp({ ...followUp, nextDate: e.target.value })
-        }
-      />
-      <Input
-        placeholder="Purpose"
-        value={followUp.purpose}
-        onChange={(e) =>
-          setFollowUp({ ...followUp, purpose: e.target.value })
-        }
-      />
-      <Input
-        placeholder="Reason for Inactivity"
-        value={followUp.reasonInactive}
-        onChange={(e) =>
-          setFollowUp({ ...followUp, reasonInactive: e.target.value })
-        }
-      />
-      <Input
-        placeholder="Remarks"
-        value={followUp.remarks}
-        onChange={(e) =>
-          setFollowUp({ ...followUp, remarks: e.target.value })
-        }
-      />
+        {/* Payment Info */}
+        <div className="col-span-1">
+          <Label className="py-3">Payment Status</Label>
+          <select
+            value={paymentStatus}
+            onChange={(e) => setPaymentStatus(e.target.value)}
+            className="w-full border p-2 rounded-md"
+          >
+            <option value="Paid">Paid</option>
+            <option value="Partial">Partial</option>
+            <option value="Pending">Pending</option>
+          </select>
+        </div>
 
-      <Button className="w-full" onClick={handleSubmit}>
+        <div className="col-span-1">
+          <Label className="py-3">Pending Amount</Label>
+          <Input
+            value={pendingAmount}
+            onChange={(e) => setPendingAmount(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <Button className="w-50 mt-4" onClick={handleSubmit}>
         Submit
       </Button>
     </div>

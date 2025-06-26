@@ -8,6 +8,7 @@ const userRouter = require("./routes/userRoute");
 const staffRouter = require("./routes/staffRoute");
 const saleRouter = require("./routes/saleRoute");
 const adminRouter = require("./routes/adminRoute");
+const transRouter = require("./routes/transactionRoute");
 const app = express();
 app.use(cookieParser());
 app.use(cors({
@@ -19,6 +20,7 @@ app.use("/api",userRouter);
 app.use("/api",staffRouter);
 app.use("/api",saleRouter);
 app.use("/api",adminRouter);
+app.use("/api",transRouter);
 //mongoose
 dbConnect()
   .then(() => {
