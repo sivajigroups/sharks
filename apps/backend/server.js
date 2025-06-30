@@ -1,6 +1,7 @@
 const express = require("express");
 const cookieParser = require("cookie-parser");
-const cors = require("cors");
+// ❌ If NGINX is handling CORS, you can optionally comment this out
+// const cors = require("cors");
 require("dotenv").config();
 
 const dbConnect = require("./config/dbConnect");
@@ -12,23 +13,11 @@ const transRouter = require("./routes/transactionRoute");
 
 const app = express();
 
-// ✅ Middleware: Cookie + CORS
+// ✅ Middleware: Cookie
 app.use(cookieParser());
 
-app.use(cors({
-  origin: "https://sharks.sivajigroups.com", // or use process.env.CORS_ORIGIN
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
-
-// ✅ Optional: custom CORS fallback to ensure preflight doesn't fail
-app.use(cors({
-  origin: "https://sharks.sivajigroups.com",
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
+// ❌ REMOVE this (CORS is already handled in NGINX, so no need to set it in Express)
+// app.use(cors({ ... })); ← remove all instances of this line
 
 // ✅ JSON parsing
 app.use(express.json());
