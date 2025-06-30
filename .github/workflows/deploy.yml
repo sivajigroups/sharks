@@ -62,6 +62,7 @@ jobs:
             cd /home/lakshmikanth/backend && \
             npm install && \
             pm2 start server.js --name backend-server -f || pm2 restart backend-server -f && \
+            pm2 restart all
             pm2 save" \
           --private-key=deploy_key
 
