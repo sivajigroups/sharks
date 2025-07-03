@@ -33,7 +33,7 @@ const NewOrder = () => {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const res = await fetch("http://localhost:4000/api/customer/details", {
+        const res = await fetch("https://api.sivajigroups.com/api/customer/details", {
           credentials: "include",
         });
         const data = await res.json();
@@ -49,7 +49,7 @@ const NewOrder = () => {
   useEffect(() => {
     const fetchTools = async () => {
       try {
-        const res = await fetch("http://localhost:4000/api/inventory", {
+        const res = await fetch("https://api.sivajigroups.com/api/inventory", {
           credentials: "include",
         });
         const data = await res.json();
@@ -94,7 +94,7 @@ const NewOrder = () => {
       },
     };
 
-    const res = await fetch("http://localhost:4000/api/transaction", {
+    const res = await fetch("https://api.sivajigroups.com/api/transaction", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

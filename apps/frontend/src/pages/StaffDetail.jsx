@@ -17,7 +17,7 @@ const StaffDetail = () => {
 const navigate = useNavigate();
 
   const fetchStaff = async () => {
-    const res = await fetch(`http://localhost:4000/api/staff/details/${id}`, {
+    const res = await fetch(`https://api.sivajigroups.com/api/staff/details/${id}`, {
       method: "GET",
       credentials: "include",
     });
@@ -33,7 +33,7 @@ const navigate = useNavigate();
   };
 
   const fetchBranches = async () => {
-    const res = await fetch("http://localhost:4000/api/branch/all");
+    const res = await fetch("https://api.sivajigroups.com/api/branch/all");
     const data = await res.json();
     setBranches(data);
   };
@@ -49,7 +49,7 @@ const navigate = useNavigate();
   };
 
   const handleUpdate = async () => {
-    const res = await fetch(`http://localhost:4000/api/staff/details/${id}`, {
+    const res = await fetch(`https://api.sivajigroups.com/api/staff/details/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

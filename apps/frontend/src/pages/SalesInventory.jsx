@@ -34,7 +34,7 @@ const SalesInventory = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:4000/api/inventory?type=sales",
+        "https://api.sivajigroups.com/api/inventory?type=sales",
         {
           method: "GET",
           credentials: "include",
@@ -73,7 +73,11 @@ const SalesInventory = () => {
         branch,
         barcode,
       };
+<<<<<<< HEAD
       const response = await fetch("http://localhost:4000/api/inventory/sales", {
+=======
+      const response = await fetch("https://api.sivajigroups.com/api/inventory", {
+>>>>>>> 5d166eeaa9afd5d5516fd2c9d643fe47084e052a
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -101,7 +105,7 @@ const SalesInventory = () => {
   const handleDelete = async (id) => {
     try {
       const response = await fetch(
-        `http://localhost:4000/api/inventory/${id}`,
+        `https://api.sivajigroups.com/api/inventory/${id}`,
         {
           method: "DELETE",
           credentials: "include",
