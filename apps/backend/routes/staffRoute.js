@@ -11,11 +11,19 @@ const {
   calculateAttendance,
   deleteInventory,
   editCustomer,
+  insertSales,
+  insertRental,
+  getAllsales,
+  getAllrental,
 } = require("../controllers/staffController");
 const staffRouter = express.Router();
 
-staffRouter.post("/inventory",userAuth,insertInventory);
-staffRouter.get("/inventory",userAuth,getAllInventory);
+staffRouter.post("/inventory/sales",userAuth,insertSales);
+staffRouter.post("/inventory/rental", userAuth, insertRental);
+
+
+staffRouter.get("/inventory/sales",userAuth,getAllsales);
+staffRouter.get("/inventory/rental", userAuth, getAllrental);
 staffRouter.delete("/inventory/:id",deleteInventory);
 
 staffRouter.post("/customer/details", userAuth, insertCustomer);

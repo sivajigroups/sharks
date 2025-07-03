@@ -1,52 +1,39 @@
 const { Attendance } = require("../models/attendanceModel");
 const { Customer } = require("../models/customerModel");
 const { Inventory } = require("../models/Inventory/inventoryModel");
-const insertInventory = async (req, res) => {
+const { RentalInventory } = require("../models/Inventory/RentalInventoryModel");
+const { SalesInventory } = require("../models/Inventory/SalesInventoryModel");
+const insertSales = async (req, res) => {
   try {
     const {
       name,
       description,
       category,
-      type,
       quantity,
-      salePrice,
-      pricePerDay,
-      serviceStatus,
+      price,
       branch,
       barcode,
     } = req.body;
-    if (!name || !type || !quantity || !branch) {
+    if (!name|| !quantity || !branch || !barcode || !price) {
       return res.status(400).json({ message: "Missing required fields" });
     }
-    if (type === "sales" && !salePrice) {
-      return res
-        .status(400)
-        .json({ message: "Sale price required for sales item" });
-    }
-    if (type === "rental" && !pricePerDay) {
-      return res
-        .status(400)
-        .json({ message: "Price per day required for rental item" });
-    }
-    const existing = await Inventory.findOne({ barcode });
+  
+    const existing = await SalesInventory.findOne({ barcode });
     if (existing) {
       return res.status(400).json({ message: "Barcode already exists" });
     }
 
-    const inventorySave = new Inventory({
+    const sales = new SalesInventory({
       name,
       description,
       category,
-      type,
       quantity,
-      salePrice,
-      pricePerDay,
-      serviceStatus,
+      price,
       branch,
       barcode,
     });
-    await inventorySave.save();
-    if (inventorySave.quantity < 5) {
+    await sales.save();
+    if (sales.quantity < 5) {
           res.send("Inventory Item Added Successfully and stock is low");
     }
     res.send("Inventory Item Added Successfully");
@@ -57,7 +44,43 @@ const insertInventory = async (req, res) => {
     });
   }
 };
-const getAllInventory = async (req, res) => {
+
+
+const  insertRental=async(req,res)=>{
+  try {
+    const { name, description, category, quantity, pricePerDay, branch, barcode } = req.body;
+    if (!name || !quantity || !branch || !barcode || !pricePerDay) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const existing = await RentalInventory.findOne({ barcode });
+    if (existing) {
+      return res.status(400).json({ message: "Barcode already exists" });
+    }
+
+    const rental = new RentalInventory({
+      name,
+      description,
+      category,
+      quantity,
+      pricePerDay,
+      branch,
+      barcode,
+    });
+    await rental.save();
+    if (rental.quantity < 5) {
+          res.send("Inventory Item Added Successfully and stock is low");
+    }
+    res.send("Inventory Item Added Successfully");
+  } catch (error) {
+    res.status(400).json({
+      message: "Error in adding Tools in Inventory",
+      error: error.message,
+    });
+  }
+}
+
+const getAllsales = async (req, res) => {
   try {
     const { branch, type } = req.query;
 
@@ -65,7 +88,30 @@ const getAllInventory = async (req, res) => {
     if (branch) filter.branch = branch;
     if (type) filter.type = type;
 
-    const inventories = await Inventory.find(filter).populate("branch");
+    const inventories = await SalesInventory.find(filter).populate("branch");
+
+    res.status(200).json({
+      message: "Inventory fetched successfully",
+      data: inventories,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching inventory",
+      error: error.message,
+    });
+  }
+};
+
+
+const getAllrental = async (req, res) => {
+  try {
+    const { branch, type } = req.query;
+
+    const filter = {};
+    if (branch) filter.branch = branch;
+    if (type) filter.type = type;
+
+    const inventories = await RentalInventory.find(filter).populate("branch");
 
     res.status(200).json({
       message: "Inventory fetched successfully",
@@ -317,8 +363,10 @@ module.exports={
     insertCustomer,
     deleteCustomer,
     editCustomer,
-    insertInventory,
-    getAllInventory,
+    insertSales,
+    insertRental,
+    getAllsales,
+    getAllrental,
     updateInventory,
     deleteInventory,
     insertCheckin,

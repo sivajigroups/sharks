@@ -13,7 +13,8 @@ const authSlice = createSlice({
   reducers: {
     login: (state, action) => {
       // Expecting payload like: { email: "admin@gmail.com", role: "admin" }
-      state.user = action.payload.email;
+    //  state.user = action.payload.email;
+      state.user = action.payload.phone; // Changed to phone
       state.role = action.payload.role;
       state.branch=action.payload.branch;
       state.isLoggedIn = true;

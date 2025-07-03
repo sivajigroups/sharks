@@ -98,15 +98,15 @@ const signupUser = async (req, res) => {
   }
 };
 
-const createUserByAdmin=async(req,res)=>{
+const signupUserByAdmin = async (req, res) => {
   try {
-    const { name, email, role, password, branchId,phone } = req.body;
+    const { name, email, role, password, phone } = req.body;
 
-    if (!name || !email || !password || !role, !phone) {
+    if (!name || !email || !password || !role || !phone) {
       return res.status(400).json({ message: "All fields are required." });
     }
 
-    if (role === "staff" && !branchId) {
+    if (role === "staff") {
       return res
         .status(400)
         .json({ message: "Branch ID is required for staff." });
@@ -124,9 +124,8 @@ const createUserByAdmin=async(req,res)=>{
       email,
       password: hashPassword,
       role,
-      branchId: role === "staff" ? branchId : null,
       approved: true,
-      phone
+      phone,
     });
 
     await newUser.save();
@@ -138,7 +137,65 @@ const createUserByAdmin=async(req,res)=>{
   } catch (err) {
     res.status(400).send(err.message);
   }
-}
+};
+const createUserByAdmin = async (req, res) => {
+  try {
+    const { name, email, role, password, branchId, phone, staffid } = req.body;
+
+    if ((!name || !email || !password || !role, !phone, !staffid)) {
+      return res.status(400).json({ message: "All fields are required." });
+    }
+
+    if (role === "staff" && !branchId) {
+      return res
+        .status(400)
+        .json({ message: "Branch ID is required for staff." });
+    }
+
+    const existingUser = await User.findOne({ phone });
+    if (existingUser) {
+      return res.status(409).json({ message: "phone already registered." });
+    }
+
+    const hashPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new User({
+      name,
+      email,
+      password: hashPassword,
+      role,
+      branchId: role === "staff" ? branchId : null,
+      approved: true,
+      phone,
+      staffid,
+    });
+
+    await newUser.save();
+
+    res.json({
+      message: "User created successfully.",
+      data: newUser,
+    });
+  } catch (err) {
+    res.status(400).send(err.message);
+  }
+};
+
+
+const deleteStaffByAdmin = async (req, res) => {
+  try {
+    const staffId = req.params.id;
+    const deletedStaff = await User.findByIdAndDelete(staffId);
+    if (!deletedStaff) {
+      return res.status(404).json({ message: "Staff not found" });
+    }
+    res.json({ message: "Staff deleted successfully", data: deletedStaff });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
 const getStaffById = async (req, res) => {
   try {
     const staff = await User.findById(req.params.id).populate("branchId");
@@ -152,9 +209,9 @@ const getStaffById = async (req, res) => {
 };
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { phone, password } = req.body;
 
-    const user = await User.findOne({ email: email }).populate("branchId");
+    const user = await User.findOne({ phone: phone }).populate("branchId");
     if (!user || !user.approved) {
       throw new Error("User not found");
     }
@@ -178,6 +235,7 @@ const loginUser = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
         role: user.role,
         branch: user.role === "staff" ? user.branchId : null,
       },
@@ -216,9 +274,11 @@ const rejectUser = async (req, res) => {
 
 module.exports = {
   signupUser,
+  signupUserByAdmin,
   loginUser,
   logoutUser,
   approveUser,
   rejectUser,
   createUserByAdmin,
+  deleteStaffByAdmin,
 };

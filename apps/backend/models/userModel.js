@@ -43,6 +43,13 @@ const userSchema = new mongoose.Schema(
       default: false,
       required: true,
     },
+    staffid:
+    {
+      type:String,
+      required: function () {
+        return this.role === "staff";
+      },
+    },
   },
   { timestamps: true }
 );

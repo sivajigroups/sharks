@@ -8,7 +8,7 @@ import { useDispatch } from "react-redux";
 import { login } from "@/redux/authSlice";
 
 export default function AuthForm() {
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -20,8 +20,8 @@ export default function AuthForm() {
     e.preventDefault();
     setError("");
 
-    if (!email || !password) {
-      setError("Please enter email and password.");
+    if (!phone || !password) {
+      setError("Please enter phone and password.");
       return;
     }
 
@@ -30,17 +30,17 @@ export default function AuthForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ phone, password }),
       });
 
       if (!response.ok) throw new Error(await response.text());
 
       const userData = await response.json();
-      const { email: userEmail, role, branch } = userData.user;
+      const { phone: serverPhone, role, branch } = userData.user;
 
       dispatch(
         login({
-          email: userEmail,
+          phone: serverPhone,
           role,
           branch: branch ? { id: branch._id, name: branch.name } : null,
         })
@@ -55,9 +55,6 @@ export default function AuthForm() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-10">
-        {/* Optional logo section */}
-        {/* <img src="/logo.png" alt="Sivaji Power Tools" className="mx-auto mb-4 h-12" /> */}
-
         <h1 className="text-3xl font-bold text-center text-black mb-2">
           Sivaji Power Tools
         </h1>
@@ -71,13 +68,13 @@ export default function AuthForm() {
 
         <form className="space-y-5" onSubmit={handleLogin}>
           <div>
-            <Label className="py-2">Email</Label>
+            <Label className="py-2">Phone</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-3 text-gray-500" size={20} />
               <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
                 className="pl-10 bg-white text-black"
                 required
               />
@@ -97,7 +94,7 @@ export default function AuthForm() {
               />
               <div
                 className="absolute right-3 top-3 text-gray-500 cursor-pointer"
-                onClick={() => setShowPassword((prev) => !prev)}
+                onClick={() => setShowPassword((v) => !v)}
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </div>

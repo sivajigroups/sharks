@@ -40,7 +40,7 @@ const InventoryManager = ({ type, title }) => {
     setLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:4000/api/inventory?type=${type}`,
+        `http://localhost:4000/api/inventory/${type}`,
         {
           method: "GET",
           credentials: "include",
@@ -50,6 +50,7 @@ const InventoryManager = ({ type, title }) => {
       if (!response.ok) throw new Error("Failed to fetch Inventory");
 
       const data = await response.json();
+      console.log("Fetched Inventories:", data);
       setInventories(data.data);
       setError("");
     } catch (error) {
@@ -63,46 +64,58 @@ const InventoryManager = ({ type, title }) => {
     fetchInventories();
   }, [type]);
 
-  const handleInsert = async () => {
-    try {
-      const newItem = {
-        name,
-        description,
-        category,
-        type,
-        quantity: Number(quantity),
-        branch,
-        barcode,
-      };
-      if (type === "sales") {
-        newItem.salePrice = Number(price);
-      } else if (type === "rental") {
-        newItem.pricePerDay = Number(price);
-      } else if (type === "service") {
-        newItem.serviceStatus = "pending"; // or get from input if needed
-      }
-      const response = await fetch("http://localhost:4000/api/inventory", {
+const handleInsert = async () => {
+  try {
+    const newItem = {
+      name,
+      description,
+      category,
+      type,
+      quantity: Number(quantity),
+      branch,
+      barcode,
+    };
+
+    if (type === "sales") {
+      // backend insertSales expects `price`
+      newItem.price = Number(price);
+    } else if (type === "rental") {
+      newItem.pricePerDay = Number(price);
+    } else if (type === "service") {
+      newItem.serviceStatus = "pending"; // or pull from an input if you add one
+    }
+
+    const response = await fetch(
+      `http://localhost:4000/api/inventory/${type}`,
+      {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(newItem),
-      });
-      if (!response.ok) throw new Error("Failed to insert Inventory");
-      await fetchInventories();
-      toast.success("Inventory item added successfully!");
-      setName("");
-      setDescription("");
-      setCategory("");
-      setQuantity("");
-      setPrice("");
-      setBranch("60f7a9d2c8f5a22b9c123456");
-      setBarcode("");
-    } catch (error) {
-      toast.error("Error inserting inventory: " + error.message);
+      }
+    );
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.message || "Failed to insert Inventory");
     }
-  };
+
+    await fetchInventories();
+    toast.success("Inventory item added successfully!");
+
+    // reset form
+    setName("");
+    setDescription("");
+    setCategory("");
+    setQuantity("");
+    setPrice("");
+    setBranch("60f7a9d2c8f5a22b9c123456");
+    setBarcode("");
+  } catch (error) {
+    toast.error("Error inserting inventory: " + error.message);
+  }
+};
+
 
   const handleDelete = async (id) => {
     try {
@@ -133,7 +146,7 @@ const InventoryManager = ({ type, title }) => {
     { key: "category", label: "Category" },
     { key: "quantity", label: "Quantity" },
     type === "sales"
-      ? { key: "salePrice", label: "Sale Price (₹)" }
+      ? { key: "price", label: "Sale Price (₹)" }
       : type === "rental"
         ? { key: "pricePerDay", label: "Rate/Day (₹)" }
         : { key: "serviceStatus", label: "Service Status" },

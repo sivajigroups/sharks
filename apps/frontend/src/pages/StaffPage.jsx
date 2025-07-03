@@ -15,26 +15,72 @@ import {
 import { toast } from "sonner";
 import ReTable from "@/components/shared/ReTable";
 
-const StaffPage = () => {
+export default function StaffPage() {
+  // Staff list and loading/error states
   const [staffList, setStaffList] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Search filter state
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Form input states
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [role, setRole] = useState("staff");
-  const [branchId, setBranchId] = useState("");
+  const [staffid, setStaffId] = useState("");
   const [password, setPassword] = useState("");
+  const [branchId, setBranchId] = useState("");
+  const role = "staff";
 
+  // Branch options
+  const [branches, setBranches] = useState([]);
+
+  // Table columns
   const staffColumns = [
     { key: "name", label: "Name" },
     { key: "email", label: "Email" },
     { key: "phone", label: "Phone" },
     { key: "role", label: "Role" },
     { key: "branchId.name", label: "Branch" },
+    { key: "staffid", label: "Staff ID" },
   ];
 
+  // Generate the next staff ID based on existing IDs (SGXXX)
+  const getNextStaffId = () => {
+    const pattern = /^SG(\d{3})$/;
+    const maxNum = staffList.reduce((max, s) => {
+      const match = pattern.exec(s.staffid);
+      const num = match ? parseInt(match[1], 10) : 0;
+      return num > max ? num : max;
+    }, 0);
+    const nextIndex = maxNum + 1;
+    const nextStr = String(nextIndex).padStart(3, "0");
+    return `SG${nextStr}`;
+  };
+
+  // Auto-set the staff ID whenever the list updates
+  useEffect(() => {
+    const nextId = getNextStaffId();
+    setStaffId(nextId);
+  }, [staffList]);
+
+  // Fetch branches
+  const fetchBranches = async () => {
+    try {
+      const res = await fetch("http://localhost:4000/api/branch/all", {
+        method: "GET",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch branches");
+      const data = await res.json();
+      setBranches(data);
+    } catch (err) {
+      console.error("Error fetching branches:", err);
+    }
+  };
+
+  // Fetch staff list
   const fetchStaff = async () => {
     setLoading(true);
     try {
@@ -42,12 +88,9 @@ const StaffPage = () => {
         method: "GET",
         credentials: "include",
       });
-
       if (!res.ok) throw new Error("Failed to fetch staff");
-
       const data = await res.json();
       setStaffList(data);
-      console.log(data);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -55,65 +98,64 @@ const StaffPage = () => {
     }
   };
 
+  // Load data on mount
   useEffect(() => {
+    fetchBranches();
     fetchStaff();
   }, []);
 
+  // Filter staff by search term
+  const filteredStaff = staffList.filter((staff) =>
+    Object.values(staff).some((val) =>
+      String(val ?? "").toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  );
+
+  // Insert new staff
   const handleInsert = async () => {
-    if (!name || !email || !password || !role || !branchId || !phone) {
-      alert("Please fill all fields.");
+    if (!name || !email || !phone || !staffid || !password || !branchId) {
+      toast.error("Please fill all fields.");
       return;
     }
-
-    const body = { name, email, password, role, branchId, phone };
-
+    const body = { name, email, phone, staffid, password, role, branchId };
     try {
-      const res = await fetch("http://localhost:4000/api/create/staff", {
+      const response = await fetch("http://localhost:4000/api/create/staff", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(body),
       });
-
-      if (!res.ok) throw new Error("Failed to add staff");
-
-      toast.success("Staff added successfully!");
-
-      setName("");
-      setEmail("");
-      setPhone("");
-      setPassword("");
-      setBranchId("");
+      const text = await response.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = { message: text }; }
+      if (!response.ok) throw new Error(data.message || "Failed to add staff");
+      toast.success(data.message || "Staff added successfully!");
+      // Refresh data; auto-ID will recalc
       fetchStaff();
+      // Clear inputs except ID
+      setName(""); setEmail(""); setPhone(""); setPassword(""); setBranchId("");
     } catch (err) {
-      alert("Error adding staff: " + err.message);
+      toast.error("Error adding staff: " + err.message);
     }
   };
 
+  // Delete staff
   const handleDelete = async (id) => {
     try {
-      const res = await fetch(`http://localhost:4000/api/staff/details/${id}`, {
+      await fetch(`http://localhost:4000/api/delete/staff/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
       toast.error("Staff deleted successfully!");
       fetchStaff();
-    } catch (error) {
-      alert("Error deleting staff: " + error.message);
+    } catch (err) {
+      toast.error("Error deleting staff: " + err.message);
     }
   };
 
-  const filteredStaff = staffList.filter((staff) =>
-    Object.values(staff).some((val) =>
-      (val ?? "").toString().toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
-
   return (
-    <div className="space-y-6 max-w-6xl mx-auto p-4 w-308">
-      <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-        Staff Management
-      </h1>
+    <div className="space-y-6 max-w-8xl mx-auto p-4 w-310">
+      <h1 className="text-2xl font-bold">Staff Management</h1>
 
       <div className="flex items-center justify-between gap-4">
         <Input
@@ -130,39 +172,28 @@ const StaffPage = () => {
             </Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Staff</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>Add New Staff</DialogTitle></DialogHeader>
             <div className="space-y-3 mt-2">
-              <Input
-                placeholder="Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-              <Input
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <Input
-                placeholder="Phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-              <Input
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <Input
-                placeholder="Branch ID"
+              <Input placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
+              <Input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+              <Input placeholder="Phone" value={phone} onChange={e => setPhone(e.target.value)} />
+              <Input placeholder="Staff ID" value={staffid} readOnly />
+              <Input placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
+
+              <label className="block font-medium text-sm">Branch</label>
+              <select
+                className="w-full p-2 border rounded"
                 value={branchId}
-                onChange={(e) => setBranchId(e.target.value)}
-              />
+                onChange={e => setBranchId(e.target.value)}
+              >
+                <option value="">— Select a branch —</option>
+                {branches.map(br => (
+                  <option key={br._id} value={br._id}>{br.name}</option>
+                ))}
+              </select>
+
               <DialogClose asChild>
-                <Button className="mt-2 w-full" onClick={handleInsert}>
-                  Save Staff
-                </Button>
+                <Button className="mt-2 w-full" onClick={handleInsert}>Save Staff</Button>
               </DialogClose>
             </div>
           </DialogContent>
@@ -170,31 +201,22 @@ const StaffPage = () => {
       </div>
 
       {loading ? (
-        <Card>
-          <CardContent className="p-4 space-y-4">
-            <Skeleton className="h-6 w-1/3" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-          </CardContent>
-        </Card>
+        <Card><CardContent className="p-4 space-y-4">
+          <Skeleton className="h-6 w-1/3" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" />
+        </CardContent></Card>
       ) : error ? (
         <p className="text-red-600 font-medium">{error}</p>
       ) : (
-        <Card>
-          <CardContent className="p-4 overflow-auto">
-            <ReTable
-              data={filteredStaff}
-              columns={staffColumns}
-              onDelete={handleDelete}
-              showViewButton={true}
-              showEdirButton={false}
-            />
-          </CardContent>
-        </Card>
+        <Card><CardContent className="p-4 overflow-auto">
+          <ReTable
+            data={filteredStaff}
+            columns={staffColumns}
+            onDelete={handleDelete}
+            showViewButton
+            showEditButton={false}
+          />
+        </CardContent></Card>
       )}
     </div>
   );
-};
-
-export default StaffPage;
+}
