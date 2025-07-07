@@ -73,11 +73,7 @@ const SalesInventory = () => {
         branch,
         barcode,
       };
-<<<<<<< HEAD
-      const response = await fetch("http://localhost:4000/api/inventory/sales", {
-=======
       const response = await fetch("https://api.sivajigroups.com/api/inventory", {
->>>>>>> 5d166eeaa9afd5d5516fd2c9d643fe47084e052a
         method: "POST",
         headers: {
           "Content-Type": "application/json",

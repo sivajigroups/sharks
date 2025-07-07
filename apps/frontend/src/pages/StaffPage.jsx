@@ -119,11 +119,7 @@ export default function StaffPage() {
     }
     const body = { name, email, phone, staffid, password, role, branchId };
     try {
-<<<<<<< HEAD
-      const response = await fetch("http://localhost:4000/api/create/staff", {
-=======
       const res = await fetch("https://api.sivajigroups.com/api/create/staff", {
->>>>>>> 5d166eeaa9afd5d5516fd2c9d643fe47084e052a
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -146,11 +142,7 @@ export default function StaffPage() {
   // Delete staff
   const handleDelete = async (id) => {
     try {
-<<<<<<< HEAD
-      await fetch(`http://localhost:4000/api/delete/staff/${id}`, {
-=======
-      const res = await fetch(`https://api.sivajigroups.com/api/staff/details/${id}`, {
->>>>>>> 5d166eeaa9afd5d5516fd2c9d643fe47084e052a
+      await fetch(`https://api.sivajigroups.com/api/staff/details/${id}`, {
         method: "DELETE",
         credentials: "include",
       });

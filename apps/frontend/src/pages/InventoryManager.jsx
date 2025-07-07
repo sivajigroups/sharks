@@ -40,11 +40,7 @@ const InventoryManager = ({ type, title }) => {
     setLoading(true);
     try {
       const response = await fetch(
-<<<<<<< HEAD
-        `http://localhost:4000/api/inventory/${type}`,
-=======
         `https://api.sivajigroups.com/api/inventory?type=${type}`,
->>>>>>> 5d166eeaa9afd5d5516fd2c9d643fe47084e052a
         {
           method: "GET",
           credentials: "include",
@@ -68,32 +64,6 @@ const InventoryManager = ({ type, title }) => {
     fetchInventories();
   }, [type]);
 
-<<<<<<< HEAD
-const handleInsert = async () => {
-  try {
-    const newItem = {
-      name,
-      description,
-      category,
-      type,
-      quantity: Number(quantity),
-      branch,
-      barcode,
-    };
-
-    if (type === "sales") {
-      // backend insertSales expects `price`
-      newItem.price = Number(price);
-    } else if (type === "rental") {
-      newItem.pricePerDay = Number(price);
-    } else if (type === "service") {
-      newItem.serviceStatus = "pending"; // or pull from an input if you add one
-    }
-
-    const response = await fetch(
-      `http://localhost:4000/api/inventory/${type}`,
-      {
-=======
   const handleInsert = async () => {
     try {
       const newItem = {
@@ -113,7 +83,6 @@ const handleInsert = async () => {
         newItem.serviceStatus = "pending"; // or get from input if needed
       }
       const response = await fetch("https://api.sivajigroups.com/api/inventory", {
->>>>>>> 5d166eeaa9afd5d5516fd2c9d643fe47084e052a
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
