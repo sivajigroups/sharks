@@ -51,8 +51,8 @@ const signupUser = async (req, res) => {
         },
       });
 
-      const approveLink = `https://api.sivajigroups.com/api/approve/${newUser._id}`;
-      const rejectLink = `https://api.sivajigroups.com/api/reject/${newUser._id}`;
+      const approveLink = `http://localhost:4000/api/approve/${newUser._id}`;
+      const rejectLink = `http://localhost:4000/api/reject/${newUser._id}`;
 
       transporter
         .sendMail({

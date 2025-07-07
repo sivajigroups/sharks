@@ -29,7 +29,7 @@ const Branch = () => {
   const fetchBranch = async () => {
     setLoading(true);
     try {
-      const response = await fetch("https://api.sivajigroups.com/api/branch/all", {
+      const response = await fetch("http://localhost:4000/api/branch/all", {
         method: "GET",
         credentials: "include",
       });
@@ -57,7 +57,7 @@ const Branch = () => {
     const body = { name, location, contactNumber };
 
     try {
-      const res = await fetch("https://api.sivajigroups.com/api/branch/add", {
+      const res = await fetch("http://localhost:4000/api/branch/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -83,7 +83,7 @@ const Branch = () => {
 
  const handleEdit = async (id, updatedItem) => {
   try {
-    const response = await fetch(`https://api.sivajigroups.com/api/branch/${id}`, {
+    const response = await fetch(`http://localhost:4000/api/branch/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -107,7 +107,7 @@ const Branch = () => {
 
 const handleDelete = async (id) => {
   try {
-    const res = await fetch(`https://api.sivajigroups.com/api/branch/${id}`, {
+    const res = await fetch(`http://localhost:4000/api/branch/${id}`, {
       method: "DELETE",
       credentials: "include",
     });

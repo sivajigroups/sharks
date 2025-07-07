@@ -7,7 +7,7 @@ const Attendance = () => {
   useEffect(() => {
     const fetchAttendance = async () => {
       try {
-        const response = await fetch("https://api.sivajigroups.com/api/attendance", {
+        const response = await fetch("http://localhost:4000/api/attendance", {
           method: "GET",
           credentials: "include",
         });
