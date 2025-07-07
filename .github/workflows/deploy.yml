@@ -36,21 +36,28 @@ jobs:
           sudo apt update
           sudo apt install -y ansible
 
+      - name: Setup Node.js for Frontend Build
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install and Build Frontend
+        run: |
+          cd apps/frontend
+          npm install
+          npx vite build
+          cd ../..
+
       - name: Rsync Code to Server
         run: |
           host_ip=$(awk '{print $1}' inventory.ini)
           ansible "$host_ip" -i inventory.ini -m synchronize -a "src=./ dest=/home/deploy-folder/ delete=yes recursive=yes" \
             --private-key=deploy_key
 
-      - name: Build Frontend and Deploy to /var/www/html/
+      - name: Deploy Frontend dist to /var/www/html/
         run: |
           host_ip=$(awk '{print $1}' inventory.ini)
-          ansible "$host_ip" -i inventory.ini -m shell -a "\
-            cd /home/deploy-folder/apps/frontend && \
-            npm install && \
-            npx vite build && \
-            sudo rm -rf /var/www/html/* && \
-            sudo cp -r dist/* /var/www/html/" \
+          ansible "$host_ip" -i inventory.ini -m synchronize -a "src=./apps/frontend/dist/ dest=/var/www/html/ delete=yes recursive=yes" \
             --private-key=deploy_key
 
       - name: Copy Backend and Start with PM2
@@ -64,5 +71,3 @@ jobs:
             pm2 start server.js --name backend-server -f || pm2 restart backend-server -f && \
             pm2 save" \
           --private-key=deploy_key
-
-
