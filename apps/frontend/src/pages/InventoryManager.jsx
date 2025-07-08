@@ -40,7 +40,7 @@ const InventoryManager = ({ type, title }) => {
     setLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:4000/api/inventory?type=${type}`,
+        `http://localhost:4000/api/inventory/${type}`,
         {
           method: "GET",
           credentials: "include",
@@ -64,25 +64,30 @@ const InventoryManager = ({ type, title }) => {
     fetchInventories();
   }, [type]);
 
-  const handleInsert = async () => {
-    try {
-      const newItem = {
-        name,
-        description,
-        category,
-        type,
-        quantity: Number(quantity),
-        branch,
-        barcode,
-      };
-      if (type === "sales") {
-        newItem.salePrice = Number(price);
-      } else if (type === "rental") {
-        newItem.pricePerDay = Number(price);
-      } else if (type === "service") {
-        newItem.serviceStatus = "pending"; // or get from input if needed
-      }
-      const response = await fetch("http://localhost:4000/api/inventory", {
+const handleInsert = async () => {
+  try {
+    const newItem = {
+      name,
+      description,
+      category,
+      type,
+      quantity: Number(quantity),
+      branch,
+      barcode,
+    };
+
+    if (type === "sales") {
+      // backend insertSales expects `price`
+      newItem.price = Number(price);
+    } else if (type === "rental") {
+      newItem.pricePerDay = Number(price);
+    } else if (type === "service") {
+      newItem.serviceStatus = "pending"; // or pull from an input if you add one
+    }
+
+    const response = await fetch(
+      `http://localhost:4000/api/inventory/${type}`,
+      {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -160,7 +165,7 @@ const InventoryManager = ({ type, title }) => {
     : inventories;
 
   return (
-    <div className="min-h-screen p-6 bg-gray-100 dark:bg-gray-900 space-y-6 w-308">
+    <div className="min-h-screen p-6 bg-gray-100 dark:bg-gray-900 space-y-6 w-305">
       <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
         {title}
       </h1>

@@ -34,12 +34,12 @@ const LayoutSidebar = () => {
       label: "General",
       items: [
         { title: "Dashboard", icon: Home, url: "/layout/dashboard" },
-        { title: "Reports", icon: BarChart2, url: "/layout/report" },
-        {
-          title: "Notifications",
-          icon: MessageCircle,
-          url: "/layout/notification",
-        },
+        // { title: "Reports", icon: BarChart2, url: "/layout/report" },
+        // {
+        //   title: "Notifications",
+        //   icon: MessageCircle,
+        //   url: "/layout/notification",
+        // },
       ],
     },
     {
@@ -50,32 +50,32 @@ const LayoutSidebar = () => {
           icon: ShoppingCart,
           url: "/layout/salesInfo",
         },
-        { title: "Rental Inventory", icon: Boxes, url: "/layout/rentalInfo" },
-        {
-          title: "Service Inventory",
-          icon: Wrench,
-          url: "/layout/serviceInfo",
-        },
+        // { title: "Rental Inventory", icon: Boxes, url: "/layout/rentalInfo" },
+        // {
+        //   title: "Service Inventory",
+        //   icon: Wrench,
+        //   url: "/layout/serviceInfo",
+        // },
       ],
     },
-    {
-      label: "Orders",
-      items: [
-        { title: "Rental Orders", icon: FileText, url: "/layout/rentalOrder/new" },
-        { title: "Sales Orders", icon: FileText, url: "/layout/salesOrder" },
-        {
-          title: "Service Orders",
-          icon: FileText,
-          url: "/layout/serviceOrder",
-        },
-      ],
-    },
+    // {
+    //   label: "Orders",
+    //   items: [
+    //     { title: "Rental Orders", icon: FileText, url: "/layout/rentalOrder/new" },
+    //     { title: "Sales Orders", icon: FileText, url: "/layout/salesOrder" },
+    //     {
+    //       title: "Service Orders",
+    //       icon: FileText,
+    //       url: "/layout/serviceOrder",
+    //     },
+    //   ],
+    // },
     {
       label: "Management",
       items: [
         { title: "Customers", icon: Users, url: "/layout/customers" },
-        { title: "Branches", icon: Building, url: "/layout/branches" },
-        { title: "Tool Transfers", icon: Wrench, url: "#" },
+        // { title: "Branches", icon: Building, url: "/layout/branches" },
+        // { title: "Tool Transfers", icon: Wrench, url: "#" },
       ],
     },
     {
@@ -110,7 +110,7 @@ const LayoutSidebar = () => {
     },
   ];
 
-  const sidebarToRender = role === "admin" ? adminSidebar : staffSidebar;
+  const sidebarToRender = adminSidebar;
 
   return (
     <Sidebar>
