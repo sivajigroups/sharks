@@ -16,18 +16,33 @@ const allowedOrigins = [
   "https://sharks.sivajigroups.com",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true); // ✅ Allow valid origins
-      } else {
-        callback(new Error("Not allowed by CORS")); // ❌ Block others
-      }
-    },
-    credentials: true,
-  })
-);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  // Only set CORS headers if one is not already set (e.g. by Nginx)
+  if (
+    !res.getHeader("Access-Control-Allow-Origin") &&
+    allowedOrigins.includes(origin)
+  ) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Origin, Content-Type, Accept, Authorization"
+    );
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET, POST, OPTIONS, PUT, DELETE, PATCH"
+    );
+  }
+
+  // Handle preflight
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
 
 app.use(express.json());
 app.use("/api", userRouter);
