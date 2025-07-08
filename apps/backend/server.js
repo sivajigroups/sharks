@@ -16,23 +16,26 @@ const allowedOrigins = [
   "https://sharks.sivajigroups.com",
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 
 app.use(express.json());
-app.use("/api",userRouter);
-app.use("/api",staffRouter);
-app.use("/api",saleRouter);
-app.use("/api",adminRouter);
-app.use("/api",transRouter);
+app.use("/api", userRouter);
+app.use("/api", staffRouter);
+app.use("/api", saleRouter);
+app.use("/api", adminRouter);
+app.use("/api", transRouter);
 //mongoose
 dbConnect()
   .then(() => {
