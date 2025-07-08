@@ -11,10 +11,22 @@ const adminRouter = require("./routes/adminRoute");
 const transRouter = require("./routes/transactionRoute");
 const app = express();
 app.use(cookieParser());
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://sharks.sivajigroups.com",
+];
+
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
 }));
+
 app.use(express.json());
 app.use("/api",userRouter);
 app.use("/api",staffRouter);
