@@ -19,24 +19,27 @@ const allowedOrigins = [
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  // Only set CORS headers if one is not already set (e.g. by Nginx)
-  if (
-    !res.getHeader("Access-Control-Allow-Origin") &&
-    allowedOrigins.includes(origin)
-  ) {
-    res.header("Access-Control-Allow-Origin", origin);
-    res.header("Access-Control-Allow-Credentials", "true");
-    res.header(
+  // Detect Nginx-set CORS header (res.getHeaders() contains all response headers)
+  const headers = res.getHeaders();
+  const alreadySet = Object.keys(headers).some(
+    (key) => key.toLowerCase() === "access-control-allow-origin"
+  );
+
+  // Only set CORS headers if not already set
+  if (!alreadySet && origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader(
       "Access-Control-Allow-Headers",
       "Origin, Content-Type, Accept, Authorization"
     );
-    res.header(
+    res.setHeader(
       "Access-Control-Allow-Methods",
       "GET, POST, OPTIONS, PUT, DELETE, PATCH"
     );
   }
 
-  // Handle preflight
+  // Preflight
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
   }
