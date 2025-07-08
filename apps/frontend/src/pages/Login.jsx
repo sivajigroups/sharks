@@ -70,7 +70,7 @@ export default function AuthForm() {
 
         <form className="space-y-5" onSubmit={handleLogin}>
           <div>
-            <Label className="py-2">Phone</Label>
+            <Label className="py-2">Phone No</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-3 text-gray-500" size={20} />
               <Input
