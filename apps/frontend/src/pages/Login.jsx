@@ -26,7 +26,9 @@ export default function AuthForm() {
     }
 
     try {
-      const response = await fetch("http://localhost:4000/api/login", {
+      console.log("API base:", import.meta.env.VITE_API_BASE);
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
