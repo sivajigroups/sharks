@@ -1,18 +1,13 @@
 import React from "react";
 import { useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import {
   Home,
-  Boxes,
   ShoppingCart,
-  Wrench,
-  FileText,
   Users,
-  Building,
-  CheckSquare,
-  Settings,
-  BarChart2,
-  MessageCircle,
   UserRoundPen,
+  Languages,
 } from "lucide-react";
 import {
   Sidebar,
@@ -27,95 +22,52 @@ import {
 import { Link } from "react-router-dom";
 
 const LayoutSidebar = () => {
-  const role = useSelector((state) => state.auth.role); // get role from redux
+  const { t, i18n } = useTranslation();
+  const role = useSelector((state) => state.auth.role);
+
+  const toggleLanguage = () => {
+    const nextLang = i18n.language === "en" ? "ta" : "en";
+    i18n.changeLanguage(nextLang);
+  };
 
   const adminSidebar = [
     {
-      label: "General",
+      label: t("sidebar.general"),
       items: [
-        { title: "Dashboard", icon: Home, url: "/layout/dashboard" },
-        // { title: "Reports", icon: BarChart2, url: "/layout/report" },
-        // {
-        //   title: "Notifications",
-        //   icon: MessageCircle,
-        //   url: "/layout/notification",
-        // },
+        { title: t("sidebar.dashboard"), icon: Home, url: "/layout/dashboard" },
       ],
     },
     {
-      label: "Inventory",
+      label: t("sidebar.inventory"),
       items: [
         {
-          title: "Sales Inventory",
+          title: t("sidebar.salesInventory"),
           icon: ShoppingCart,
           url: "/layout/salesInfo",
         },
-        // { title: "Rental Inventory", icon: Boxes, url: "/layout/rentalInfo" },
-        // {
-        //   title: "Service Inventory",
-        //   icon: Wrench,
-        //   url: "/layout/serviceInfo",
-        // },
-      ],
-    },
-    // {
-    //   label: "Orders",
-    //   items: [
-    //     { title: "Rental Orders", icon: FileText, url: "/layout/rentalOrder/new" },
-    //     { title: "Sales Orders", icon: FileText, url: "/layout/salesOrder" },
-    //     {
-    //       title: "Service Orders",
-    //       icon: FileText,
-    //       url: "/layout/serviceOrder",
-    //     },
-    //   ],
-    // },
-    {
-      label: "Management",
-      items: [
-        { title: "Customers", icon: Users, url: "/layout/customers" },
-        // { title: "Branches", icon: Building, url: "/layout/branches" },
-        // { title: "Tool Transfers", icon: Wrench, url: "#" },
       ],
     },
     {
-      label: "Administration",
-      items: [{ title: "Profile", icon: UserRoundPen, url: "/layout/users" }],
-    },
-  ];
-
-  const staffSidebar = [
-    {
-      label: "Quick Actions",
+      label: t("sidebar.management"),
       items: [
-        { title: "Dashboard", icon: Home, url: "/layout/dashboard" },
-        { title: "Rentals", icon: FileText, url: "#" },
-        { title: "Returns", icon: FileText, url: "#" },
-        { title: "Sales", icon: ShoppingCart, url: "#" },
-        { title: "Service", icon: Wrench, url: "#" },
+        { title: t("sidebar.customers"), icon: Users, url: "/layout/customers" },
       ],
     },
     {
-      label: "Operations",
+      label: t("sidebar.administration"),
       items: [
-        { title: "Attendance", icon: CheckSquare, url: "#" },
-        { title: "Shop Open/Close", icon: Building, url: "#" },
-      ],
-    },
-    {
-      label: "Customers",
-      items: [
-        { title: "Customer List", icon: Users, url: "/layout/customers" },
+        { title: t("sidebar.profile"), icon: UserRoundPen, url: "/layout/users" },
       ],
     },
   ];
-
-  const sidebarToRender = adminSidebar;
 
   return (
     <Sidebar>
       <SidebarContent>
-        {sidebarToRender.map((group) => (
+       
+
+        {/* Sidebar Items */}
+        {adminSidebar.map((group) => (
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
             <SidebarGroupContent>
@@ -127,10 +79,6 @@ const LayoutSidebar = () => {
                         <item.icon className="mr-2 h-4 w-4" />
                         <span>{item.title}</span>
                       </Link>
-                      {/* <a href={item.url}>
-                        <item.icon className="mr-2 h-4 w-4" />
-                        <span>{item.title}</span>
-                      </a> */}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
@@ -138,6 +86,18 @@ const LayoutSidebar = () => {
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
+         {/* Language Toggle Button */}
+        <div className="p-4">
+          <Button
+      variant="outline"
+      size="sm"
+      onClick={toggleLanguage}
+      className="flex items-center gap-2 px-3 py-1"
+    >
+      <Languages className="w-4 h-4" />
+      {i18n.language === "en" ? "தமிழில்" : "English"}
+    </Button>
+        </div>
       </SidebarContent>
     </Sidebar>
   );

@@ -1,0 +1,55 @@
+{
+  "sidebar": {
+    "general": "பொது",
+    "dashboard": "டாஷ்போர்டு",
+    "inventory": "சரக்கு",
+    "salesInventory": "விற்பனை சரக்கு",
+    "management": "மேலாண்மை",
+    "customers": "வாடிக்கையாளர்கள்",
+    "administration": "நிர்வாகம்",
+    "profile": "சுயவிவரம்"
+  },
+  "topbar": {
+  "dashboard": "டாஷ்போர்டு",
+  "myAccount": "எனது கணக்கு",
+  "logout": "வெளியேறு"
+},
+  "inventory": {
+    "title": "இன்வென்டரி மேலாளர்",
+    "addInventory": "இன்வென்டரி சேர்க்க",
+    "itemName": "பொருள் பெயர்",
+    "description": "விவரம்",
+    "category": "வகை",
+    "quantity": "அளவு",
+    "barcode": "பார்கோட்",
+    "salePrice": "விற்பனை விலை (₹)",
+    "rentPrice": "நாள் ஒன்றுக்கு விலை (₹)",
+    "serviceStatus": "சேவை நிலை",
+    "save": "சேமிக்கவும்",
+    "search": "இன்வென்டரி தேடு...",
+    "selectCategory": "வகையை தேர்வு செய்யவும்"
+  },
+  "customers": {
+  "title": "வாடிக்கையாளர்கள்",
+  "searchPlaceholder": "பெயர் அல்லது போன் மூலம் தேடு...",
+  "addCustomer": "வாடிக்கையாளர் சேர்க்க",
+  "addCustomerTitle": "புதிய வாடிக்கையாளர் சேர்க்க",
+  "name": "பெயர்",
+  "phone": "போன்",
+  "altPhone": "மாற்று போன்",
+  "street": "தெரு",
+  "area": "பகுதி",
+  "city": "நகரம்",
+  "address": "முகவரி",
+  "pincode": "அஞ்சல் குறியீடு",
+  "idProof": "அடையாள ஆவணம்",
+"idProofNumber": "அடையாள ஆவண எண்",
+  "aadhaar": "ஆதார்",
+  "pan": "பான்",
+  "voter": "வோட்டர் ஐடி",
+  "license": "டிரைவரிங் லைசன்ஸ்",
+  "save": "சேமிக்கவும்",
+  "loading": "வாடிக்கையாளர்கள் ஏற்றப்படுகிறது...",
+  "error": "வாடிக்கையாளர்களை ஏற்றுவதில் பிழை"
+}
+}

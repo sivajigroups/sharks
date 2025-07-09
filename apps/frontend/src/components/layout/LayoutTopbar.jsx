@@ -12,9 +12,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { logout } from "@/redux/authSlice"; // your logout redux action
 
 const LayoutTopbar = () => {
+  const { t } = useTranslation();
+
   const role = useSelector((state) => state.auth.role) || "";
   const branch = useSelector((state) => state.auth.branch) || "";
   const dispatch = useDispatch();
@@ -42,7 +45,7 @@ const LayoutTopbar = () => {
     <header className="w-full h-16 flex items-center justify-between px-6 bg-white dark:bg-gray-800 border-b shadow">
       <div className="flex items-center gap-4">
         <SidebarTrigger />
-        <span className="text-lg font-semibold">Dashboard</span>
+        <span className="text-lg font-semibold">{t("topbar.dashboard")}</span>
       </div>
 
       <div className="flex items-center gap-6">

@@ -20,9 +20,9 @@ app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true); // ✅ Allow valid origins
+        callback(null, origin); // return the origin instead of 'true'
       } else {
-        callback(new Error("Not allowed by CORS")); // ❌ Block others
+        callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,

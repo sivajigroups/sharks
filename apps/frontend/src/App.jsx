@@ -14,6 +14,7 @@ import InventoryManager from "./pages/InventoryManager";
 import OrderManager from "./pages/orders/orderManager";
 import StaffDetail from "./pages/StaffDetail";
 import NewOrder from "./pages/orders/NewOrder";
+import './i18n'
 
 function App() {
   return (

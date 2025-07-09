@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import ReTable from "@/components/shared/ReTable";
+import { useTranslation } from "react-i18next";
 
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
@@ -32,14 +33,17 @@ const Customers = () => {
   const [pincode, setPincode] = useState("");
   const [idProofNumber, setIdProofNumber] = useState("");
 
-  const customerColumns = [
-    { key: "name", label: "Name" },
-    { key: "phone", label: "Phone" },
-    { key: "alternatePhone", label: "Alt Phone" },
-    { key: "address", label: "Address" },
-    { key: "idProofType", label: "ID Type" },
-    { key: "idProofNumber", label: "ID Number" },
-  ];
+  const { t } = useTranslation();
+
+ const customerColumns = [
+  { key: "name", label: t("customers.name") },
+  { key: "phone", label: t("customers.phone") },
+  { key: "alternatePhone", label: t("customers.altPhone") },
+  { key: "address", label: t("customers.address") },
+  { key: "idProofType", label: t("customers.idProof") },
+  { key: "idProofNumber", label: t("customers.idProofNumber") },
+];
+
 
   // Fetch customers from API
   const fetchCustomers = async () => {
@@ -149,23 +153,26 @@ const Customers = () => {
     }
   };
   const handleEdit = async (id, updatedData) => {
-  try {
-    const res = await fetch(`http://localhost:4000/api/customer/details/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(updatedData),
-    });
+    try {
+      const res = await fetch(
+        `http://localhost:4000/api/customer/details/${id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(updatedData),
+        }
+      );
 
-    const result = await res.json();
+      const result = await res.json();
 
-    if (!res.ok) throw new Error(result.message);
-    toast.success("Customer updated successfully!");
-    fetchCustomers();
-  } catch (err) {
-    toast.error("Error updating: " + err.message);
-  }
-};
+      if (!res.ok) throw new Error(result.message);
+      toast.success("Customer updated successfully!");
+      fetchCustomers();
+    } catch (err) {
+      toast.error("Error updating: " + err.message);
+    }
+  };
 
   const handleDelete = async (id) => {
     try {
@@ -188,14 +195,14 @@ const Customers = () => {
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-4 w-308">
       <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-        Customers
+        {t("customers.title")}
       </h1>
 
       {/* Search and Add */}
       <div className="flex items-center justify-between gap-4">
         <Input
           type="text"
-          placeholder="Search by name or phone..."
+          placeholder={t("customers.searchPlaceholder")}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-1/2"
@@ -204,47 +211,46 @@ const Customers = () => {
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Add Customer
+              {t("customers.addCustomer")}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Customer</DialogTitle>
+              <DialogTitle>{t("customers.addCustomerTitle")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3 mt-2">
               <Input
-                placeholder="Name"
+                placeholder={t("customers.name")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
               <Input
-                placeholder="Phone"
+                placeholder={t("customers.phone")}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
               <Input
-                placeholder="Alternate Phone"
+                placeholder={t("customers.altPhone")}
                 value={alternatePhone}
                 onChange={(e) => setAlternatePhone(e.target.value)}
               />
-
               <Input
-                placeholder="Street"
+                placeholder={t("customers.street")}
                 value={street}
                 onChange={(e) => setStreet(e.target.value)}
               />
               <Input
-                placeholder="Area"
+                placeholder={t("customers.area")}
                 value={area}
                 onChange={(e) => setArea(e.target.value)}
               />
               <Input
-                placeholder="City"
+                placeholder={t("customers.city")}
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
               />
               <Input
-                placeholder="Pincode"
+                placeholder={t("customers.pincode")}
                 value={pincode}
                 onChange={(e) => setPincode(e.target.value)}
               />
@@ -254,22 +260,24 @@ const Customers = () => {
                 onChange={(e) => setIdProofType(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
-                <option value="">Select ID Proof</option>
-                <option value="Aadhaar">Aadhaar</option>
-                <option value="PAN">PAN</option>
-                <option value="Voter ID">Voter ID</option>
-                <option value="Driving License">Driving License</option>
+                <option value="">{t("customers.idProof")}</option>
+                <option value="Aadhaar">{t("customers.aadhaar")}</option>
+                <option value="PAN">{t("customers.pan")}</option>
+                <option value="Voter ID">{t("customers.voter")}</option>
+                <option value="Driving License">
+                  {t("customers.license")}
+                </option>
               </select>
 
               <Input
-                placeholder="ID Proof Number"
+                placeholder={t("customers.idProofNumber")}
                 value={idProofNumber}
                 onChange={(e) => setIdProofNumber(e.target.value)}
               />
 
               <DialogClose asChild>
                 <Button className="mt-2 w-full" onClick={handleInsert}>
-                  Save
+                  {t("customers.save")}
                 </Button>
               </DialogClose>
             </div>
@@ -279,9 +287,9 @@ const Customers = () => {
 
       {/* Error or Loading */}
       {loading ? (
-        <p className="text-muted-foreground">Loading customers...</p>
+        <p className="text-muted-foreground">{t("customers.loading")}</p>
       ) : error ? (
-        <p className="text-red-600 font-medium">{error}</p>
+        <p className="text-red-600 font-medium">{t("customers.error")}</p>
       ) : (
         <Card>
           <CardContent className="p-4 overflow-auto">
@@ -289,8 +297,8 @@ const Customers = () => {
               data={filteredCustomers}
               columns={customerColumns}
               onDelete={handleDelete}
-              onEdit={handleEdit} // 👈 Add this
-              showViewButton={false} // 👈 Add this
+              onEdit={handleEdit}
+              showViewButton={false}
             />
           </CardContent>
         </Card>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,8 @@ const categories = [
   "Cleaning",
 ];
 
-const InventoryManager = ({ type, title }) => {
+const InventoryManager = ({ type }) => {
+  const { t } = useTranslation();
   const [inventories, setInventories] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -50,7 +52,6 @@ const InventoryManager = ({ type, title }) => {
       if (!response.ok) throw new Error("Failed to fetch Inventory");
 
       const data = await response.json();
-      console.log("Fetched Inventories:", data);
       setInventories(data.data);
       setError("");
     } catch (error) {
@@ -64,58 +65,55 @@ const InventoryManager = ({ type, title }) => {
     fetchInventories();
   }, [type]);
 
-const handleInsert = async () => {
-  try {
-    const newItem = {
-      name,
-      description,
-      category,
-      type,
-      quantity: Number(quantity),
-      branch,
-      barcode,
-    };
+  const handleInsert = async () => {
+    try {
+      const newItem = {
+        name,
+        description,
+        category,
+        type,
+        quantity: Number(quantity),
+        branch,
+        barcode,
+      };
 
-    if (type === "sales") {
-      // backend insertSales expects `price`
-      newItem.price = Number(price);
-    } else if (type === "rental") {
-      newItem.pricePerDay = Number(price);
-    } else if (type === "service") {
-      newItem.serviceStatus = "pending"; // or pull from an input if you add one
-    }
-
-    const response = await fetch(
-      `http://localhost:4000/api/inventory/${type}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(newItem),
+      if (type === "sales") {
+        newItem.price = Number(price);
+      } else if (type === "rental") {
+        newItem.pricePerDay = Number(price);
+      } else if (type === "service") {
+        newItem.serviceStatus = "pending";
       }
-    );
 
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.message || "Failed to insert Inventory");
+      const response = await fetch(
+        `http://localhost:4000/api/inventory/${type}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(newItem),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || "Failed to insert Inventory");
+      }
+
+      await fetchInventories();
+      toast.success("Inventory item added successfully!");
+
+      setName("");
+      setDescription("");
+      setCategory("");
+      setQuantity("");
+      setPrice("");
+      setBranch("60f7a9d2c8f5a22b9c123456");
+      setBarcode("");
+    } catch (error) {
+      toast.error("Error inserting inventory: " + error.message);
     }
-
-    await fetchInventories();
-    toast.success("Inventory item added successfully!");
-
-    // reset form
-    setName("");
-    setDescription("");
-    setCategory("");
-    setQuantity("");
-    setPrice("");
-    setBranch("60f7a9d2c8f5a22b9c123456");
-    setBarcode("");
-  } catch (error) {
-    toast.error("Error inserting inventory: " + error.message);
-  }
-};
-
+  };
 
   const handleDelete = async (id) => {
     try {
@@ -141,15 +139,15 @@ const handleInsert = async () => {
   };
 
   const columns = [
-    { key: "name", label: "Item Name" },
-    { key: "barcode", label: "Code" },
-    { key: "category", label: "Category" },
-    { key: "quantity", label: "Quantity" },
+    { key: "name", label: t("inventory.itemName") },
+    { key: "barcode", label: t("inventory.barcode") },
+    { key: "category", label: t("inventory.category") },
+    { key: "quantity", label: t("inventory.quantity") },
     type === "sales"
-      ? { key: "price", label: "Sale Price (₹)" }
+      ? { key: "price", label: t("inventory.salePrice") }
       : type === "rental"
-        ? { key: "pricePerDay", label: "Rate/Day (₹)" }
-        : { key: "serviceStatus", label: "Service Status" },
+        ? { key: "pricePerDay", label: t("inventory.rentPrice") }
+        : { key: "serviceStatus", label: t("inventory.serviceStatus") },
     { key: "updatedAt", label: "Last Updated" },
   ];
 
@@ -167,12 +165,12 @@ const handleInsert = async () => {
   return (
     <div className="min-h-screen p-6 bg-gray-100 dark:bg-gray-900 space-y-6 w-305">
       <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-        {title}
+        {t("inventory.title")}
       </h1>
       <div className="flex items-center justify-between">
         <Input
           type="text"
-          placeholder="Search inventory..."
+          placeholder={t("inventory.search")}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-1/2"
@@ -180,24 +178,24 @@ const handleInsert = async () => {
         <Dialog>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="mr-2 h-4 w-4" /> Add Inventory
+              <Plus className="mr-2 h-4 w-4" /> {t("inventory.addInventory")}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Inventory</DialogTitle>
+              <DialogTitle>{t("inventory.addInventory")}</DialogTitle>
               <DialogDescription>
-                Fill in the details below to add a new inventory item.
+                {t("inventory.description")}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <Input
-                placeholder="Item Name"
+                placeholder={t("inventory.itemName")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
               <Input
-                placeholder="Description"
+                placeholder={t("inventory.description")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -206,7 +204,7 @@ const handleInsert = async () => {
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded bg-white text-black"
               >
-                <option value="">Select Category</option>
+                <option value="">{t("inventory.selectCategory")}</option>
                 {categories.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
@@ -214,7 +212,7 @@ const handleInsert = async () => {
                 ))}
               </select>
               <Input
-                placeholder="Quantity"
+                placeholder={t("inventory.quantity")}
                 type="number"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
@@ -222,10 +220,10 @@ const handleInsert = async () => {
               <Input
                 placeholder={
                   type === "sales"
-                    ? "Sale Price (₹)"
+                    ? t("inventory.salePrice")
                     : type === "rental"
-                      ? "Price per Day (₹)"
-                      : "Service Status"
+                      ? t("inventory.rentPrice")
+                      : t("inventory.serviceStatus")
                 }
                 type={type === "service" ? "text" : "number"}
                 value={price}
@@ -237,13 +235,13 @@ const handleInsert = async () => {
                 onChange={(e) => setBranch(e.target.value)}
               />
               <Input
-                placeholder="Barcode"
+                placeholder={t("inventory.barcode")}
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
               />
               <DialogClose asChild>
                 <Button className="w-full mt-2" onClick={handleInsert}>
-                  Save Inventory
+                  {t("inventory.save")}
                 </Button>
               </DialogClose>
             </div>

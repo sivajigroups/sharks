@@ -1,0 +1,57 @@
+{
+  "sidebar": {
+    "general": "General",
+    "dashboard": "Dashboard",
+    "inventory": "Inventory",
+    "salesInventory": "Sales Inventory",
+    "management": "Management",
+    "customers": "Customers",
+    "administration": "Administration",
+    "profile": "Profile"
+  },
+  "topbar": {
+  "dashboard": "Dashboard",
+  "myAccount": "My Account",
+  "logout": "Logout"
+},
+
+  "inventory": {
+    "title": "Inventory Manager",
+    "addInventory": "Add Inventory",
+    "itemName": "Item Name",
+    "description": "Description",
+    "category": "Category",
+    "quantity": "Quantity",
+    "barcode": "Barcode",
+    "salePrice": "Sale Price (₹)",
+    "rentPrice": "Price per Day (₹)",
+    "serviceStatus": "Service Status",
+    "save": "Save Inventory",
+    "search": "Search inventory...",
+    "selectCategory": "Select Category"
+  },
+  "customers": {
+  "title": "Customers",
+  "searchPlaceholder": "Search by name or phone...",
+  "addCustomer": "Add Customer",
+  "addCustomerTitle": "Add New Customer",
+  "name": "Name",
+  "phone": "Phone",
+  "altPhone": "Alternate Phone",
+  "street": "Street",
+  "area": "Area",
+  "city": "City",
+  "address": "Address",
+  "pincode": "Pincode",
+  "idProof": "ID Proof",
+  "idProofNumber": "ID Proof Number",
+  "aadhaar": "Aadhaar",
+  "pan": "PAN",
+  "voter": "Voter ID",
+  "license": "Driving License",
+  "save": "Save",
+  "loading": "Loading customers...",
+  "error": "Error loading customers"
+}
+
+}
