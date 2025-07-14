@@ -9,40 +9,46 @@ const staffRouter = require("./routes/staffRoute");
 const saleRouter = require("./routes/saleRoute");
 const adminRouter = require("./routes/adminRoute");
 const transRouter = require("./routes/transactionRoute");
+
 const app = express();
 app.use(cookieParser());
+
 const allowedOrigins = [
   "http://localhost:5173",
   "https://sharks.sivajigroups.com",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, origin); // return the origin instead of 'true'
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  })
-);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  }
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 app.use(express.json());
+
+// ROUTES
 app.use("/api", userRouter);
 app.use("/api", staffRouter);
 app.use("/api", saleRouter);
 app.use("/api", adminRouter);
 app.use("/api", transRouter);
-//mongoose
+
+// CONNECT DB AND START SERVER
 dbConnect()
   .then(() => {
-    console.log("DB is Sucessfully connected");
+    console.log("DB is Successfully connected");
     app.listen(4000, () => {
-      console.log("server is running in 4000");
+      console.log("Server is running on port 4000");
     });
   })
   .catch(() => {
-    console.log("Not Connected to Db");
+    console.log("Not connected to DB");
   });
