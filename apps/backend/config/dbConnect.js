@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const MONGO_URI = `mongodb://onstepadmin:%40Agent000000@3.111.58.3:27017/onstepdb`;
+const MONGO_URI = `mongodb://onstepadmin:%40Agent000000@3.111.58.3:27017/admin`;
 
 const dbConnect = async () => {
   try {
