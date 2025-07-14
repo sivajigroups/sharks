@@ -11,22 +11,22 @@ const adminRouter = require("./routes/adminRoute");
 const transRouter = require("./routes/transactionRoute");
 const app = express();
 app.use(cookieParser());
-const allowedOrigins = [
-  "https://sharks.sivajigroups.com",
-];
+// const allowedOrigins = [
+//   "https://sharks.sivajigroups.com",
+// ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, origin); // return the origin instead of 'true'
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  })
-);
+// app.use(
+//   cors({
+//     origin: function (origin, callback) {
+//       if (!origin || allowedOrigins.includes(origin)) {
+//         callback(null, origin); // return the origin instead of 'true'
+//       } else {
+//         callback(new Error("Not allowed by CORS"));
+//       }
+//     },
+//     credentials: true,
+//   })
+// );
 
 app.use(express.json());
 app.use("/api", userRouter);
