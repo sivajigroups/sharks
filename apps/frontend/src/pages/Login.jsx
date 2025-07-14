@@ -39,6 +39,7 @@ export default function AuthForm() {
 
       const userData = await response.json();
       const { phone: serverPhone, role, branch } = userData.user;
+console.log("Sending login payload:", { phone, password });
 
       dispatch(
         login({

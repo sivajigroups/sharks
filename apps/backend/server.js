@@ -13,6 +13,7 @@ const app = express();
 app.use(cookieParser());
 // const allowedOrigins = [
 //   "https://sharks.sivajigroups.com",
+//   "http://localhost:5173",
 // ];
 
 // app.use(
@@ -27,6 +28,7 @@ app.use(cookieParser());
 //     credentials: true,
 //   })
 // );
+
 
 app.use(express.json());
 app.use("/api", userRouter);
