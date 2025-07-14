@@ -12,7 +12,6 @@ const transRouter = require("./routes/transactionRoute");
 const app = express();
 app.use(cookieParser());
 const allowedOrigins = [
-  "http://localhost:5173",
   "https://sharks.sivajigroups.com",
 ];
 
