@@ -50,7 +50,7 @@ const Customers = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:4000/api/customer/details",
+        `${import.meta.env.VITE_API_BASE}/customer/details`,
         {
           method: "GET",
           credentials: "include",
@@ -116,7 +116,7 @@ const Customers = () => {
 
     try {
       const response = await fetch(
-        "http://localhost:4000/api/customer/details",
+        `${import.meta.env.VITE_API_BASE}/customer/details`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -155,7 +155,7 @@ const Customers = () => {
   const handleEdit = async (id, updatedData) => {
     try {
       const res = await fetch(
-        `http://localhost:4000/api/customer/details/${id}`,
+        `${import.meta.env.VITE_API_BASE}/customer/details/${id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -177,7 +177,7 @@ const Customers = () => {
   const handleDelete = async (id) => {
     try {
       const res = await fetch(
-        `http://localhost:4000/api/customer/details/${id}`,
+        `${import.meta.env.VITE_API_BASE}/customer/details/${id}`,
         {
           method: "DELETE",
           credentials: "include",

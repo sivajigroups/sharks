@@ -68,7 +68,7 @@ export default function StaffPage() {
   // Fetch branches
   const fetchBranches = async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/branch/all", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE}/branch/all`, {
         method: "GET",
         credentials: "include",
       });
@@ -84,7 +84,7 @@ export default function StaffPage() {
   const fetchStaff = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:4000/api/staff/details", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE}/staff/details`, {
         method: "GET",
         credentials: "include",
       });
@@ -119,7 +119,7 @@ export default function StaffPage() {
     }
     const body = { name, email, phone, staffid, password, role, branchId };
     try {
-      const res = await fetch("http://localhost:4000/api/create/staff", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE}/create/staff`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -142,7 +142,7 @@ export default function StaffPage() {
   // Delete staff
   const handleDelete = async (id) => {
     try {
-      await fetch(`http://localhost:4000/api/staff/details/${id}`, {
+      await fetch(`${import.meta.env.VITE_API_BASE}/staff/details/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
