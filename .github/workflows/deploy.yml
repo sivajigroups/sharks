@@ -75,13 +75,15 @@ jobs:
           ansible "$host_ip" -i inventory.ini -m shell -a "\
             mkdir -p /home/lakshmikanth/backend && \
             cp -r /home/deploy-folder/apps/backend/* /home/lakshmikanth/backend/ && \
+            cp /home/deploy-folder/apps/backend/.env.production /home/lakshmikanth/backend/.env.production && \
             cd /home/lakshmikanth/backend && \
             npm install && \
             if pm2 list | grep -q 'backend-server'; then \
               pm2 restart backend-server -f; \
             else \
-              pm2 start server.js --name backend-server -f; \
+              NODE_ENV=production pm2 start server.js --name backend-server -f; \
             fi && \
             pm2 save" \
           --private-key=deploy_key
+
 
