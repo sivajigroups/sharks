@@ -74,7 +74,7 @@ export default function AuthForm() {
             <div className="relative">
               <Mail className="absolute left-3 top-3 text-gray-500" size={20} />
               <Input
-                type="text"
+                type="number"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="pl-10 bg-white text-black"
