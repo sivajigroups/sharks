@@ -42,7 +42,7 @@ const InventoryManager = ({ type }) => {
     setLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:4000/api/inventory/${type}`,
+        `${import.meta.env.VITE_API_BASE}/inventory/${type}`,
         {
           method: "GET",
           credentials: "include",
@@ -86,7 +86,7 @@ const InventoryManager = ({ type }) => {
       }
 
       const response = await fetch(
-        `http://localhost:4000/api/inventory/${type}`,
+        `${import.meta.env.VITE_API_BASE}/inventory/${type}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
