@@ -118,7 +118,7 @@ const InventoryManager = ({ type }) => {
   const handleDelete = async (id) => {
     try {
       const response = await fetch(
-        `http://localhost:4000/api/inventory/${id}`,
+        `${import.meta.env.VITE_API_BASE}/inventory/${id}`,
         {
           method: "DELETE",
           credentials: "include",
