@@ -77,6 +77,11 @@ jobs:
             cp -r /home/deploy-folder/apps/backend/* /home/lakshmikanth/backend/ && \
             cd /home/lakshmikanth/backend && \
             npm install && \
-            pm2 start server.js --name backend-server -f || pm2 restart backend-server -f && \
+            if pm2 list | grep -q 'backend-server'; then \
+              pm2 restart backend-server -f; \
+            else \
+              pm2 start server.js --name backend-server -f; \
+            fi && \
             pm2 save" \
           --private-key=deploy_key
+
