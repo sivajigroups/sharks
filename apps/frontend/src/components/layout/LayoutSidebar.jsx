@@ -8,6 +8,7 @@ import {
   Users,
   UserRoundPen,
   Languages,
+  Wrench,
 } from "lucide-react";
 import {
   Sidebar,
@@ -42,7 +43,7 @@ const LayoutSidebar = () => {
       items: [
         {
           title: t("sidebar.salesInventory"),
-          icon: ShoppingCart,
+          icon: Wrench,
           url: "/layout/salesInfo",
         },
       ],
@@ -52,6 +53,14 @@ const LayoutSidebar = () => {
       items: [
         { title: t("sidebar.customers"), icon: Users, url: "/layout/customers" },
       ],
+    },
+    {
+      label:t("sidebar.Billing"),
+      items:[{
+        title:t("sidebar.sales"),
+        icon: ShoppingCart,
+        url:"/layout/billing",
+      }]
     },
     {
       label: t("sidebar.administration"),
