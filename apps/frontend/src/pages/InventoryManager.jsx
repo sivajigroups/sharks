@@ -75,15 +75,13 @@ const InventoryManager = ({ type }) => {
         type,
         quantity: Number(quantity),
         branch,
-        barcode,
       };
       if (
         !name ||
         !description ||
         !category ||
         !quantity ||
-        !branch ||
-        !barcode
+        !branch 
       ) {
         toast.error("All fields are required!");
         return;
@@ -121,7 +119,7 @@ const InventoryManager = ({ type }) => {
       setQuantity("");
       setPrice("");
       setBranch("60f7a9d2c8f5a22b9c123456");
-      setBarcode("");
+      //setBarcode("");
     } catch (error) {
       toast.error("Error inserting inventory: " + error.message);
     }
@@ -259,12 +257,12 @@ const InventoryManager = ({ type }) => {
                 onChange={(e) => setBranch(e.target.value)}
                 required
               />
-              <Input
+              {/* <Input
                 placeholder={t("inventory.barcode")}
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
                 required
-              />
+              /> */}
               <Button type="submit" className="w-full mt-2">
                 {t("inventory.save")}
               </Button>

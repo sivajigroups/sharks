@@ -12,16 +12,11 @@ const insertSales = async (req, res) => {
       quantity,
       price,
       branch,
-      barcode,
     } = req.body;
-    if (!name|| !quantity || !branch || !barcode || !price) {
+    if (!name|| !quantity || !branch || !price) {
       return res.status(400).json({ message: "Missing required fields" });
     }
   
-    const existing = await SalesInventory.findOne({ barcode });
-    if (existing) {
-      return res.status(400).json({ message: "Barcode already exists" });
-    }
 
     const sales = new SalesInventory({
       name,
@@ -30,7 +25,6 @@ const insertSales = async (req, res) => {
       quantity,
       price,
       branch,
-      barcode,
     });
     await sales.save();
     if (sales.quantity < 5) {
