@@ -37,6 +37,7 @@ const InventoryManager = ({ type }) => {
   const [price, setPrice] = useState("");
   const [branch, setBranch] = useState("60f7a9d2c8f5a22b9c123456");
   const [barcode, setBarcode] = useState("");
+  const [open, setOpen] = useState(false);
 
   const fetchInventories = async () => {
     setLoading(true);
@@ -76,6 +77,17 @@ const InventoryManager = ({ type }) => {
         branch,
         barcode,
       };
+      if (
+        !name ||
+        !description ||
+        !category ||
+        !quantity ||
+        !branch ||
+        !barcode
+      ) {
+        toast.error("All fields are required!");
+        return;
+      }
 
       if (type === "sales") {
         newItem.price = Number(price);
@@ -102,7 +114,7 @@ const InventoryManager = ({ type }) => {
 
       await fetchInventories();
       toast.success("Inventory item added successfully!");
-
+      setOpen(false);
       setName("");
       setDescription("");
       setCategory("");
@@ -124,7 +136,7 @@ const InventoryManager = ({ type }) => {
           credentials: "include",
         }
       );
-
+     console.log(response);
       if (!response.ok) throw new Error("Failed to delete Inventory");
       toast.error("Inventory deleted successfully!");
       await fetchInventories();
@@ -175,9 +187,9 @@ const InventoryManager = ({ type }) => {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-1/2"
         />
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => setOpen(true)}>
               <Plus className="mr-2 h-4 w-4" /> {t("inventory.addInventory")}
             </Button>
           </DialogTrigger>
@@ -188,21 +200,31 @@ const InventoryManager = ({ type }) => {
                 {t("inventory.description")}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 mt-4">
+
+            <form
+              className="space-y-4 mt-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleInsert(); // Custom validation inside
+              }}
+            >
               <Input
                 placeholder={t("inventory.itemName")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                required
               />
               <Input
                 placeholder={t("inventory.description")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                required
               />
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded bg-white text-black"
+                required
               >
                 <option value="">{t("inventory.selectCategory")}</option>
                 {categories.map((cat) => (
@@ -216,6 +238,7 @@ const InventoryManager = ({ type }) => {
                 type="number"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
+                required
               />
               <Input
                 placeholder={
@@ -228,23 +251,24 @@ const InventoryManager = ({ type }) => {
                 type={type === "service" ? "text" : "number"}
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
+                required
               />
               <Input
                 placeholder="Branch ID"
                 value={branch}
                 onChange={(e) => setBranch(e.target.value)}
+                required
               />
               <Input
                 placeholder={t("inventory.barcode")}
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
+                required
               />
-              <DialogClose asChild>
-                <Button className="w-full mt-2" onClick={handleInsert}>
-                  {t("inventory.save")}
-                </Button>
-              </DialogClose>
-            </div>
+              <Button type="submit" className="w-full mt-2">
+                {t("inventory.save")}
+              </Button>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

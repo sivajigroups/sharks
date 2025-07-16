@@ -131,11 +131,11 @@ const deleteInventory = async (req, res) => {
     if (!id) {
       return res.status(400).json({ message: "Inventory ID is required" });
     }
-    const inventory = await Inventory.findById(id);
+    const inventory = await SalesInventory.findById(id);
     if (!inventory) {
       return res.status(404).json({ message: "Inventory item not found" });
     }
-    await Inventory.findByIdAndDelete(id);
+    await SalesInventory.findByIdAndDelete(id);
     res.json({ message: "Inventory item deleted successfully" });
   } catch (error) {
     res
@@ -143,6 +143,8 @@ const deleteInventory = async (req, res) => {
       .json({ message: "Error deleting inventory", error: error.message });
   }
 };
+
+
 const updateInventory = async (req, res) => {
   try {
     const { id } = req.params;
