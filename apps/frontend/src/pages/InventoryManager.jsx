@@ -103,11 +103,11 @@ const InventoryManager = ({ type }) => {
           body: JSON.stringify(newItem),
         }
       );
-
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(`${err.message}: ${err.error}`);
+        throw new Error(`${err.message}${err.error ? ": " + err.error : ""}`);
       }
+      console.log("type:", type);
 
       await fetchInventories();
       toast.success("Inventory item added successfully!");
