@@ -81,6 +81,11 @@ const InventoryManager = ({ type }) => {
         return;
       }
 
+      if ((type === "sales" || type === "rental") && !price) {
+        toast.error("Price is required!");
+        return;
+      }
+
       if (type === "sales") {
         newItem.price = Number(price);
       } else if (type === "rental") {
