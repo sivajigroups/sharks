@@ -74,6 +74,7 @@ const InventoryManager = ({ type }) => {
         category,
         type,
         quantity: Number(quantity),
+        price: type === "sales" ? Number(price) : undefined,
         branch,
       };
       if (!name || !description || !category || !quantity || !branch) {
