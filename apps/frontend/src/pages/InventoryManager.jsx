@@ -22,6 +22,7 @@ const categories = [
   "Safety Gear",
   "Electrical",
   "Cleaning",
+  "Plumbing",
 ];
 
 const InventoryManager = ({ type }) => {
