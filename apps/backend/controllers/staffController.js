@@ -6,7 +6,9 @@ const { SalesInventory } = require("../models/Inventory/SalesInventoryModel");
 const insertSales = async (req, res) => {
   try {
     const { name, description, category, quantity, price, branch } = req.body;
-    if (!name || !quantity || !branch || !price) {
+    console.log("Incoming body:", req.body);
+
+    if (!name || !quantity || !branch || !price ) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
