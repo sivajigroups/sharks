@@ -25,8 +25,8 @@ const insertSales = async (req, res) => {
     res.send("Inventory Item Added Successfully");
   } catch (error) {
     res.status(400).json({
-      message: "Missing required fields",
-      error: error?.message || "Missing field",
+      message: "Missing required fields 111",
+      error: error?.message || "Missing field 111",
     });
   }
 };
