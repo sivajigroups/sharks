@@ -9,7 +9,7 @@ const insertSales = async (req, res) => {
     console.log("Incoming body:", req.body);
 
     if (!name || !quantity || !branch || !price ) {
-      return res.status(400).json({ message: "Missing required fields" });
+      return res.status(400).json({ message: "Missing required fields 111" });
     }
 
     const sales = new SalesInventory({
