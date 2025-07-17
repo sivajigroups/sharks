@@ -28,10 +28,6 @@ const salesInventorySchema = new mongoose.Schema(
       ref: "Branch",
       required: true,
     },
-    barcode: {
-      type: String,
-      unique: true,
-    },
   },
   { timestamps: true }
 );

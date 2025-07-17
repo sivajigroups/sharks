@@ -76,13 +76,7 @@ const InventoryManager = ({ type }) => {
         quantity: Number(quantity),
         branch,
       };
-      if (
-        !name ||
-        !description ||
-        !category ||
-        !quantity ||
-        !branch 
-      ) {
+      if (!name || !description || !category || !quantity || !branch) {
         toast.error("All fields are required!");
         return;
       }
@@ -107,7 +101,7 @@ const InventoryManager = ({ type }) => {
 
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.message || "Failed to insert Inventory");
+        throw new Error(`${err.message}: ${err.error}`);
       }
 
       await fetchInventories();
@@ -134,7 +128,7 @@ const InventoryManager = ({ type }) => {
           credentials: "include",
         }
       );
-     console.log(response);
+      console.log(response);
       if (!response.ok) throw new Error("Failed to delete Inventory");
       toast.error("Inventory deleted successfully!");
       await fetchInventories();
@@ -150,7 +144,7 @@ const InventoryManager = ({ type }) => {
 
   const columns = [
     { key: "name", label: t("inventory.itemName") },
-    { key: "barcode", label: t("inventory.barcode") },
+    // { key: "barcode", label: t("inventory.barcode") },
     { key: "category", label: t("inventory.category") },
     { key: "quantity", label: t("inventory.quantity") },
     type === "sales"
