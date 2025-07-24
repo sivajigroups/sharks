@@ -15,6 +15,7 @@ import OrderManager from "./pages/orders/orderManager";
 import StaffDetail from "./pages/StaffDetail";
 import NewOrder from "./pages/orders/NewOrder";
 import './i18n'
+import SalesBilling from "./pages/billing/SalesBilling";
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
           {/* <Route path="salesInfo" element={<SalesInventory />} /> */}
           <Route path="customers" element={<Customers />} />
           <Route path="branches" element={<Branch />} />
+          <Route path="billing" element={<SalesBilling/>}/>
           {/* <Route path="rentalOrder" element={<RentalOrdersPage />} /> */}
           {/* <Route path="rentalOrder" element={<OrderManager type="rental" title="Rental Orders" newOrderPath="/layout/rentalOrder/new" />} /> */}
           <Route path="rentalOrder/new" element={<NewOrder />} />

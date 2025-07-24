@@ -5,6 +5,8 @@
     "inventory": "Inventory",
     "salesInventory": "Sales Inventory",
     "management": "Management",
+    "Billing": "Billing",
+    "sales": "Sales",
     "customers": "Customers",
     "administration": "Administration",
     "profile": "Profile"
