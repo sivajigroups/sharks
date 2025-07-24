@@ -5,45 +5,68 @@ const { RentalInventory } = require("../models/Inventory/RentalInventoryModel");
 const { SalesInventory } = require("../models/Inventory/SalesInventoryModel");
 const insertSales = async (req, res) => {
   try {
-    const {
-      name,
-      description,
-      category,
-      quantity,
-      price,
-      branch,
-      barcode,
-    } = req.body;
-    if (!name|| !quantity || !branch || !barcode || !price) {
-      return res.status(400).json({ message: "Missing required fields" });
+    const { name, description, category, variants } = req.body;
+
+    if (!name || !variants || !Array.isArray(variants) || variants.length === 0) {
+      return res.status(400).json({ message: "Missing required fields: name or variants" });
     }
-  
-    const existing = await SalesInventory.findOne({ barcode });
+
+    // Generate SKU and validate each variant
+    const processedVariants = variants.map((variant) => {
+      const brand = variant.brand || "GENERIC";
+      const size = variant.size || "STD";
+      const sku = `${name}-${brand}-${size}`.replace(/\s+/g, "").toUpperCase();
+
+      if (!variant.price || !variant.stock) {
+        throw new Error("Each variant must have price and stock");
+      }
+
+      return {
+        ...variant,
+        sku,
+      };
+    });
+
+    // Check for duplicate SKUs in DB
+    const skuList = processedVariants.map((v) => v.sku);
+    const existing = await SalesInventory.findOne({ "variants.sku": { $in: skuList } });
+
     if (existing) {
-      return res.status(400).json({ message: "Barcode already exists" });
+      return res.status(400).json({ message: "One or more SKUs already exist" });
     }
 
     const sales = new SalesInventory({
       name,
       description,
       category,
-      quantity,
-      price,
-      branch,
-      barcode,
+      variants: processedVariants,
     });
+
     await sales.save();
-    if (sales.quantity < 5) {
-          res.send("Inventory Item Added Successfully and stock is low");
+
+    const lowStockSKUs = processedVariants
+      .filter((v) => v.stock < 5)
+      .map((v) => v.sku);
+
+    if (lowStockSKUs.length > 0) {
+      return res.status(200).json({
+        message: `Item(s) added. Low stock for SKUs: ${lowStockSKUs.join(", ")}`,
+        data: sales,
+      });
     }
-    res.send("Inventory Item Added Successfully");
+
+    res.status(201).json({
+      message: "Inventory item(s) added successfully",
+      data: sales,
+    });
   } catch (error) {
-    res.status(400).json({
+    res.status(500).json({
       message: "Error in adding Tools in Inventory",
       error: error.message,
     });
   }
 };
+
 
 
 const  insertRental=async(req,res)=>{
@@ -82,13 +105,7 @@ const  insertRental=async(req,res)=>{
 
 const getAllsales = async (req, res) => {
   try {
-    const { branch, type } = req.query;
-
-    const filter = {};
-    if (branch) filter.branch = branch;
-    if (type) filter.type = type;
-
-    const inventories = await SalesInventory.find(filter).populate("branch");
+    const inventories = await SalesInventory.find();
 
     res.status(200).json({
       message: "Inventory fetched successfully",
@@ -101,6 +118,7 @@ const getAllsales = async (req, res) => {
     });
   }
 };
+
 
 
 const getAllrental = async (req, res) => {

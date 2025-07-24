@@ -1,37 +1,20 @@
 const mongoose = require("mongoose");
 
+const variantSchema = new mongoose.Schema({
+  sku: { type: String, required: true, unique: true },
+  brand: { type: String, required: false }, // Optional
+  size: { type: String, required: false }, // Optional
+  color: { type: String, default: null },
+  price: { type: Number, required: true },
+  stock: { type: Number, required: true },
+});
+
 const salesInventorySchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    description: {
-      type: String,
-      trim: true,
-    },
-    category: {
-      type: String,
-      trim: true,
-    },
-    quantity: {
-      type: Number,
-      default: 0,
-    },
-    price: {
-      type: Number,
-      required: true,
-    },
-    branch: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Branch",
-      required: true,
-    },
-    barcode: {
-      type: String,
-      unique: true,
-    },
+    name: { type: String, required: true },
+    category: { type: String },
+    description: { type: String },
+    variants: [variantSchema],
   },
   { timestamps: true }
 );

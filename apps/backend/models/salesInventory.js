@@ -1,5 +1,15 @@
 const mongoose=require("mongoose");
 
+
+const variantSchema = new mongoose.Schema({
+  sku: { type: String, required: true, unique: true },
+  brand: { type: String, required: true },
+  size: { type: String, required: true },
+  color: { type: String, default: null },
+  price: { type: Number, required: true },
+  stock: { type: Number, required: true },
+});
+
 const salesSchema=new mongoose.Schema({
     customer:{
         type:mongoose.Schema.Types.ObjectId,

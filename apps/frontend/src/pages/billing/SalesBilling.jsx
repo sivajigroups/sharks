@@ -18,51 +18,152 @@ import LeftCartPanel from "./LeftCartPanel ";
 import spanner from "../../assets/spanner.jpg";
 import cutter from "../../assets/cutter.jpg";
 
-
 const tools = [
   {
-    name: "Cutter",
-    image:cutter,
-    description: "Explore tech tools.",
-    id: 1,
+    name: "Angle Grinder",
+    category: "Cutting Tools",
+    description: "Multi-brand angle grinder with variant options.",
     variants: [
-      { size: "Small", price: 80 },
-      { size: "Medium", price: 100 },
-      { size: "Large", price: 120 },
+      {
+        sku: "AG-MAKITA-10KG",
+        brand: "Makita",
+        size: "10kg",
+        color: null,
+        price: 2000,
+        stock: 10,
+      },
+      {
+        sku: "AG-MAKITA-13KG",
+        brand: "Makita",
+        size: "13kg",
+        color: null,
+        price: 2300,
+        stock: 5,
+      },
+      {
+        sku: "AG-HITACHI-7KG",
+        brand: "Hitachi",
+        size: "7kg",
+        color: "Black",
+        price: 1800,
+        stock: 6,
+      },
     ],
-    quantity: 5,
   },
   {
-    name: "Hammer",
-    image: "https://source.unsplash.com/random/200x120?construction",
-    description: "Essential for construction.",
-    id: 2,
-    variants: [{ size: "Standard", price: 150 }],
-    quantity: 3,
+    name: "Electric Drill",
+    category: "Power Tools",
+    description: "Cordless and corded drills for multiple use cases.",
+    variants: [
+      {
+        sku: "ED-BOSCH-500W",
+        brand: "Bosch",
+        size: "500W",
+        color: "Blue",
+        price: 3200,
+        stock: 8,
+      },
+      {
+        sku: "ED-DEWALT-650W",
+        brand: "DeWalt",
+        size: "650W",
+        color: "Yellow",
+        price: 3700,
+        stock: 4,
+      },
+    ],
   },
   {
-    name: "Screwdriver",
-    image: "https://source.unsplash.com/random/200x120?tools",
-    description: "Versatile tool for repairs.",
-    id: 3,
-    price: 80,
-    quantity: 10,
+    name: "Welding Machine",
+    category: "Fabrication Tools",
+    description: "Compact inverter welding machines for field and shop use.",
+    variants: [
+      {
+        sku: "WM-RILAND-200A",
+        brand: "Riland",
+        size: "200A",
+        color: "Blue",
+        price: 6500,
+        stock: 3,
+      },
+      {
+        sku: "WM-ESAB-250A",
+        brand: "ESAB",
+        size: "250A",
+        color: "Yellow",
+        price: 8200,
+        stock: 2,
+      },
+    ],
   },
   {
-    name: "Wrench",
-    image: spanner,
-    description: "Perfect for mechanical tasks.",
-    id: 4,
-    price: 120,
-    quantity: 2,
+    name: "Tile Cutter",
+    category: "Construction Tools",
+    description: "Manual and electric tile cutters for clean finish.",
+    variants: [
+      {
+        sku: "TC-MANUAL-600MM",
+        brand: "Sigma",
+        size: "600mm",
+        color: "Red",
+        price: 1800,
+        stock: 7,
+      },
+      {
+        sku: "TC-ELEC-1000MM",
+        brand: "Bosun",
+        size: "1000mm",
+        color: "Gray",
+        price: 4500,
+        stock: 4,
+      },
+    ],
   },
   {
-    name: "Drill",
-    image: "https://source.unsplash.com/random/200x120?drill",
-    description: "Powerful drilling tool.",
-    id: 5,
-    price: 200,
-    quantity: 4,
+    name: "Concrete Vibrator",
+    category: "Civil Tools",
+    description: "Petrol and electric types for compacting concrete.",
+    variants: [
+      {
+        sku: "CV-PETROL-1.5HP",
+        brand: "Honda",
+        size: "1.5HP",
+        color: "Red",
+        price: 7800,
+        stock: 2,
+      },
+      {
+        sku: "CV-ELECTRIC-2HP",
+        brand: "Makita",
+        size: "2HP",
+        color: "Blue",
+        price: 7200,
+        stock: 3,
+      },
+    ],
+  },
+  {
+    name: "Air Compressor",
+    category: "Pneumatic Tools",
+    description: "Portable air compressors for industrial applications.",
+    variants: [
+      {
+        sku: "AC-PORTABLE-25L",
+        brand: "Elgi",
+        size: "25L",
+        color: "Green",
+        price: 5600,
+        stock: 5,
+      },
+      {
+        sku: "AC-HEAVY-50L",
+        brand: "Crompton",
+        size: "50L",
+        color: "Gray",
+        price: 8500,
+        stock: 2,
+      },
+    ],
   },
 ];
 
@@ -91,28 +192,24 @@ const SalesBilling = () => {
 
     setSelectedTool(null); // Close dialog
   };
+
   return (
-    <div className="flex w-308 h-screen p-4 gap-4 overflow-hidden">
-      {/* Left Panel */}
-      <div className="w-[340px] shrink-0">
+    <div className="flex h-full overflow-hidden m">
+      {/* Left Panel - Fixed */}
+      <div className="w-[360px] shrink-0 bg-white border-r p-2">
         <LeftCartPanel cartItems={cartItems} />
       </div>
 
-      {/* Product Grid */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Right Panel - Scrollable with hidden scrollbar and smooth scroll */}
+      <div className="flex-1 overflow-y-auto p-4 scrollbar-hide scroll-smooth">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {tools.map((tool) => (
             <Dialog key={tool.id}>
               <DialogTrigger asChild>
                 <Card
-                  onClick={() => setSelectedTool(tool)} // store selected tool only
+                  onClick={() => setSelectedTool(tool)}
                   className="min-w-[180px] rounded-xl shadow-sm overflow-hidden cursor-pointer"
                 >
-                  <img
-                    src={tool.image}
-                    alt={tool.name}
-                    className="w-full h-[120px] object-cover"
-                  />
                   <CardHeader className="p-3">
                     <CardTitle className="text-sm font-semibold">
                       {tool.name}
@@ -130,20 +227,20 @@ const SalesBilling = () => {
                 </DialogHeader>
 
                 <div className="space-y-2">
-                  {(
-                    tool.variants ?? [{ size: "Default", price: tool.price }]
-                  ).map((variant, index) => (
-                    <DialogClose asChild key={index}>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-between"
-                        onClick={() => handleAddToCart(tool, variant)}
-                      >
-                        <span>{variant.size}</span>
-                        <span>₹{variant.price}</span>
-                      </Button>
-                    </DialogClose>
-                  ))}
+                  {(tool.variants ?? [{ size: "Default", price: tool.price }]).map(
+                    (variant, index) => (
+                      <DialogClose asChild key={index}>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-between"
+                          onClick={() => handleAddToCart(tool, variant)}
+                        >
+                          <span>{variant.size}</span>
+                          <span>₹{variant.price}</span>
+                        </Button>
+                      </DialogClose>
+                    )
+                  )}
                 </div>
               </DialogContent>
             </Dialog>

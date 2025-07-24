@@ -4,14 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerTrigger,
+  DrawerClose,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import ReTable from "@/components/shared/ReTable";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -33,10 +32,9 @@ const InventoryManager = ({ type }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [price, setPrice] = useState("");
-  const [branch, setBranch] = useState("60f7a9d2c8f5a22b9c123456");
-  const [barcode, setBarcode] = useState("");
+  const [variants, setVariants] = useState([
+    { brand: "", size: "", color: "", price: "", stock: "" },
+  ]);
 
   const fetchInventories = async () => {
     setLoading(true);
@@ -65,25 +63,40 @@ const InventoryManager = ({ type }) => {
     fetchInventories();
   }, [type]);
 
+  const handleVariantChange = (index, field, value) => {
+    const updated = [...variants];
+    updated[index][field] = value;
+    setVariants(updated);
+  };
+
+  const addVariant = () => {
+    setVariants([
+      ...variants,
+      { brand: "", size: "", color: "", price: "", stock: "" },
+    ]);
+  };
+
+  const removeVariant = (index) => {
+    const updated = variants.filter((_, i) => i !== index);
+    setVariants(updated);
+  };
+
   const handleInsert = async () => {
     try {
+      const cleanedVariants = variants.map((v) => ({
+        brand: v.brand || undefined,
+        size: v.size || undefined,
+        color: v.color || undefined,
+        price: Number(v.price),
+        stock: Number(v.stock),
+      }));
+
       const newItem = {
         name,
         description,
         category,
-        type,
-        quantity: Number(quantity),
-        branch,
-        barcode,
+        variants: cleanedVariants,
       };
-
-      if (type === "sales") {
-        newItem.price = Number(price);
-      } else if (type === "rental") {
-        newItem.pricePerDay = Number(price);
-      } else if (type === "service") {
-        newItem.serviceStatus = "pending";
-      }
 
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE}/inventory/${type}`,
@@ -106,10 +119,7 @@ const InventoryManager = ({ type }) => {
       setName("");
       setDescription("");
       setCategory("");
-      setQuantity("");
-      setPrice("");
-      setBranch("60f7a9d2c8f5a22b9c123456");
-      setBarcode("");
+      setVariants([{ brand: "", size: "", color: "", price: "", stock: "" }]);
     } catch (error) {
       toast.error("Error inserting inventory: " + error.message);
     }
@@ -135,19 +145,12 @@ const InventoryManager = ({ type }) => {
 
   const handleEdit = (id, updatedItem) => {
     console.log("Edit", id, updatedItem);
-    // API update logic can go here
+    // Future edit API
   };
 
   const columns = [
     { key: "name", label: t("inventory.itemName") },
-    { key: "barcode", label: t("inventory.barcode") },
     { key: "category", label: t("inventory.category") },
-    { key: "quantity", label: t("inventory.quantity") },
-    type === "sales"
-      ? { key: "price", label: t("inventory.salePrice") }
-      : type === "rental"
-        ? { key: "pricePerDay", label: t("inventory.rentPrice") }
-        : { key: "serviceStatus", label: t("inventory.serviceStatus") },
     { key: "updatedAt", label: "Last Updated" },
   ];
 
@@ -175,79 +178,130 @@ const InventoryManager = ({ type }) => {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-1/2"
         />
-        <Dialog>
-          <DialogTrigger asChild>
+        <Drawer>
+          <DrawerTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" /> {t("inventory.addInventory")}
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t("inventory.addInventory")}</DialogTitle>
-              <DialogDescription>
-                {t("inventory.description")}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 mt-4">
-              <Input
-                placeholder={t("inventory.itemName")}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-              <Input
-                placeholder={t("inventory.description")}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded bg-white text-black"
+          </DrawerTrigger>
+
+          <DrawerContent className="h-screen p-0 flex flex-col bg-white">
+            {/* Form content scrollable */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <DrawerHeader>
+                <DrawerTitle>{t("inventory.addInventory")}</DrawerTitle>
+                <DrawerClose>
+                  <Button variant="ghost">Close</Button>
+                </DrawerClose>
+              </DrawerHeader>
+
+              <form
+                id="inventory-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleInsert();
+                }}
+                className="space-y-4"
               >
-                <option value="">{t("inventory.selectCategory")}</option>
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
-              <Input
-                placeholder={t("inventory.quantity")}
-                type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-              />
-              <Input
-                placeholder={
-                  type === "sales"
-                    ? t("inventory.salePrice")
-                    : type === "rental"
-                      ? t("inventory.rentPrice")
-                      : t("inventory.serviceStatus")
-                }
-                type={type === "service" ? "text" : "number"}
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-              />
-              <Input
-                placeholder="Branch ID"
-                value={branch}
-                onChange={(e) => setBranch(e.target.value)}
-              />
-              <Input
-                placeholder={t("inventory.barcode")}
-                value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
-              />
-              <DialogClose asChild>
-                <Button className="w-full mt-2" onClick={handleInsert}>
-                  {t("inventory.save")}
-                </Button>
-              </DialogClose>
+                <Input
+                  placeholder={t("inventory.itemName")}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+                <Input
+                  placeholder={t("inventory.description")}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded bg-white text-black"
+                  required
+                >
+                  <option value="">{t("inventory.selectCategory")}</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="space-y-4">
+                  {variants.map((variant, index) => (
+                    <div key={index} className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      <Input
+                        placeholder="Brand"
+                        value={variant.brand}
+                        onChange={(e) =>
+                          handleVariantChange(index, "brand", e.target.value)
+                        }
+                      />
+                      <Input
+                        placeholder="Size"
+                        value={variant.size}
+                        onChange={(e) =>
+                          handleVariantChange(index, "size", e.target.value)
+                        }
+                      />
+                      <Input
+                        placeholder="Color"
+                        value={variant.color}
+                        onChange={(e) =>
+                          handleVariantChange(index, "color", e.target.value)
+                        }
+                      />
+                      <Input
+                        placeholder="Price"
+                        type="number"
+                        value={variant.price}
+                        onChange={(e) =>
+                          handleVariantChange(index, "price", e.target.value)
+                        }
+                        required
+                      />
+                      <Input
+                        placeholder="Stock"
+                        type="number"
+                        value={variant.stock}
+                        onChange={(e) =>
+                          handleVariantChange(index, "stock", e.target.value)
+                        }
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => removeVariant(index)}
+                        className="col-span-full"
+                      >
+                        Remove Variant
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    onClick={addVariant}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    + Add Variant
+                  </Button>
+                </div>
+              </form>
             </div>
-          </DialogContent>
-        </Dialog>
+
+            {/* Fixed submit button */}
+            <div className="border-t px-6 py-4 bg-white">
+              <Button type="submit" form="inventory-form" className="w-full">
+                {t("inventory.save") || "Save Inventory"}
+              </Button>
+            </div>
+          </DrawerContent>
+        </Drawer>
       </div>
+
       <Card className="overflow-auto">
         <CardContent className="p-4">
           <ReTable
