@@ -1,19 +1,19 @@
-name: Deploy to Remote Server
+name: Deploy Testing Branch to Testing Environment
 
 on:
   push:
     branches:
-      - onstep
+      - testing
 
 jobs:
-  deploy:
+  deploy-testing:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          ref: onstep
+          ref: testing
 
       - name: Setup SSH Key
         run: |
@@ -60,23 +60,10 @@ jobs:
           ansible "$host_ip" -i inventory.ini -m synchronize -a "src=./apps/frontend/dist/ dest=/home/lakshmikanth/tmp-dist/ delete=yes recursive=yes" \
             --private-key=deploy_key
 
-      - name: Move dist to /var/www/html/ with sudo
+      - name: Move dist to /var/www/html/testing with sudo
         run: |
           host_ip=$(awk '{print $1}' inventory.ini)
           ansible "$host_ip" -i inventory.ini -m shell -a "\
-            sudo rm -rf /var/www/html/staging* && \
-            sudo cp -r /home/lakshmikanth/tmp-dist/* /var/www/html/staging" \
-            --private-key=deploy_key
-
-
-      - name: Copy Backend and Start with PM2
-        run: |
-          host_ip=$(awk '{print $1}' inventory.ini)
-          ansible "$host_ip" -i inventory.ini -m shell -a "\
-            mkdir -p /home/lakshmikanth/backend && \
-            cp -r /home/deploy-folder/apps/backend/* /home/lakshmikanth/backend/ && \
-            cd /home/lakshmikanth/backend && \
-            npm install && \
-            pm2 start server.js --name backend-server -f || pm2 restart backend-server -f && \
-            pm2 save" \
-          --private-key=deploy_key
+            sudo rm -rf /var/www/html/testing* && \
+            sudo cp -r /home/lakshmikanth/tmp-dist/* /var/www/html/testing" \
+            --private-key=deploy_key 
