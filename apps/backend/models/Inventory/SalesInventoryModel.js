@@ -22,3 +22,5 @@ const salesInventorySchema = new mongoose.Schema(
 const SalesInventory = mongoose.model("SalesInventory", salesInventorySchema);
 
 module.exports = { SalesInventory };
+
+//
