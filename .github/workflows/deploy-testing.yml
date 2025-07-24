@@ -64,6 +64,7 @@ jobs:
         run: |
           host_ip=$(awk '{print $1}' inventory.ini)
           ansible "$host_ip" -i inventory.ini -m shell -a "\
-            sudo rm -rf /var/www/html/testing* && \
-            sudo cp -r /home/lakshmikanth/tmp-dist/* /var/www/html/testing" \
+            sudo mkdir -p /var/www/html/testing && \
+            sudo rm -rf /var/www/html/testing/* && \
+            sudo cp -r /home/lakshmikanth/tmp-dist/* /var/www/html/testing/" \
             --private-key=deploy_key 
