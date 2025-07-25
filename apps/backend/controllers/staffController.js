@@ -71,7 +71,15 @@ const insertSales = async (req, res) => {
 
 const  insertRental=async(req,res)=>{
   try {
-    const { name, description, category, quantity, pricePerDay, branch, barcode } = req.body;
+    const {
+      name,
+      description,
+      category,
+      quantity,
+      pricePerDay,
+      branch,
+      barcode,
+    } = req.body;
     if (!name || !quantity || !branch || !barcode || !pricePerDay) {
       return res.status(400).json({ message: "Missing required fields" });
     }
@@ -92,7 +100,7 @@ const  insertRental=async(req,res)=>{
     });
     await rental.save();
     if (rental.quantity < 5) {
-          res.send("Inventory Item Added Successfully and stock is low");
+      res.send("Inventory Item Added Successfully and stock is low");
     }
     res.send("Inventory Item Added Successfully");
   } catch (error) {
@@ -101,7 +109,7 @@ const  insertRental=async(req,res)=>{
       error: error.message,
     });
   }
-}
+};
 
 const getAllsales = async (req, res) => {
   try {
@@ -149,11 +157,11 @@ const deleteInventory = async (req, res) => {
     if (!id) {
       return res.status(400).json({ message: "Inventory ID is required" });
     }
-    const inventory = await Inventory.findById(id);
+    const inventory = await SalesInventory.findById(id);
     if (!inventory) {
       return res.status(404).json({ message: "Inventory item not found" });
     }
-    await Inventory.findByIdAndDelete(id);
+    await SalesInventory.findByIdAndDelete(id);
     res.json({ message: "Inventory item deleted successfully" });
   } catch (error) {
     res
@@ -161,6 +169,7 @@ const deleteInventory = async (req, res) => {
       .json({ message: "Error deleting inventory", error: error.message });
   }
 };
+
 const updateInventory = async (req, res) => {
   try {
     const { id } = req.params;
@@ -175,13 +184,12 @@ const updateInventory = async (req, res) => {
   }
 };
 
-
-
 const insertCustomer = async (req, res) => {
   try {
-    const { name, phone, address, alternatePhone,idProofType,idProofNumber } = req.body;  
+    const { name, phone, address, alternatePhone, idProofType, idProofNumber } =
+      req.body;
 
-    if (!name || !phone || !address || !idProofType  || !idProofNumber) {
+    if (!name || !phone || !address || !idProofType || !idProofNumber) {
       return res.status(400).json({
         message: "Please fill all the fields",
       });
@@ -198,7 +206,7 @@ const insertCustomer = async (req, res) => {
       address,
       idProofType,
       alternatePhone,
-      idProofNumber
+      idProofNumber,
     });
 
     await customerSave.save();
@@ -211,7 +219,6 @@ const insertCustomer = async (req, res) => {
     });
   }
 };
-
 
 const getAllCustomers = async (req, res) => {
   try {
@@ -234,10 +241,11 @@ const deleteCustomer = async (req, res) => {
       .json({ message: "Error deleting customer", error: error.message });
   }
 };
-const editCustomer=async(req,res)=>{
+const editCustomer = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, phone, address, alternatePhone, idProofType, idProofNumber } = req.body;
+    const { name, phone, address, alternatePhone, idProofType, idProofNumber } =
+      req.body;
 
     if (!name || !phone || !address || !idProofType || !idProofNumber) {
       return res.status(400).json({
@@ -266,7 +274,7 @@ const editCustomer=async(req,res)=>{
       error: error.message,
     });
   }
-}
+};
 const insertCheckin = async (req, res) => {
   try {
     const { branch } = req.body;
@@ -376,18 +384,18 @@ const calculateAttendance = async (req, res) => {
   }
 };
 
-module.exports={
-    getAllCustomers,
-    insertCustomer,
-    deleteCustomer,
-    editCustomer,
-    insertSales,
-    insertRental,
-    getAllsales,
-    getAllrental,
-    updateInventory,
-    deleteInventory,
-    insertCheckin,
-    insertCheckout,
-    calculateAttendance,
-}
+module.exports = {
+  getAllCustomers,
+  insertCustomer,
+  deleteCustomer,
+  editCustomer,
+  insertSales,
+  insertRental,
+  getAllsales,
+  getAllrental,
+  updateInventory,
+  deleteInventory,
+  insertCheckin,
+  insertCheckout,
+  calculateAttendance,
+};

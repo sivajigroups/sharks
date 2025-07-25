@@ -21,6 +21,7 @@ const categories = [
   "Safety Gear",
   "Electrical",
   "Cleaning",
+  "Plumbing",
 ];
 
 const InventoryManager = ({ type }) => {
@@ -107,15 +108,15 @@ const InventoryManager = ({ type }) => {
           body: JSON.stringify(newItem),
         }
       );
-
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.message || "Failed to insert Inventory");
+        throw new Error(`${err.message}${err.error ? ": " + err.error : ""}`);
       }
+      console.log("type:", type);
 
       await fetchInventories();
       toast.success("Inventory item added successfully!");
-
+      setOpen(false);
       setName("");
       setDescription("");
       setCategory("");
@@ -134,7 +135,7 @@ const InventoryManager = ({ type }) => {
           credentials: "include",
         }
       );
-
+      console.log(response);
       if (!response.ok) throw new Error("Failed to delete Inventory");
       toast.error("Inventory deleted successfully!");
       await fetchInventories();
