@@ -15,6 +15,8 @@ const {
   insertRental,
   getAllsales,
   getAllrental,
+  insertAttribute,
+  getAttribute,
 } = require("../controllers/staffController");
 const staffRouter = express.Router();
 
@@ -25,6 +27,10 @@ staffRouter.post("/inventory/rental", userAuth, insertRental);
 staffRouter.get("/inventory/sales",userAuth,getAllsales);
 staffRouter.get("/inventory/rental", userAuth, getAllrental);
 staffRouter.delete("/inventory/:id",deleteInventory);
+
+
+staffRouter.post("/inventory/attributes",userAuth,insertAttribute);
+staffRouter.get("/inventory/attributes", userAuth, getAttribute);
 
 staffRouter.post("/customer/details", userAuth, insertCustomer);
 staffRouter.get("/customer/details", userAuth, getAllCustomers);

@@ -3,12 +3,20 @@ const { Customer } = require("../models/customerModel");
 const { Inventory } = require("../models/Inventory/inventoryModel");
 const { RentalInventory } = require("../models/Inventory/RentalInventoryModel");
 const { SalesInventory } = require("../models/Inventory/SalesInventoryModel");
+const Attribute = require("../models/Inventory/variantModel");
 const insertSales = async (req, res) => {
   try {
     const { name, description, category, variants } = req.body;
 
-    if (!name || !variants || !Array.isArray(variants) || variants.length === 0) {
-      return res.status(400).json({ message: "Missing required fields: name or variants" });
+    if (
+      !name ||
+      !variants ||
+      !Array.isArray(variants) ||
+      variants.length === 0
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Missing required fields: name or variants" });
     }
 
     // Generate SKU and validate each variant
@@ -29,10 +37,14 @@ const insertSales = async (req, res) => {
 
     // Check for duplicate SKUs in DB
     const skuList = processedVariants.map((v) => v.sku);
-    const existing = await SalesInventory.findOne({ "variants.sku": { $in: skuList } });
+    const existing = await SalesInventory.findOne({
+      "variants.sku": { $in: skuList },
+    });
 
     if (existing) {
-      return res.status(400).json({ message: "One or more SKUs already exist" });
+      return res
+        .status(400)
+        .json({ message: "One or more SKUs already exist" });
     }
 
     const sales = new SalesInventory({
@@ -67,9 +79,63 @@ const insertSales = async (req, res) => {
   }
 };
 
+//const Attribute = require("../models/Attribute");
 
+const insertAttribute = async (req, res) => {
+  try {
+    const { brand = [], size = [], color = [] } = req.body;
 
-const  insertRental=async(req,res)=>{
+    if (!brand.length && !size.length && !color.length) {
+      return res
+        .status(400)
+        .json({
+          message: "At least one of brand, size, or color must be provided",
+        });
+    }
+
+    const updateOps = {};
+
+    if (brand.length) updateOps.brand = { $each: brand };
+    if (size.length) updateOps.size = { $each: size };
+    if (color.length) updateOps.color = { $each: color };
+
+    const updatedAttribute = await Attribute.findOneAndUpdate(
+      {}, // always update the single document
+      { $addToSet: updateOps },
+      { new: true, upsert: true }
+    );
+
+    return res.status(200).json({
+      message: "Attributes updated successfully",
+      data: updatedAttribute,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error updating attributes",
+      error: error.message,
+    });
+  }
+};
+
+const getAttribute= async(req,res)=>{
+  try {
+    const attributes = await Attribute.findOne({});
+    if (!attributes) {
+      return res.status(404).json({ message: "No attributes found" });
+    }
+    res.status(200).json({
+      message: "Attributes fetched successfully",
+      data: attributes,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching attributes",
+      error: error.message,
+    });
+  }
+}
+
+const insertRental = async (req, res) => {
   try {
     const {
       name,
@@ -126,8 +192,6 @@ const getAllsales = async (req, res) => {
     });
   }
 };
-
-
 
 const getAllrental = async (req, res) => {
   try {
@@ -391,6 +455,8 @@ module.exports = {
   editCustomer,
   insertSales,
   insertRental,
+  insertAttribute,
+  getAttribute,
   getAllsales,
   getAllrental,
   updateInventory,
