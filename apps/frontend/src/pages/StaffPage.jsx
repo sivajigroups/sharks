@@ -23,7 +23,7 @@ export default function StaffPage() {
 
   // Search filter state
   const [searchTerm, setSearchTerm] = useState("");
-
+  const [open, setOpen] = useState(false);
   // Form input states
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -84,10 +84,13 @@ export default function StaffPage() {
   const fetchStaff = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE}/staff/details`, {
-        method: "GET",
-        credentials: "include",
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE}/staff/details`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
       if (!res.ok) throw new Error("Failed to fetch staff");
       const data = await res.json();
       setStaffList(data);
@@ -107,7 +110,9 @@ export default function StaffPage() {
   // Filter staff by search term
   const filteredStaff = staffList.filter((staff) =>
     Object.values(staff).some((val) =>
-      String(val ?? "").toLowerCase().includes(searchTerm.toLowerCase())
+      String(val ?? "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
     )
   );
 
@@ -117,7 +122,9 @@ export default function StaffPage() {
       toast.error("Please fill all fields.");
       return;
     }
+
     const body = { name, email, phone, staffid, password, role, branchId };
+
     try {
       const res = await fetch(`${import.meta.env.VITE_API_BASE}/create/staff`, {
         method: "POST",
@@ -125,15 +132,27 @@ export default function StaffPage() {
         credentials: "include",
         body: JSON.stringify(body),
       });
-      const text = await response.text();
+
+      const text = await res.text();
       let data;
-      try { data = JSON.parse(text); } catch { data = { message: text }; }
-      if (!response.ok) throw new Error(data.message || "Failed to add staff");
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { message: text };
+      }
+
+      if (!res.ok) throw new Error(data.message || "Failed to add staff");
+
       toast.success(data.message || "Staff added successfully!");
-      // Refresh data; auto-ID will recalc
-      fetchStaff();
-      // Clear inputs except ID
-      setName(""); setEmail(""); setPhone(""); setPassword(""); setBranchId("");
+      setOpen(false); // Close dialog on success
+      fetchStaff(); // Refresh list
+
+      // Clear input fields
+      setName("");
+      setEmail("");
+      setPhone("");
+      setPassword("");
+      setBranchId("");
     } catch (err) {
       toast.error("Error adding staff: " + err.message);
     }
@@ -165,57 +184,95 @@ export default function StaffPage() {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-1/2"
         />
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => setOpen(true)}>
               <Plus className="mr-2 h-4 w-4" /> Add Staff
             </Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Add New Staff</DialogTitle></DialogHeader>
-            <div className="space-y-3 mt-2">
-              <Input placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
-              <Input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-              <Input placeholder="Phone" value={phone} onChange={e => setPhone(e.target.value)} />
+            <DialogHeader>
+              <DialogTitle>Add New Staff</DialogTitle>
+            </DialogHeader>
+            <form
+              className="space-y-3 mt-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleInsert();
+              }}
+            >
+              <Input
+                placeholder="Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+              <Input
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+              <Input
+                placeholder="Phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
               <Input placeholder="Staff ID" value={staffid} readOnly />
-              <Input placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
+              <Input
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
 
               <label className="block font-medium text-sm">Branch</label>
               <select
                 className="w-full p-2 border rounded"
                 value={branchId}
-                onChange={e => setBranchId(e.target.value)}
+                onChange={(e) => setBranchId(e.target.value)}
+                required
               >
                 <option value="">— Select a branch —</option>
-                {branches.map(br => (
-                  <option key={br._id} value={br._id}>{br.name}</option>
+                {branches.map((br) => (
+                  <option key={br._id} value={br._id}>
+                    {br.name}
+                  </option>
                 ))}
               </select>
 
-              <DialogClose asChild>
-                <Button className="mt-2 w-full" onClick={handleInsert}>Save Staff</Button>
-              </DialogClose>
-            </div>
+              <Button type="submit" className="mt-2 w-full">
+                Save Staff
+              </Button>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
 
       {loading ? (
-        <Card><CardContent className="p-4 space-y-4">
-          <Skeleton className="h-6 w-1/3" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" />
-        </CardContent></Card>
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            <Skeleton className="h-6 w-1/3" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+          </CardContent>
+        </Card>
       ) : error ? (
         <p className="text-red-600 font-medium">{error}</p>
       ) : (
-        <Card><CardContent className="p-4 overflow-auto">
-          <ReTable
-            data={filteredStaff}
-            columns={staffColumns}
-            onDelete={handleDelete}
-            showViewButton
-            showEditButton={false}
-          />
-        </CardContent></Card>
+        <Card>
+          <CardContent className="p-4 overflow-auto">
+            <ReTable
+              data={filteredStaff}
+              columns={staffColumns}
+              onDelete={handleDelete}
+              showViewButton
+              showEditButton={false}
+            />
+          </CardContent>
+        </Card>
       )}
   
     </div>

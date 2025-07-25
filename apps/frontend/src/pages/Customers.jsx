@@ -21,7 +21,7 @@ const Customers = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
+  const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -35,15 +35,14 @@ const Customers = () => {
 
   const { t } = useTranslation();
 
- const customerColumns = [
-  { key: "name", label: t("customers.name") },
-  { key: "phone", label: t("customers.phone") },
-  { key: "alternatePhone", label: t("customers.altPhone") },
-  { key: "address", label: t("customers.address") },
-  { key: "idProofType", label: t("customers.idProof") },
-  { key: "idProofNumber", label: t("customers.idProofNumber") },
-];
-
+  const customerColumns = [
+    { key: "name", label: t("customers.name") },
+    { key: "phone", label: t("customers.phone") },
+    { key: "alternatePhone", label: t("customers.altPhone") },
+    { key: "address", label: t("customers.address") },
+    { key: "idProofType", label: t("customers.idProof") },
+    { key: "idProofNumber", label: t("customers.idProofNumber") },
+  ];
 
   // Fetch customers from API
   const fetchCustomers = async () => {
@@ -133,6 +132,7 @@ const Customers = () => {
       }
 
       toast.success("Customer added successfully!");
+      setOpen(false); // Close dialog after adding
 
       // Clear input fields
       setName("");
@@ -207,9 +207,9 @@ const Customers = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-1/2"
         />
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => setOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               {t("customers.addCustomer")}
             </Button>
@@ -218,16 +218,24 @@ const Customers = () => {
             <DialogHeader>
               <DialogTitle>{t("customers.addCustomerTitle")}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3 mt-2">
+            <form
+              className="space-y-3 mt-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleInsert();
+              }}
+            >
               <Input
                 placeholder={t("customers.name")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                required
               />
               <Input
                 placeholder={t("customers.phone")}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+                required
               />
               <Input
                 placeholder={t("customers.altPhone")}
@@ -238,27 +246,31 @@ const Customers = () => {
                 placeholder={t("customers.street")}
                 value={street}
                 onChange={(e) => setStreet(e.target.value)}
+                required
               />
               <Input
                 placeholder={t("customers.area")}
                 value={area}
                 onChange={(e) => setArea(e.target.value)}
+                required
               />
               <Input
                 placeholder={t("customers.city")}
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
+                required
               />
               <Input
                 placeholder={t("customers.pincode")}
                 value={pincode}
                 onChange={(e) => setPincode(e.target.value)}
+                required
               />
-
               <select
                 value={idProofType}
                 onChange={(e) => setIdProofType(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                required
               >
                 <option value="">{t("customers.idProof")}</option>
                 <option value="Aadhaar">{t("customers.aadhaar")}</option>
@@ -268,19 +280,16 @@ const Customers = () => {
                   {t("customers.license")}
                 </option>
               </select>
-
               <Input
                 placeholder={t("customers.idProofNumber")}
                 value={idProofNumber}
                 onChange={(e) => setIdProofNumber(e.target.value)}
+                required
               />
-
-              <DialogClose asChild>
-                <Button className="mt-2 w-full" onClick={handleInsert}>
-                  {t("customers.save")}
-                </Button>
-              </DialogClose>
-            </div>
+              <Button type="submit" className="mt-2 w-full">
+                {t("customers.save")}
+              </Button>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

@@ -8,8 +8,16 @@ import { useDispatch } from "react-redux";
 import { login } from "@/redux/authSlice";
 
 export default function AuthForm() {
+
+
+  
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+
+
+
+
+
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
