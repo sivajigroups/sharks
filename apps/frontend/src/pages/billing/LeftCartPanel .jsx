@@ -140,7 +140,7 @@ const LeftCartPanel = ({ cartItems }) => {
 
   return (
     <div className="w-[340px] bg-white shadow-md rounded-md p-4 text-sm flex flex-col h-full max-h-screen">
-      <h2 className="text-lg font-semibold mb-2">Cart Preview</h2>
+      <h2 className="text-lg font-semibold mb-2">Cart Preview testing</h2>
 
       {/* Scrollable Cart List */}
       <div className="flex-1 overflow-y-auto pr-1 scrollbar-hide scroll-smooth space-y-2">
