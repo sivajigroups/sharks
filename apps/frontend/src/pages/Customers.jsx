@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import ReTable from "@/components/shared/ReTable";
 import { useTranslation } from "react-i18next";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
@@ -24,16 +25,17 @@ const Customers = () => {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
-  const [idProofType, setIdProofType] = useState("");
   const [alternatePhone, setAlternatePhone] = useState("");
   const [street, setStreet] = useState("");
   const [area, setArea] = useState("");
   const [city, setCity] = useState("");
   const [pincode, setPincode] = useState("");
+  const [idProofType, setIdProofType] = useState("");
   const [idProofNumber, setIdProofNumber] = useState("");
 
   const { t } = useTranslation();
+  const [page, setPage] = useState(1);
+  const limit = 10;
 
   const customerColumns = [
     { key: "name", label: t("customers.name") },
@@ -44,12 +46,11 @@ const Customers = () => {
     { key: "idProofNumber", label: t("customers.idProofNumber") },
   ];
 
-  // Fetch customers from API
-  const fetchCustomers = async () => {
+  const fetchCustomers = async (query = "", page = 1) => {
     setLoading(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE}/customer/details`,
+        `${import.meta.env.VITE_API_BASE}/customer/details?search=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
         {
           method: "GET",
           credentials: "include",
@@ -58,9 +59,8 @@ const Customers = () => {
 
       if (!response.ok) throw new Error("Failed to fetch customers");
 
-      const data = await response.json();
-      console.log(data);
-      setCustomers(data);
+      const json = await response.json();
+      setCustomers(json.data || []);
       setError("");
     } catch (error) {
       setError(error.message);
@@ -70,31 +70,15 @@ const Customers = () => {
   };
 
   useEffect(() => {
-    fetchCustomers();
-  }, []);
+    const delayDebounce = setTimeout(() => {
+      fetchCustomers(searchTerm, 1);
+    }, 400);
 
-  // Filter customers by name or phone matching search term
-  const filteredCustomers = customers.filter((customer) =>
-    Object.values(customer).some((value) =>
-      value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
-  // (cust) =>
-  //   cust.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //   cust.phone.includes(searchTerm)
+    return () => clearTimeout(delayDebounce);
+  }, [searchTerm]);
 
-  // Handle adding a new customer
   const handleInsert = async () => {
-    if (
-      !name ||
-      !phone ||
-      !street ||
-      !area ||
-      !city ||
-      !pincode ||
-      !idProofType ||
-      !idProofNumber
-    ) {
+    if (!name || !phone || !street || !area || !city || !pincode || !idProofType || !idProofNumber) {
       alert("Please fill all fields.");
       return;
     }
@@ -103,12 +87,7 @@ const Customers = () => {
       name,
       phone,
       alternatePhone,
-      address: {
-        street,
-        area,
-        city,
-        pincode,
-      },
+      address: { street, area, city, pincode },
       idProofType,
       idProofNumber,
     };
@@ -125,33 +104,28 @@ const Customers = () => {
       );
 
       const data = await response.json();
-
       if (!response.ok) {
         alert(data.message || "Failed to add customer");
         return;
       }
 
       toast.success("Customer added successfully!");
-      setOpen(false); // Close dialog after adding
-
-      // Clear input fields
+      setOpen(false);
       setName("");
       setPhone("");
-      setAddress("");
-      setIdProofType("");
       setAlternatePhone("");
       setStreet("");
       setArea("");
       setCity("");
       setPincode("");
+      setIdProofType("");
       setIdProofNumber("");
-
-      // Refresh customer list
       fetchCustomers();
     } catch (error) {
       alert("Error adding customer: " + error.message);
     }
   };
+
   const handleEdit = async (id, updatedData) => {
     try {
       const res = await fetch(
@@ -165,8 +139,8 @@ const Customers = () => {
       );
 
       const result = await res.json();
-
       if (!res.ok) throw new Error(result.message);
+
       toast.success("Customer updated successfully!");
       fetchCustomers();
     } catch (err) {
@@ -185,7 +159,6 @@ const Customers = () => {
       );
       const data = await res.json();
       toast.error("Customer deleted successfully!");
-
       fetchCustomers();
     } catch (error) {
       alert("error deleting customer" + error.message);
@@ -193,12 +166,11 @@ const Customers = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto p-4 w-308">
+    <div className="space-y-6 max-w-7xl mx-auto p-4 w-308">
       <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
         {t("customers.title")}
       </h1>
 
-      {/* Search and Add */}
       <div className="flex items-center justify-between gap-4">
         <Input
           type="text"
@@ -225,47 +197,13 @@ const Customers = () => {
                 handleInsert();
               }}
             >
-              <Input
-                placeholder={t("customers.name")}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-              <Input
-                placeholder={t("customers.phone")}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                required
-              />
-              <Input
-                placeholder={t("customers.altPhone")}
-                value={alternatePhone}
-                onChange={(e) => setAlternatePhone(e.target.value)}
-              />
-              <Input
-                placeholder={t("customers.street")}
-                value={street}
-                onChange={(e) => setStreet(e.target.value)}
-                required
-              />
-              <Input
-                placeholder={t("customers.area")}
-                value={area}
-                onChange={(e) => setArea(e.target.value)}
-                required
-              />
-              <Input
-                placeholder={t("customers.city")}
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                required
-              />
-              <Input
-                placeholder={t("customers.pincode")}
-                value={pincode}
-                onChange={(e) => setPincode(e.target.value)}
-                required
-              />
+              <Input placeholder={t("customers.name")} value={name} onChange={(e) => setName(e.target.value)} required />
+              <Input placeholder={t("customers.phone")} value={phone} onChange={(e) => setPhone(e.target.value)} required />
+              <Input placeholder={t("customers.altPhone")} value={alternatePhone} onChange={(e) => setAlternatePhone(e.target.value)} />
+              <Input placeholder={t("customers.street")} value={street} onChange={(e) => setStreet(e.target.value)} required />
+              <Input placeholder={t("customers.area")} value={area} onChange={(e) => setArea(e.target.value)} required />
+              <Input placeholder={t("customers.city")} value={city} onChange={(e) => setCity(e.target.value)} required />
+              <Input placeholder={t("customers.pincode")} value={pincode} onChange={(e) => setPincode(e.target.value)} required />
               <select
                 value={idProofType}
                 onChange={(e) => setIdProofType(e.target.value)}
@@ -276,16 +214,9 @@ const Customers = () => {
                 <option value="Aadhaar">{t("customers.aadhaar")}</option>
                 <option value="PAN">{t("customers.pan")}</option>
                 <option value="Voter ID">{t("customers.voter")}</option>
-                <option value="Driving License">
-                  {t("customers.license")}
-                </option>
+                <option value="Driving License">{t("customers.license")}</option>
               </select>
-              <Input
-                placeholder={t("customers.idProofNumber")}
-                value={idProofNumber}
-                onChange={(e) => setIdProofNumber(e.target.value)}
-                required
-              />
+              <Input placeholder={t("customers.idProofNumber")} value={idProofNumber} onChange={(e) => setIdProofNumber(e.target.value)} required />
               <Button type="submit" className="mt-2 w-full">
                 {t("customers.save")}
               </Button>
@@ -294,16 +225,22 @@ const Customers = () => {
         </Dialog>
       </div>
 
-      {/* Error or Loading */}
       {loading ? (
-        <p className="text-muted-foreground">{t("customers.loading")}</p>
-      ) : error ? (
+              <Card>
+                <CardContent className="p-4 space-y-4">
+                  <Skeleton className="h-6 w-1/3" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                </CardContent>
+              </Card>
+            ) : error ? (
         <p className="text-red-600 font-medium">{t("customers.error")}</p>
       ) : (
         <Card>
           <CardContent className="p-4 overflow-auto">
             <ReTable
-              data={filteredCustomers}
+              data={customers}
               columns={customerColumns}
               onDelete={handleDelete}
               onEdit={handleEdit}

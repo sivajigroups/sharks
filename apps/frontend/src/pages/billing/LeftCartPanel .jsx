@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
 import {
   Dialog,
   DialogTrigger,
@@ -10,123 +12,135 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-const customerList = [
-  {
-    name: "Anita Oliver",
-    address: "123 MG Road, Chennai",
-    mobilenumber: "9876543210",
-  },
-  {
-    name: "John Doe",
-    address: "56 Anna Salai, Chennai",
-    mobilenumber: "9012345678",
-  },
-  {
-    name: "Sundar P",
-    address: "78 GST Road, Trichy",
-    mobilenumber: "9087654321",
-  },
-];
-
 const LeftCartPanel = ({ cartItems }) => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
 
   const total = cartItems.reduce((acc, item) => acc + item.price * item.qty, 0);
   const tax = +(total * 0.13).toFixed(2);
   const loyaltyPoints = Math.floor(total / 10);
   const newTotal = total + tax;
 
- const generateInvoice = () => {
+  const generateInvoice = () => {
   const doc = new jsPDF();
   const primary = "#6366F1";
   const gray = "#6B7280";
   const green = "#10B981";
+  const lightGray = "#F3F4F6";
 
-  // Header
+  // Company Header
   doc.setFillColor(primary);
-  doc.rect(0, 0, 210, 25, "F");
+  doc.roundedRect(0, 0, 210, 30, 0, 0, "F");
+  doc.setTextColor("#ffffff");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.setTextColor("#fff");
-  doc.text("Sivaji Groups", 16, 17);
+  doc.setFontSize(22);
+  doc.text("Sivaji Groups", 16, 20);
   doc.setFontSize(12);
-  doc.text("Invoice", 180, 17, { align: "right" });
+  doc.text("Invoice", 180, 20, { align: "right" });
 
-  let y = 30;
+  let y = 40;
 
-  // Customer Details
+  // Company + Invoice Info Block
+  doc.setTextColor("#000");
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text("From:", 16, y);
+  doc.text("Sivaji Power Tools\n123 Tool Street\nChennai, TN - 600001", 16, y + 5);
+  doc.text(`Invoice Date: ${new Date().toLocaleDateString()}`, 150, y, { align: "left" });
+
+  y += 25;
+
+  // Customer Info Block
   if (selectedCustomer) {
-    doc.setFontSize(11);
-    doc.setTextColor("#000");
+    const addr = selectedCustomer.address || {};
+    doc.setFont("helvetica", "bold");
+    doc.text("Bill To:", 16, y);
     doc.setFont("helvetica", "normal");
-    doc.text(`Customer: ${selectedCustomer.name}`, 16, y);
-    y += 6;
-    doc.text(`Address: ${selectedCustomer.address}`, 16, y);
-    y += 6;
-    doc.text(`Mobile: ${selectedCustomer.mobilenumber}`, 16, y);
-    y += 10;
+    doc.text(`${selectedCustomer.name}`, 16, y + 5);
+    doc.text(
+      `${addr.street || ""}, ${addr.area || ""}, ${addr.city || ""} - ${addr.pincode || ""}`,
+      16,
+      y + 10
+    );
+    doc.text(`Mobile: ${selectedCustomer.phone}`, 16, y + 15);
   }
 
-  // Table Headers
-  doc.setFillColor("#F3F4F6");
-  doc.rect(16, y, 178, 10, "F");
-  doc.setTextColor(primary);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("Item", 18, y + 7);
-  doc.text("Qty", 110, y + 7, { align: "right" });
-  doc.text("Price", 140, y + 7, { align: "right" });
-  doc.text("Total", 190, y + 7, { align: "right" });
-  y += 12;
+  y += 25;
 
-  // Table Items
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor("#000");
+  // Table Headers and Rows
+  const tableBody = cartItems.map((item, i) => [
+    i + 1,
+    item.name,
+    item.qty,
+    `₹${item.price}`,
+    `₹${(item.qty * item.price).toFixed(2)}`
+  ]);
 
-  cartItems.forEach((item) => {
-    doc.text(item.name, 18, y);
-    doc.text(String(item.qty), 110, y, { align: "right" });
-    doc.text(`₹${item.price}`, 140, y, { align: "right" });
-    doc.text(`₹${(item.qty * item.price).toFixed(2)}`, 190, y, { align: "right" });
-    y += 7;
-    if (y > 250) {
-      doc.addPage();
-      y = 20;
-    }
+  autoTable(doc, {
+    startY: y,
+    head: [["#", "Item", "Qty", "Price", "Total"]],
+    body: tableBody,
+    styles: {
+      font: "helvetica",
+      fontSize: 10,
+      cellPadding: 3,
+      halign: "center",
+    },
+    headStyles: {
+      fillColor: primary,
+      textColor: "#fff",
+      fontStyle: "bold",
+    },
+    alternateRowStyles: { fillColor: lightGray },
+    columnStyles: {
+      1: { halign: "left" },
+      4: { fontStyle: "bold" },
+    },
+    didDrawPage: (data) => {
+      y = data.cursor.y;
+    },
+    margin: { left: 16, right: 16 },
   });
 
   // Totals
-  y += 8;
-  doc.setLineWidth(0.3);
-  doc.setDrawColor("#E5E7EB");
-  doc.line(16, y, 200, y);
-  y += 8;
-
+  y += 10;
+  doc.setFontSize(10);
+  doc.setTextColor("#000");
   doc.setFont("helvetica", "bold");
   doc.text("Subtotal:", 140, y, { align: "right" });
   doc.text(`₹${total.toFixed(2)}`, 190, y, { align: "right" });
+
   y += 6;
   doc.text("Tax (13%):", 140, y, { align: "right" });
   doc.text(`₹${tax.toFixed(2)}`, 190, y, { align: "right" });
+
   y += 6;
   doc.setTextColor(green);
   doc.text("Total:", 140, y, { align: "right" });
   doc.text(`₹${newTotal.toFixed(2)}`, 190, y, { align: "right" });
 
-  // Loyalty
+  // Loyalty Points
   y += 10;
   doc.setFont("helvetica", "italic");
   doc.setFontSize(9);
   doc.setTextColor(green);
   doc.text(`+${loyaltyPoints} Loyalty Points Earned`, 16, y);
 
-  // Footer
-  doc.setFontSize(9);
+  // Footer and Watermark
   doc.setTextColor(gray);
+  doc.setFontSize(9);
   doc.text("Thank you for your business!", 16, 285);
 
-  // Open print preview
+  doc.setTextColor("#d0d0d0");
+  doc.setFontSize(40);
+  doc.text("Sivaji", 105, 150, { align: "center", angle: 45 });
+
+  // Output
   const pdfUrl = doc.output("bloburl");
   const printWindow = window.open(pdfUrl, "_blank");
   if (printWindow) {
@@ -138,11 +152,41 @@ const LeftCartPanel = ({ cartItems }) => {
 };
 
 
+  const fetchCustomers = async (query = "", page = 1) => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE}/customer/details?search=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to fetch customers");
+
+      const json = await response.json();
+      setCustomers(json.data || []);
+      setError("");
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      fetchCustomers(searchTerm, 1);
+    }, 400);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchTerm]);
+
   return (
     <div className="w-[340px] bg-white shadow-md rounded-md p-4 text-sm flex flex-col h-full max-h-screen">
-      <h2 className="text-lg font-semibold mb-2">Cart Preview testing</h2>
+      <h2 className="text-lg font-semibold mb-2">Cart Preview</h2>
 
-      {/* Scrollable Cart List */}
       <div className="flex-1 overflow-y-auto pr-1 scrollbar-hide scroll-smooth space-y-2">
         {cartItems.length === 0 ? (
           <div className="text-sm text-gray-400">
@@ -165,7 +209,6 @@ const LeftCartPanel = ({ cartItems }) => {
         )}
       </div>
 
-      {/* Summary & Buttons */}
       <div className="pt-2 space-y-1 border-t mt-2">
         <div className="flex justify-between font-semibold text-base">
           <span>Total:</span>
@@ -191,30 +234,53 @@ const LeftCartPanel = ({ cartItems }) => {
                 : "Select Customer"}
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="h-[80vh] flex flex-col">
             <DialogTitle>Select a Customer</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              Choose from the list below.
+              Search and choose from customer list.
             </DialogDescription>
-            {customerList.map((customer, index) => (
-              <DialogClose asChild key={index}>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start"
-                  onClick={() => setSelectedCustomer(customer)}
-                >
-                  <div className="text-left">
-                    <div className="font-semibold">{customer.name}</div>
-                    <div className="text-xs text-gray-500">
-                      {customer.address}
+
+            <input
+              type="text"
+              placeholder="Search by name, city or phone..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full border rounded px-2 py-1 text-sm mb-2"
+            />
+
+            {loading && (
+              <p className="text-sm text-gray-500">Loading customers...</p>
+            )}
+            {error && <p className="text-sm text-red-500">{error}</p>}
+
+            <div className="flex-1 overflow-y-auto space-y-1">
+              {customers.map((customer, index) => (
+                <DialogClose asChild key={index}>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
+                    onClick={() => setSelectedCustomer(customer)}
+                  >
+                    <div className="text-left">
+                      <div className="font-semibold">{customer.name}</div>
+                      <div className="text-xs text-gray-500">
+                        {customer.address &&
+                          `${customer.address.street}, ${customer.address.area}, ${customer.address.city} - ${customer.address.pincode}`}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        📞 {customer.phone}
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-500">
-                      📞 {customer.mobilenumber}
-                    </div>
-                  </div>
-                </Button>
-              </DialogClose>
-            ))}
+                  </Button>
+                </DialogClose>
+              ))}
+
+              {!loading && customers.length === 0 && (
+                <p className="text-sm text-gray-400">
+                  No matching customers found.
+                </p>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
 

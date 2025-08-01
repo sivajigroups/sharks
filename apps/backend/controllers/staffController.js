@@ -286,14 +286,40 @@ const insertCustomer = async (req, res) => {
 
 const getAllCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find();
-    res.json(customers);
+    const search = req.query.search || "";
+    const page = parseInt(req.query.page) || 1;
+    const limit = 8; // fixed to return only 8 customers per page
+
+    const query = {
+      $or: [
+        { name: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+        { alternatePhone: { $regex: search, $options: "i" } },
+        { "address.city": { $regex: search, $options: "i" } },
+      ],
+    };
+
+    const customers = await Customer.find(query)
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    const total = await Customer.countDocuments(query);
+
+    res.json({
+      data: customers,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching customers", error: error.message });
+    res.status(500).json({
+      message: "Error fetching customers",
+      error: error.message,
+    });
   }
 };
+
+
 const deleteCustomer = async (req, res) => {
   try {
     const { id } = req.params;
