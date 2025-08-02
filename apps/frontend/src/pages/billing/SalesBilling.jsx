@@ -78,45 +78,58 @@ const SalesBilling = () => {
       {/* Right Panel - Scrollable */}
       <div className="flex-1 overflow-y-auto p-4 scrollbar-hide scroll-smooth">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {inventories.map((tool) => (
-            <Dialog key={tool._id}>
-              <DialogTrigger asChild>
-                <Card className="min-w-[180px] rounded-xl shadow-sm overflow-hidden cursor-pointer">
-                  <CardHeader className="p-3">
-                    <CardTitle className="text-sm font-semibold">
-                      {tool.name}
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      {tool.description}
-                    </CardDescription>
-                  </CardHeader>
+          {loading
+            ? Array.from({ length: 8 }).map((_, i) => (
+                <Card
+                  key={i}
+                  className="min-w-[180px] rounded-xl shadow-sm overflow-hidden animate-pulse bg-gray-200 dark:bg-gray-700"
+                >
+                  <div className="p-3 space-y-2">
+                    <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div>
+                    <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div>
+                  </div>
                 </Card>
-              </DialogTrigger>
+              ))
+            : inventories.map((tool) => (
+                <Dialog key={tool._id}>
+                  <DialogTrigger asChild>
+                    <Card className="min-w-[180px] rounded-xl shadow-sm overflow-hidden cursor-pointer">
+                      <CardHeader className="p-3">
+                        <CardTitle className="text-sm font-semibold">
+                          {tool.name}
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          {tool.description}
+                        </CardDescription>
+                      </CardHeader>
+                    </Card>
+                  </DialogTrigger>
 
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Select Variant for {tool.name}</DialogTitle>
-                </DialogHeader>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Select Variant for {tool.name}</DialogTitle>
+                    </DialogHeader>
 
-                <div className="space-y-2">
-                  {tool.variants.map((variant) => (
-                    <DialogClose asChild key={variant._id}>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-between"
-                        onClick={() => handleAddToCart(tool, variant)}
-                      >
-                        <span>
-                          {variant.brand} - {variant.size} {variant.color && `- ${variant.color}`}
-                        </span>
-                        <span>₹{variant.price}</span>
-                      </Button>
-                    </DialogClose>
-                  ))}
-                </div>
-              </DialogContent>
-            </Dialog>
-          ))}
+                    <div className="space-y-2">
+                      {tool.variants.map((variant) => (
+                        <DialogClose asChild key={variant._id}>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-between"
+                            onClick={() => handleAddToCart(tool, variant)}
+                          >
+                            <span>
+                              {variant.brand} - {variant.size}{" "}
+                              {variant.color && `- ${variant.color}`}
+                            </span>
+                            <span>₹{variant.price}</span>
+                          </Button>
+                        </DialogClose>
+                      ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              ))}
         </div>
       </div>
     </div>

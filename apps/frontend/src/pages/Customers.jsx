@@ -78,7 +78,16 @@ const Customers = () => {
   }, [searchTerm]);
 
   const handleInsert = async () => {
-    if (!name || !phone || !street || !area || !city || !pincode || !idProofType || !idProofNumber) {
+    if (
+      !name ||
+      !phone ||
+      !street ||
+      !area ||
+      !city ||
+      !pincode ||
+      !idProofType ||
+      !idProofNumber
+    ) {
       alert("Please fill all fields.");
       return;
     }
@@ -166,18 +175,18 @@ const Customers = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-4 w-308">
+    <div className="flex flex-wrap flex-1 w-full h-full p-4 gap-4 overflow-auto min-w-[1024px]">
       <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
         {t("customers.title")}
       </h1>
 
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex justify-between items-center w-full flex-wrap gap-2">
         <Input
           type="text"
           placeholder={t("customers.searchPlaceholder")}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-1/2"
+          className="w-full sm:w-1/2"
         />
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -197,13 +206,47 @@ const Customers = () => {
                 handleInsert();
               }}
             >
-              <Input placeholder={t("customers.name")} value={name} onChange={(e) => setName(e.target.value)} required />
-              <Input placeholder={t("customers.phone")} value={phone} onChange={(e) => setPhone(e.target.value)} required />
-              <Input placeholder={t("customers.altPhone")} value={alternatePhone} onChange={(e) => setAlternatePhone(e.target.value)} />
-              <Input placeholder={t("customers.street")} value={street} onChange={(e) => setStreet(e.target.value)} required />
-              <Input placeholder={t("customers.area")} value={area} onChange={(e) => setArea(e.target.value)} required />
-              <Input placeholder={t("customers.city")} value={city} onChange={(e) => setCity(e.target.value)} required />
-              <Input placeholder={t("customers.pincode")} value={pincode} onChange={(e) => setPincode(e.target.value)} required />
+              <Input
+                placeholder={t("customers.name")}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+              <Input
+                placeholder={t("customers.phone")}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
+              <Input
+                placeholder={t("customers.altPhone")}
+                value={alternatePhone}
+                onChange={(e) => setAlternatePhone(e.target.value)}
+              />
+              <Input
+                placeholder={t("customers.street")}
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+                required
+              />
+              <Input
+                placeholder={t("customers.area")}
+                value={area}
+                onChange={(e) => setArea(e.target.value)}
+                required
+              />
+              <Input
+                placeholder={t("customers.city")}
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                required
+              />
+              <Input
+                placeholder={t("customers.pincode")}
+                value={pincode}
+                onChange={(e) => setPincode(e.target.value)}
+                required
+              />
               <select
                 value={idProofType}
                 onChange={(e) => setIdProofType(e.target.value)}
@@ -214,9 +257,16 @@ const Customers = () => {
                 <option value="Aadhaar">{t("customers.aadhaar")}</option>
                 <option value="PAN">{t("customers.pan")}</option>
                 <option value="Voter ID">{t("customers.voter")}</option>
-                <option value="Driving License">{t("customers.license")}</option>
+                <option value="Driving License">
+                  {t("customers.license")}
+                </option>
               </select>
-              <Input placeholder={t("customers.idProofNumber")} value={idProofNumber} onChange={(e) => setIdProofNumber(e.target.value)} required />
+              <Input
+                placeholder={t("customers.idProofNumber")}
+                value={idProofNumber}
+                onChange={(e) => setIdProofNumber(e.target.value)}
+                required
+              />
               <Button type="submit" className="mt-2 w-full">
                 {t("customers.save")}
               </Button>
@@ -225,30 +275,39 @@ const Customers = () => {
         </Dialog>
       </div>
 
-      {loading ? (
-              <Card>
-                <CardContent className="p-4 space-y-4">
-                  <Skeleton className="h-6 w-1/3" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                </CardContent>
-              </Card>
-            ) : error ? (
-        <p className="text-red-600 font-medium">{t("customers.error")}</p>
-      ) : (
-        <Card>
-          <CardContent className="p-4 overflow-auto">
-            <ReTable
-              data={customers}
-              columns={customerColumns}
-              onDelete={handleDelete}
-              onEdit={handleEdit}
-              showViewButton={false}
-            />
-          </CardContent>
-        </Card>
-      )}
+      <div className="w-full flex flex-col gap-4 flex-1">
+        {loading ? (
+          <div className="w-full flex-1 flex flex-col gap-4">
+            <div className="flex justify-between items-center w-full flex-wrap gap-2">
+              <Skeleton className="h-10 w-full sm:w-1/2" />
+              <Skeleton className="h-10 w-[150px]" />
+            </div>
+
+            <Card className="w-full min-h-[400px]">
+              <CardContent className="p-4 space-y-4 w-full">
+                <Skeleton className="h-6 w-1/3" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </CardContent>
+            </Card>
+          </div>
+        ) : error ? (
+          <p className="text-red-600 font-medium">{t("customers.error")}</p>
+        ) : (
+          <Card className="w-full">
+            <CardContent className="p-4 overflow-auto w-full">
+              <ReTable
+                data={customers}
+                columns={customerColumns}
+                onDelete={handleDelete}
+                onEdit={handleEdit}
+                showViewButton={false}
+              />
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };

@@ -14,8 +14,8 @@ const Layout = () => {
         {/* Right side (Topbar + content) */}
         <div className="flex flex-col flex-1 overflow-hidden">
           <LayoutTopbar />
-          <main className="flex-1 p-4 bg-gray-100 dark:bg-gray-900 overflow-auto">
-            <Outlet/>
+          <main className="flex-1 w-full h-full p-4 bg-gray-100 dark:bg-gray-900 overflow-auto">
+            <Outlet />
           </main>
         </div>
       </div>

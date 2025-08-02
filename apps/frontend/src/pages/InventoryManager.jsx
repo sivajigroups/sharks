@@ -21,6 +21,7 @@ import {
 import ReTable from "@/components/shared/ReTable";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const categories = [
   "Power Tools",
@@ -34,6 +35,7 @@ const categories = [
 const InventoryManager = ({ type }) => {
   const { t } = useTranslation();
   const [inventories, setInventories] = useState([]);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -58,10 +60,13 @@ const InventoryManager = ({ type }) => {
     const fetchInventories = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE}/inventory/${type}`, {
-          method: "GET",
-          credentials: "include",
-        });
+        const res = await fetch(
+          `${import.meta.env.VITE_API_BASE}/inventory/${type}`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
         const data = await res.json();
         setInventories(data.data);
       } catch (err) {
@@ -76,11 +81,14 @@ const InventoryManager = ({ type }) => {
   useEffect(() => {
     const fetchAttributes = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE}/inventory/attributes`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-        });
+        const res = await fetch(
+          `${import.meta.env.VITE_API_BASE}/inventory/attributes`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          }
+        );
 
         if (!res.ok) throw new Error("Failed to fetch attributes");
 
@@ -104,7 +112,10 @@ const InventoryManager = ({ type }) => {
   };
 
   const addVariant = () => {
-    setVariants([...variants, { brand: "", size: "", color: "", price: "", stock: "" }]);
+    setVariants([
+      ...variants,
+      { brand: "", size: "", color: "", price: "", stock: "" },
+    ]);
   };
 
   const removeVariant = (index) => {
@@ -121,14 +132,22 @@ const InventoryManager = ({ type }) => {
         stock: Number(v.stock),
       }));
 
-      const newItem = { name, description, category, variants: cleanedVariants };
+      const newItem = {
+        name,
+        description,
+        category,
+        variants: cleanedVariants,
+      };
 
-      const res = await fetch(`${import.meta.env.VITE_API_BASE}/inventory/${type}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(newItem),
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE}/inventory/${type}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(newItem),
+        }
+      );
 
       if (!res.ok) {
         const err = await res.json();
@@ -150,17 +169,22 @@ const InventoryManager = ({ type }) => {
     if (!trimmed) return toast.error(`${type} cannot be empty!`);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE}/inventory/attributes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [type]: [trimmed] }),
-        credentials: "include",
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE}/inventory/attributes`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ [type]: [trimmed] }),
+          credentials: "include",
+        }
+      );
       if (!res.ok) throw new Error(`Failed to add ${type}`);
 
       setFn((prev) => [...prev, trimmed]);
       setVariants((prev) =>
-        prev.map((v) => (v[field] === `__add_${type}__` ? { ...v, [field]: trimmed } : v))
+        prev.map((v) =>
+          v[field] === `__add_${type}__` ? { ...v, [field]: trimmed } : v
+        )
       );
 
       if (type === "brand") {
@@ -182,10 +206,13 @@ const InventoryManager = ({ type }) => {
 
   const handleDelete = async (id) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE}/inventory/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE}/inventory/${id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
       if (!res.ok) throw new Error("Delete failed");
       toast.success("Inventory deleted!");
       setInventories((prev) => prev.filter((item) => item._id !== id));
@@ -203,24 +230,27 @@ const InventoryManager = ({ type }) => {
   const filterInventory = searchTerm
     ? inventories.filter((item) =>
         Object.values(item).some((val) =>
-          (val ?? "").toString().toLowerCase().includes(searchTerm.toLowerCase())
+          (val ?? "")
+            .toString()
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase())
         )
       )
     : inventories;
 
   return (
-    <div className="min-h-screen p-6 bg-gray-100 dark:bg-gray-900 space-y-6 w-305">
+    <div className="flex flex-wrap flex-1">
       <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
         {t("inventory.title")}
       </h1>
 
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center w-full flex-wrap gap-2">
         <Input
           type="text"
           placeholder={t("inventory.search")}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-1/2"
+          className="w-full sm:w-1/2"
         />
 
         <Drawer>
@@ -273,7 +303,10 @@ const InventoryManager = ({ type }) => {
                 </select>
 
                 {variants.map((variant, index) => (
-                  <div key={index} className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  <div
+                    key={index}
+                    className="grid grid-cols-2 md:grid-cols-3 gap-2"
+                  >
                     <select
                       value={variant.brand}
                       onChange={(e) =>
@@ -333,14 +366,18 @@ const InventoryManager = ({ type }) => {
                       placeholder="Price"
                       type="number"
                       value={variant.price}
-                      onChange={(e) => handleVariantChange(index, "price", e.target.value)}
+                      onChange={(e) =>
+                        handleVariantChange(index, "price", e.target.value)
+                      }
                       required
                     />
                     <Input
                       placeholder="Stock"
                       type="number"
                       value={variant.stock}
-                      onChange={(e) => handleVariantChange(index, "stock", e.target.value)}
+                      onChange={(e) =>
+                        handleVariantChange(index, "stock", e.target.value)
+                      }
                       required
                     />
                     <Button
@@ -354,7 +391,12 @@ const InventoryManager = ({ type }) => {
                   </div>
                 ))}
 
-                <Button type="button" onClick={addVariant} variant="outline" className="w-full">
+                <Button
+                  type="button"
+                  onClick={addVariant}
+                  variant="outline"
+                  className="w-full"
+                >
                   + Add Variant
                 </Button>
               </form>
@@ -368,67 +410,37 @@ const InventoryManager = ({ type }) => {
           </DrawerContent>
         </Drawer>
       </div>
+ <div className="w-full flex flex-col gap-4 flex-1">
+        {loading ? (
+          <div className="w-full flex-1 flex flex-col gap-4">
+            <div className="flex justify-between items-center w-full flex-wrap gap-2">
+              <Skeleton className="h-10 w-full sm:w-1/2" />
+              <Skeleton className="h-10 w-[150px]" />
+            </div>
 
-      {/* Attribute Dialogs */}
-      <Dialog open={openBrandDialog} onOpenChange={setOpenBrandDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Brand</DialogTitle>
-            <DialogDescription>Enter a new brand name</DialogDescription>
-          </DialogHeader>
-          <Input value={newBrand} onChange={(e) => setNewBrand(e.target.value)} />
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="ghost" onClick={() => setOpenBrandDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => handleAddAttribute("brand", newBrand, setBrands, "brand")}>
-              Add Brand
-            </Button>
+            <Card className="w-full min-h-[400px]">
+              <CardContent className="p-4 space-y-4 w-full">
+                <Skeleton className="h-6 w-1/3" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </CardContent>
+            </Card>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={openSizeDialog} onOpenChange={setOpenSizeDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Size</DialogTitle>
-            <DialogDescription>Enter a new size</DialogDescription>
-          </DialogHeader>
-          <Input value={newSize} onChange={(e) => setNewSize(e.target.value)} />
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="ghost" onClick={() => setOpenSizeDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => handleAddAttribute("size", newSize, setSizes, "size")}>
-              Add Size
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={openColorDialog} onOpenChange={setOpenColorDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Color</DialogTitle>
-            <DialogDescription>Enter a new color</DialogDescription>
-          </DialogHeader>
-          <Input value={newColor} onChange={(e) => setNewColor(e.target.value)} />
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="ghost" onClick={() => setOpenColorDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => handleAddAttribute("color", newColor, setColors, "color")}>
-              Add Color
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Card className="overflow-auto">
-        <CardContent className="p-4">
-          <ReTable data={filterInventory} columns={columns} onDelete={handleDelete} />
+        ) : error ? (
+          <p className="text-red-600 font-medium">{t("customers.error")}</p>
+        ) : (
+      <Card className="w-full">
+        <CardContent className="p-4 overflow-auto w-full">
+          <ReTable
+            data={filterInventory}
+            columns={columns}
+            onDelete={handleDelete}
+          />
         </CardContent>
       </Card>
+        )}
+        </div>
     </div>
   );
 };
