@@ -1,4 +1,7 @@
 {
+  "common": {
+    "close": "Close"
+  },
   "sidebar": {
     "general": "General",
     "dashboard": "Dashboard",
@@ -12,11 +15,10 @@
     "profile": "Profile"
   },
   "topbar": {
-  "dashboard": "Dashboard",
-  "myAccount": "My Account",
-  "logout": "Logout"
-},
-
+    "dashboard": "Dashboard",
+    "myAccount": "My Account",
+    "logout": "Logout"
+  },
   "inventory": {
     "title": "Inventory Manager",
     "addInventory": "Add Inventory",
@@ -30,30 +32,49 @@
     "serviceStatus": "Service Status",
     "save": "Save Inventory",
     "search": "Search inventory...",
-    "selectCategory": "Select Category"
+    "selectCategory": "Select Category",
+    "selectBrand": "Select Brand",
+    "selectSize": "Select Size",
+    "selectColor": "Select Color",
+    "enterColor": "Enter Color",
+    "enterBrand": "Enter Brand",
+    "enterSize": "Enter Size",
+    "addBrand": "Add Brand",
+    "addSize": "Add Size",
+    "addColor": "Add Color",
+    "add": "Add",
+    "price": "Price (₹)",
+    "stock": "Stock",
+    "addVariant": "Add Variant",
+    "removeVariant": "Remove Variant",
+    "lastUpdated": "Last Updated",
+    "fetchError": "Failed to fetch inventory",
+    "insertSuccess": "Inventory item added successfully!",
+    "insertError": "Error adding inventory",
+    "deleteSuccess": "Inventory deleted!",
+    "deleteError": "Error deleting inventory"
   },
   "customers": {
-  "title": "Customers",
-  "searchPlaceholder": "Search by name or phone...",
-  "addCustomer": "Add Customer",
-  "addCustomerTitle": "Add New Customer",
-  "name": "Name",
-  "phone": "Phone",
-  "altPhone": "Alternate Phone",
-  "street": "Street",
-  "area": "Area",
-  "city": "City",
-  "address": "Address",
-  "pincode": "Pincode",
-  "idProof": "ID Proof",
-  "idProofNumber": "ID Proof Number",
-  "aadhaar": "Aadhaar",
-  "pan": "PAN",
-  "voter": "Voter ID",
-  "license": "Driving License",
-  "save": "Save",
-  "loading": "Loading customers...",
-  "error": "Error loading customers"
-}
-
+    "title": "Customers",
+    "searchPlaceholder": "Search by name or phone...",
+    "addCustomer": "Add Customer",
+    "addCustomerTitle": "Add New Customer",
+    "name": "Name",
+    "phone": "Phone",
+    "altPhone": "Alternate Phone",
+    "street": "Street",
+    "area": "Area",
+    "city": "City",
+    "address": "Address",
+    "pincode": "Pincode",
+    "idProof": "ID Proof",
+    "idProofNumber": "ID Proof Number",
+    "aadhaar": "Aadhaar",
+    "pan": "PAN",
+    "voter": "Voter ID",
+    "license": "Driving License",
+    "save": "Save",
+    "loading": "Loading customers...",
+    "error": "Error loading customers"
+  }
 }
