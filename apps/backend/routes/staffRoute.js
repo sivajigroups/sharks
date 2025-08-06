@@ -17,10 +17,12 @@ const {
   getAllrental,
   insertAttribute,
   getAttribute,
+  updateSales,
 } = require("../controllers/staffController");
 const staffRouter = express.Router();
 
 staffRouter.post("/inventory/sales",userAuth,insertSales);
+staffRouter.put("/inventory/sales/:id", userAuth, updateSales); // Assuming this is for updating sales
 staffRouter.post("/inventory/rental", userAuth, insertRental);
 
 

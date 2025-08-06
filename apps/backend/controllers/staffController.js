@@ -78,6 +78,88 @@ const insertSales = async (req, res) => {
     });
   }
 };
+const updateSales = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, category, variants } = req.body;
+
+    // Basic validation
+    if (!name || !variants || !Array.isArray(variants) || variants.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Missing required fields: name or variants" });
+    }
+
+    // Re‐generate SKUs and validate each variant
+    const processedVariants = variants.map(variant => {
+      const brand = variant.brand || "GENERIC";
+      const size  = variant.size  || "STD";
+      const sku   = `${name}-${brand}-${size}`
+                        .replace(/\s+/g, "")
+                        .toUpperCase();
+
+      if (variant.price == null || variant.stock == null) {
+        throw new Error("Each variant must have price and stock");
+      }
+
+      return { ...variant, sku };
+    });
+
+    // Prevent SKU collisions with *other* documents
+    const skuList = processedVariants.map(v => v.sku);
+    const collision = await SalesInventory.findOne({
+      _id:       { $ne: id },
+      "variants.sku": { $in: skuList }
+    });
+
+    if (collision) {
+      return res
+        .status(400)
+        .json({ message: "One or more SKUs already exist in another item" });
+    }
+
+    // Perform the update
+    const updated = await SalesInventory.findByIdAndUpdate(
+      id,
+      {
+        name,
+        description,
+        category,
+        variants: processedVariants
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      return res
+        .status(404)
+        .json({ message: "Inventory item not found" });
+    }
+
+    // Check for low‐stock thresholds
+    const lowStockSKUs = processedVariants
+      .filter(v => v.stock < 5)
+      .map(v => v.sku);
+
+    if (lowStockSKUs.length) {
+      return res.status(200).json({
+        message: `Updated, but low stock for SKUs: ${lowStockSKUs.join(", ")}`,
+        data: updated
+      });
+    }
+
+    res.status(200).json({
+      message: "Inventory item updated successfully",
+      data: updated
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Error updating inventory item",
+      error: error.message
+    });
+  }
+};
 
 //const Attribute = require("../models/Attribute");
 
@@ -480,6 +562,7 @@ module.exports = {
   deleteCustomer,
   editCustomer,
   insertSales,
+  updateSales,
   insertRental,
   insertAttribute,
   getAttribute,

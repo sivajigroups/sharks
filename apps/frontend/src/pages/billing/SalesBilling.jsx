@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import LeftCartPanel from "./LeftCartPanel ";
+import LeftCartPanel from "./LeftCartPanel .jsx";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const SalesBilling = () => {
   const [loading, setLoading] = useState(false);
@@ -28,14 +29,11 @@ const SalesBilling = () => {
       try {
         const res = await fetch(
           `${import.meta.env.VITE_API_BASE}/inventory/sales`,
-          {
-            method: "GET",
-            credentials: "include",
-          }
+          { credentials: "include" }
         );
         const data = await res.json();
         setInventories(data.data);
-      } catch (err) {
+      } catch {
         toast.error("Failed to fetch inventory");
       } finally {
         setLoading(false);
@@ -46,38 +44,30 @@ const SalesBilling = () => {
 
   const handleAddToCart = (tool, variant) => {
     const id = `${tool._id}-${variant.sku}`;
-
-    setCartItems((prevCart) => {
-      const existingItem = prevCart.find((item) => item.id === id);
-      if (existingItem) {
-        return prevCart.map((item) =>
-          item.id === id ? { ...item, qty: item.qty + 1 } : item
+    setCartItems(prev => {
+      const existing = prev.find(i => i.id === id);
+      if (existing) {
+        return prev.map(i =>
+          i.id === id ? { ...i, qty: i.qty + 1 } : i
         );
       }
-
-      return [
-        ...prevCart,
-        {
-          id,
-          name: tool.name,
-          variant,
-          qty: 1,
-          price: variant.price,
-        },
-      ];
+      return [...prev, { id, name: tool.name, variant, qty: 1, price: variant.price }];
     });
   };
 
   return (
-    <div className="flex h-full overflow-hidden">
-      {/* Left Panel - Fixed */}
+    <div className="flex flex-1 min-w-0 h-full overflow-hidden">
+      {/* Left Panel */}
       <div className="w-[360px] shrink-0 bg-white border-r p-2">
         <LeftCartPanel cartItems={cartItems} />
       </div>
 
-      {/* Right Panel - Scrollable */}
-      <div className="flex-1 overflow-y-auto p-4 scrollbar-hide scroll-smooth">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+      {/* Right Panel */}
+      <div className="flex-1 min-w-0 overflow-y-auto p-4 scrollbar-hide scroll-smooth">
+        <div
+          className="flex flex-wrap gap-2"
+          // style={{ gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))" }}
+        >
           {loading
             ? Array.from({ length: 8 }).map((_, i) => (
                 <Card
@@ -90,7 +80,7 @@ const SalesBilling = () => {
                   </div>
                 </Card>
               ))
-            : inventories.map((tool) => (
+            : inventories.map(tool => (
                 <Dialog key={tool._id}>
                   <DialogTrigger asChild>
                     <Card className="min-w-[180px] rounded-xl shadow-sm overflow-hidden cursor-pointer">
@@ -104,14 +94,12 @@ const SalesBilling = () => {
                       </CardHeader>
                     </Card>
                   </DialogTrigger>
-
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Select Variant for {tool.name}</DialogTitle>
                     </DialogHeader>
-
                     <div className="space-y-2">
-                      {tool.variants.map((variant) => (
+                      {tool.variants.map(variant => (
                         <DialogClose asChild key={variant._id}>
                           <Button
                             variant="outline"
@@ -119,8 +107,8 @@ const SalesBilling = () => {
                             onClick={() => handleAddToCart(tool, variant)}
                           >
                             <span>
-                              {variant.brand} - {variant.size}{" "}
-                              {variant.color && `- ${variant.color}`}
+                              {variant.brand} – {variant.size}{' '}
+                              {variant.color && `– ${variant.color}`}
                             </span>
                             <span>₹{variant.price}</span>
                           </Button>

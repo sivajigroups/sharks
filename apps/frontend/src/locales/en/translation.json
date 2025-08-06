@@ -42,6 +42,8 @@
     "addBrand": "Add Brand",
     "addSize": "Add Size",
     "addColor": "Add Color",
+    "update":" Update Inventory",
+    "editInventory": "Edit Inventory",
     "add": "Add",
     "price": "Price (₹)",
     "stock": "Stock",

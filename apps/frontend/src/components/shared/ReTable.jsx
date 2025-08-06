@@ -18,13 +18,30 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+/**
+ * ReTable: A reusable table with built-in view, edit, and delete actions.
+ * Supports custom edit handling via onEditClick or a fully custom form via renderEditForm.
+ *
+ * Props:
+ * - data: Array of items to display.
+ * - columns: Array<{ key: string; label: string }> defining visible columns.
+ * - onDelete: (id: string) => void
+ * - onEdit: (id: string, updatedData: object) => void (default internal submit handler)
+ * - onEditClick?: (item: object) => void  (external edit handler)
+ * - renderEditForm?: (formState: object, handleChange: (e) => void) => ReactNode
+ * - showViewButton?: boolean
+ * - showEditButton?: boolean
+ */
+
 const ReTable = ({
   data,
   columns,
   onDelete,
   onEdit,
+  onEditClick,
+  renderEditForm,
   showViewButton = true,
-  showEdirButton = true,
+  showEditButton = true,
 }) => {
   const [editItem, setEditItem] = useState(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -32,15 +49,22 @@ const ReTable = ({
 
   const openEditDialog = (item) => {
     setEditItem(item);
-    const flattened = {
-      ...item,
-      street: item.address?.street || "",
-      area: item.address?.area || "",
-      city: item.address?.city || "",
-      pincode: item.address?.pincode || "",
-    };
+    // Flatten nested objects (e.g., address, size, color) into top-level formState
+    const flattened = { ...item };
+    Object.entries(item).forEach(([key, value]) => {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        Object.entries(value).forEach(([subKey, subVal]) => {
+          flattened[subKey] = subVal;
+        });
+      }
+    });
     setFormState(flattened);
     setIsEditOpen(true);
+  };
+
+  const handleEditButtonClick = (item) => {
+    if (onEditClick) return onEditClick(item);
+    openEditDialog(item);
   };
 
   const handleChange = (e) => {
@@ -49,11 +73,26 @@ const ReTable = ({
   };
 
   const handleEditSubmit = () => {
-    const { street, area, city, pincode, ...rest } = formState;
-    const updatedData = {
-      ...rest,
-      address: { street, area, city, pincode },
-    };
+    // Reconstruct nested objects if needed (e.g., address)
+    const updatedData = { ...formState };
+    // Example for address: combine street, area, city, pincode back
+    if (
+      'street' in formState &&
+      'area' in formState &&
+      'city' in formState &&
+      'pincode' in formState
+    ) {
+      updatedData.address = {
+        street: formState.street,
+        area: formState.area,
+        city: formState.city,
+        pincode: formState.pincode,
+      };
+      delete updatedData.street;
+      delete updatedData.area;
+      delete updatedData.city;
+      delete updatedData.pincode;
+    }
     onEdit(editItem._id, updatedData);
     setIsEditOpen(false);
   };
@@ -81,11 +120,11 @@ const ReTable = ({
             data.map((item, idx) => (
               <TableRow key={idx} className="last:border-none">
                 {columns.map((col) => {
-                  let value = col.key.includes(".")
-                    ? col.key.split(".").reduce((o, k) => o?.[k], item)
+                  let value = col.key.includes('.')
+                    ? col.key.split('.').reduce((o, k) => o?.[k], item)
                     : item[col.key];
-                  if (typeof value === "object" && value !== null) {
-                    if (col.key === "address") {
+                  if (typeof value === 'object' && value !== null) {
+                    if (col.key === 'address') {
                       const { street, area, city, pincode } = value;
                       value = `${street}, ${area}, ${city} - ${pincode}`;
                     } else {
@@ -108,12 +147,8 @@ const ReTable = ({
                       View
                     </Button>
                   )}
-                  {showEdirButton && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => openEditDialog(item)}
-                    >
+                  {showEditButton && (
+                    <Button size="sm" onClick={() => handleEditButtonClick(item)}>
                       Edit
                     </Button>
                   )}
@@ -147,7 +182,10 @@ const ReTable = ({
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={columns.length + 1} className="text-center text-muted-foreground">
+              <TableCell
+                colSpan={columns.length + 1}
+                className="text-center text-muted-foreground"
+              >
                 No records found.
               </TableCell>
             </TableRow>
@@ -162,17 +200,18 @@ const ReTable = ({
             <DialogTitle>Edit Record</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 mt-2">
-            {columns.map((col) =>
-              col.key === "address" ? (
-                <div key="address-group" className="grid grid-cols-2 gap-2">
-                  <Input name="street" placeholder="Street" value={formState.street || ""} onChange={handleChange} />
-                  <Input name="area" placeholder="Area" value={formState.area || ""} onChange={handleChange} />
-                  <Input name="city" placeholder="City" value={formState.city || ""} onChange={handleChange} />
-                  <Input name="pincode" placeholder="Pincode" value={formState.pincode || ""} onChange={handleChange} />
-                </div>
-              ) : (
-                <Input key={col.key} name={col.key} placeholder={col.label} value={formState[col.key] || ""} onChange={handleChange} />
-              )
+            {renderEditForm ? (
+              renderEditForm(formState, handleChange)
+            ) : (
+              columns.map((col) => (
+                <Input
+                  key={col.key}
+                  name={col.key}
+                  placeholder={col.label}
+                  value={formState[col.key] || ''}
+                  onChange={handleChange}
+                />
+              ))
             )}
             <DialogClose asChild>
               <Button className="mt-2 w-full" onClick={handleEditSubmit}>
