@@ -1,30 +1,41 @@
 import React, { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Plus } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
+  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
-import { toast } from "sonner";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import ReTable from "@/components/shared/ReTable";
 
 export default function StaffPage() {
-  // Staff list and loading/error states
-  const [staffList, setStaffList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const API = import.meta.env.VITE_API_BASE;
 
-  // Search filter state
-  const [searchTerm, setSearchTerm] = useState("");
+  //–– State ––//
+  const [staffList, setStaffList] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  // Form input states
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editStaffId, setEditStaffId] = useState(null);
+
+  // Form fields
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -33,10 +44,7 @@ export default function StaffPage() {
   const [branchId, setBranchId] = useState("");
   const role = "staff";
 
-  // Branch options
-  const [branches, setBranches] = useState([]);
-
-  // Table columns
+  // Columns config
   const staffColumns = [
     { key: "name", label: "Name" },
     { key: "email", label: "Email" },
@@ -46,159 +54,183 @@ export default function StaffPage() {
     { key: "staffid", label: "Staff ID" },
   ];
 
-  // Generate the next staff ID based on existing IDs (SGXXX)
+  //–– Helpers ––//
   const getNextStaffId = () => {
     const pattern = /^SG(\d{3})$/;
     const maxNum = staffList.reduce((max, s) => {
-      const match = pattern.exec(s.staffid);
-      const num = match ? parseInt(match[1], 10) : 0;
-      return num > max ? num : max;
+      const m = pattern.exec(s.staffid);
+      return m ? Math.max(max, +m[1]) : max;
     }, 0);
-    const nextIndex = maxNum + 1;
-    const nextStr = String(nextIndex).padStart(3, "0");
-    return `SG${nextStr}`;
+    return `SG${String(maxNum + 1).padStart(3, "0")}`;
   };
 
-  // Auto-set the staff ID whenever the list updates
-  useEffect(() => {
-    const nextId = getNextStaffId();
-    setStaffId(nextId);
-  }, [staffList]);
-
-  // Fetch branches
+  //–– Fetchers ––//
   const fetchBranches = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE}/branch/all`, {
-        method: "GET",
+      const res = await fetch(`${API}/branch/all`, {
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to fetch branches");
-      const data = await res.json();
-      setBranches(data);
+      if (!res.ok) throw new Error("Could not load branches");
+      setBranches(await res.json());
     } catch (err) {
-      console.error("Error fetching branches:", err);
+      console.error(err);
     }
   };
 
-  // Fetch staff list
   const fetchStaff = async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_BASE}/staff/details`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-      if (!res.ok) throw new Error("Failed to fetch staff");
-      const data = await res.json();
-      setStaffList(data);
+      const res = await fetch(`${API}/staff/details`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Could not load staff");
+      setStaffList(await res.json());
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Load data on mount
   useEffect(() => {
     fetchBranches();
     fetchStaff();
   }, []);
 
-  // Filter staff by search term
-  const filteredStaff = staffList.filter((staff) =>
-    Object.values(staff).some((val) =>
-      String(val ?? "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
-    )
-  );
+  //–– Dialog open/close ––//
+  const openAddDialog = () => {
+    setIsEditMode(false);
+    setEditStaffId(null);
+    setName("");
+    setEmail("");
+    setPhone("");
+    setPassword("");
+    setBranchId("");
+    setStaffId(getNextStaffId());
+    setOpen(true);
+  };
 
-  // Insert new staff
+  const openEditDialog = (staff) => {
+    setIsEditMode(true);
+    setEditStaffId(staff._id);
+    setName(staff.name);
+    setEmail(staff.email);
+    setPhone(staff.phone);
+    setPassword("");
+    setBranchId(staff.branchId?._id || staff.branchId);
+    setStaffId(staff.staffid);
+    setOpen(true);
+  };
+
+  //–– Create / Update ––//
   const handleInsert = async () => {
-    if (!name || !email || !phone || !staffid || !password || !branchId) {
-      toast.error("Please fill all fields.");
-      return;
+    if (!name || !email || !phone || !branchId) {
+      return toast.error("Please fill all required fields.");
     }
-
-    const body = { name, email, phone, staffid, password, role, branchId };
-
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE}/create/staff`, {
+      const res = await fetch(`${API}/create/staff`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          staffid,
+          password,
+          role,
+          branchId,
+        }),
       });
-
       const text = await res.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = { message: text };
-      }
-
-      if (!res.ok) throw new Error(data.message || "Failed to add staff");
-
-      toast.success(data.message || "Staff added successfully!");
-      setOpen(false); // Close dialog on success
-      fetchStaff(); // Refresh list
-
-      // Clear input fields
-      setName("");
-      setEmail("");
-      setPhone("");
-      setPassword("");
-      setBranchId("");
+      const data = res.ok ? JSON.parse(text) : { message: text };
+      if (!res.ok) throw new Error(data.message);
+      toast.success(data.message || "Staff added!");
+      setOpen(false);
+      fetchStaff();
     } catch (err) {
-      toast.error("Error adding staff: " + err.message);
+      toast.error(err.message);
     }
   };
 
-  // Delete staff
+  const handleUpdate = async () => {
+    if (!name || !email || !phone || !branchId) {
+      return toast.error("Please fill all required fields.");
+    }
+    try {
+      const payload = { name, email, phone, branchId };
+      if (password) payload.password = password;
+      const res = await fetch(`${API}/staff/details/${editStaffId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      const text = await res.text();
+      const data = res.ok ? JSON.parse(text) : { message: text };
+      if (!res.ok) throw new Error(data.message);
+      toast.success(data.message || "Staff updated!");
+      setOpen(false);
+      fetchStaff();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  //–– Delete ––//
   const handleDelete = async (id) => {
     try {
-      await fetch(`${import.meta.env.VITE_API_BASE}/staff/details/${id}`, {
+      await fetch(`${API}/staff/details/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
-      toast.error("Staff deleted successfully!");
+      toast.success("Staff removed!");
       fetchStaff();
     } catch (err) {
-      toast.error("Error deleting staff: " + err.message);
+      toast.error(err.message);
     }
   };
 
+  //–– Filter ––//
+  const [searchTerm, setSearchTerm] = useState("");
+  const filteredStaff = staffList.filter((s) =>
+    [s.name, s.email, s.phone, s.staffid, s.role]
+      .join(" ")
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div className="space-y-6 max-w-8xl mx-auto p-4 w-310">
+    <div className="flex flex-col flex-1 p-4 gap-4 overflow-auto">
       <h1 className="text-2xl font-bold">Staff Management</h1>
 
       <div className="flex items-center justify-between gap-4">
         <Input
-          type="text"
-          placeholder="Search staff..."
+          placeholder="Search staff…"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-1/2"
         />
+
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Add Staff
+            <Button onClick={openAddDialog}>
+              <Plus className="mr-2 h-4 w-4" />
+              {isEditMode ? "Edit Staff" : "Add Staff"}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Staff</DialogTitle>
+              <DialogTitle>
+                {isEditMode ? "Edit Staff" : "Add New Staff"}
+              </DialogTitle>
             </DialogHeader>
+
             <form
               className="space-y-3 mt-2"
               onSubmit={(e) => {
                 e.preventDefault();
-                handleInsert();
+                isEditMode ? handleUpdate() : handleInsert();
               }}
             >
               <Input
@@ -219,12 +251,15 @@ export default function StaffPage() {
                 onChange={(e) => setPhone(e.target.value)}
                 required
               />
+
               <Input placeholder="Staff ID" value={staffid} readOnly />
+
               <Input
                 placeholder="Password"
+                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
+                {...(!isEditMode ? { required: true } : {})}
               />
 
               <label className="block font-medium text-sm">Branch</label>
@@ -235,46 +270,63 @@ export default function StaffPage() {
                 required
               >
                 <option value="">— Select a branch —</option>
-                {branches.map((br) => (
-                  <option key={br._id} value={br._id}>
-                    {br.name}
+                {branches.map((b) => (
+                  <option key={b._id} value={b._id}>
+                    {b.name}
                   </option>
                 ))}
               </select>
 
               <Button type="submit" className="mt-2 w-full">
-                Save Staff
+                {isEditMode ? "Update Staff" : "Save Staff"}
               </Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      {loading ? (
-        <Card>
-          <CardContent className="p-4 space-y-4">
-            <Skeleton className="h-6 w-1/3" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-          </CardContent>
-        </Card>
-      ) : error ? (
-        <p className="text-red-600 font-medium">{error}</p>
-      ) : (
-        <Card>
-          <CardContent className="p-4 overflow-auto">
+      <Card className="w-full">
+        <CardContent className="p-4 overflow-auto">
+          {loading ? (
+            <Table className="table-fixed w-full">
+              <TableHeader>
+                <TableRow className="bg-black">
+                  {staffColumns.map((col) => (
+                    <TableHead key={col.key}>
+                      <Skeleton className="h-4 w-24" />
+                    </TableHead>
+                  ))}
+                  <TableHead>
+                    <Skeleton className="h-4 w-16" />
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {staffColumns.map((col) => (
+                      <TableCell key={col.key}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                    <TableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
             <ReTable
               data={filteredStaff}
               columns={staffColumns}
               onDelete={handleDelete}
-              showViewButton
-              showEditButton={false}
+              onEditClick={openEditDialog}
+              showViewButton={false}
             />
-          </CardContent>
-        </Card>
-      )}
-  
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

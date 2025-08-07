@@ -38,34 +38,49 @@ const LayoutSidebar = () => {
         { title: t("sidebar.dashboard"), icon: Home, url: "/layout/dashboard" },
       ],
     },
+    // {
+    //   label: t("sidebar.inventory"),
+    //   items: [
+    //     {
+    //       title: t("sidebar.salesInventory"),
+    //       icon: Wrench,
+    //       url: "/layout/salesInfo",
+    //     },
+    //   ],
+    // },
     {
-      label: t("sidebar.inventory"),
+      label: t("sidebar.management"),
       items: [
         {
           title: t("sidebar.salesInventory"),
           icon: Wrench,
           url: "/layout/salesInfo",
         },
+        {
+          title: t("sidebar.customers"),
+          icon: Users,
+          url: "/layout/customers",
+        },
       ],
     },
     {
-      label: t("sidebar.management"),
+      label: t("sidebar.Billing"),
       items: [
-        { title: t("sidebar.customers"), icon: Users, url: "/layout/customers" },
+        {
+          title: t("sidebar.sales"),
+          icon: ShoppingCart,
+          url: "/layout/billing",
+        },
       ],
-    },
-    {
-      label:t("sidebar.Billing"),
-      items:[{
-        title:t("sidebar.sales"),
-        icon: ShoppingCart,
-        url:"/layout/billing",
-      }]
     },
     {
       label: t("sidebar.administration"),
       items: [
-        { title: t("sidebar.profile"), icon: UserRoundPen, url: "/layout/users" },
+        {
+          title: t("sidebar.profile"),
+          icon: UserRoundPen,
+          url: "/layout/users",
+        },
       ],
     },
   ];
@@ -73,8 +88,6 @@ const LayoutSidebar = () => {
   return (
     <Sidebar>
       <SidebarContent>
-       
-
         {/* Sidebar Items */}
         {adminSidebar.map((group) => (
           <SidebarGroup key={group.label}>
@@ -95,7 +108,7 @@ const LayoutSidebar = () => {
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
-         {/* Language Toggle Button */}
+        {/* Language Toggle Button
         <div className="p-4">
           <Button
       variant="outline"
@@ -106,7 +119,7 @@ const LayoutSidebar = () => {
       <Languages className="w-4 h-4" />
       {i18n.language === "en" ? "தமிழில்" : "English"}
     </Button>
-        </div>
+        </div> */}
       </SidebarContent>
     </Sidebar>
   );

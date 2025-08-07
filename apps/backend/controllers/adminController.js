@@ -171,6 +171,21 @@ const updateStaff = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+const deleteStaff = async (req, res) => {
+  try {
+    const staffId = req.params.id;
+
+    const deleted = await User.findByIdAndDelete(staffId);
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Staff not found" });
+    }
+
+    res.json({ message: "Staff deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 module.exports = {
   addingBranch,
@@ -181,4 +196,5 @@ module.exports = {
   getAllStaff,
   updateStaff,
   getStaffById,
+  deleteStaff
 };

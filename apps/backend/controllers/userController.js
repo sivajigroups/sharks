@@ -207,6 +207,7 @@ const getStaffById = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 const loginUser = async (req, res) => {
   try {
     const { phone, password } = req.body;
