@@ -9,6 +9,7 @@ const staffRouter = require("./routes/staffRoute");
 const saleRouter = require("./routes/saleRoute");
 const adminRouter = require("./routes/adminRoute");
 const transRouter = require("./routes/transactionRoute");
+const historyRouter = require("./routes/historyRoute");
 const app = express();
 app.use(cookieParser());
 // const allowedOrigins = [
@@ -36,6 +37,7 @@ app.use("/api", staffRouter);
 app.use("/api", saleRouter);
 app.use("/api", adminRouter);
 app.use("/api", transRouter);
+// app.use("/api",historyRouter);
 //mongoose
 dbConnect()
   .then(() => {
