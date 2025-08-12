@@ -38,7 +38,6 @@ app.use("/api", saleRouter);
 app.use("/api", adminRouter);
 app.use("/api", transRouter);
 // app.use("/api",historyRouter);
-//mongoose
 dbConnect()
   .then(() => {
     console.log("DB is Sucessfully connected");
