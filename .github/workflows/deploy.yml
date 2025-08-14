@@ -70,7 +70,7 @@ jobs:
             --private-key=deploy_key
 
 
-      - name: Copy Backend and Start with PM2
+      - name: Copy Backend and Restart PM2 Cleanly
         run: |
           host_ip=$(awk '{print $1}' inventory.ini)
           ansible "$host_ip" -i inventory.ini -m shell -a "\
@@ -78,6 +78,8 @@ jobs:
             cp -r /home/deploy-folder/apps/backend/* /home/lakshmikanth/backend/ && \
             cd /home/lakshmikanth/backend && \
             npm install && \
-            pm2 start server.js --name backend-server -f || pm2 restart backend-server -f && \
+            pm2 delete backend-server || true && \
+            pm2 start server.js --name backend-server && \
             pm2 save" \
           --private-key=deploy_key
+
