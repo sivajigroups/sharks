@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import LeftCartPanel from "./LeftCartPanel .jsx";
+import LeftCartPanel from "./LeftCartPanel "; // ✅ remove stray space
 import { Skeleton } from "@/components/ui/skeleton";
 
 const SalesBilling = () => {
@@ -27,12 +27,11 @@ const SalesBilling = () => {
     const fetchInventories = async () => {
       setLoading(true);
       try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_BASE}/inventory/sales`,
-          { credentials: "include" }
-        );
+        const res = await fetch(`${import.meta.env.VITE_API_BASE}/inventory/sales`, {
+          credentials: "include",
+        });
         const data = await res.json();
-        setInventories(data.data);
+        setInventories(data.data || []);
       } catch {
         toast.error("Failed to fetch inventory");
       } finally {
@@ -43,15 +42,27 @@ const SalesBilling = () => {
   }, []);
 
   const handleAddToCart = (tool, variant) => {
-    const id = `${tool._id}-${variant.sku}`;
-    setCartItems(prev => {
-      const existing = prev.find(i => i.id === id);
+    // Use variant._id to avoid collisions; keep both references for backend
+    const id = `${tool._id}-${variant._id}`;
+    setCartItems((prev) => {
+      const existing = prev.find((i) => i.id === id);
       if (existing) {
-        return prev.map(i =>
+        return prev.map((i) =>
           i.id === id ? { ...i, qty: i.qty + 1 } : i
         );
       }
-      return [...prev, { id, name: tool.name, variant, qty: 1, price: variant.price }];
+      return [
+        ...prev,
+        {
+          id,
+          name: tool.name,
+          inventoryId: tool._id,     // ✅ used by /api/bills
+          variantId: variant._id,    // ✅ used by /api/bills
+          variant,                   // keep full snapshot for display
+          qty: 1,
+          price: variant.price,      // current unit price used in cart view
+        },
+      ];
     });
   };
 
@@ -59,15 +70,12 @@ const SalesBilling = () => {
     <div className="flex flex-1 min-w-0 h-full overflow-hidden">
       {/* Left Panel */}
       <div className="w-[360px] shrink-0 bg-white border-r p-2">
-        <LeftCartPanel cartItems={cartItems} />
+        <LeftCartPanel cartItems={cartItems} setCartItems={setCartItems} />
       </div>
 
       {/* Right Panel */}
       <div className="flex-1 min-w-0 overflow-y-auto p-4 scrollbar-hide scroll-smooth">
-        <div
-          className="flex flex-wrap gap-2"
-          // style={{ gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))" }}
-        >
+        <div className="flex flex-wrap gap-2">
           {loading
             ? Array.from({ length: 8 }).map((_, i) => (
                 <Card
@@ -80,7 +88,7 @@ const SalesBilling = () => {
                   </div>
                 </Card>
               ))
-            : inventories.map(tool => (
+            : inventories.map((tool) => (
                 <Dialog key={tool._id}>
                   <DialogTrigger asChild>
                     <Card className="min-w-[180px] rounded-xl shadow-sm overflow-hidden cursor-pointer">
@@ -99,7 +107,7 @@ const SalesBilling = () => {
                       <DialogTitle>Select Variant for {tool.name}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-2">
-                      {tool.variants.map(variant => (
+                      {(tool.variants || []).map((variant) => (
                         <DialogClose asChild key={variant._id}>
                           <Button
                             variant="outline"
@@ -107,7 +115,7 @@ const SalesBilling = () => {
                             onClick={() => handleAddToCart(tool, variant)}
                           >
                             <span>
-                              {variant.brand} – {variant.size}{' '}
+                              {variant.brand} – {variant.size}{" "}
                               {variant.color && `– ${variant.color}`}
                             </span>
                             <span>₹{variant.price}</span>

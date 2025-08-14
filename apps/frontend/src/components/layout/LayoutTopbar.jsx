@@ -42,7 +42,7 @@ const LayoutTopbar = () => {
     <header className="w-full h-16 flex items-center justify-between px-6 bg-white dark:bg-gray-800 border-b shadow">
       <div className="flex items-center gap-4">
         <SidebarTrigger />
-        <span className="text-lg font-semibold">{t("topbar.dashboard")}</span>
+        <span className="text-lg font-semibold">Sivaji-Groups</span>
       </div>
 
       <div className="flex items-center gap-6">

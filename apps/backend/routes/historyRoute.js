@@ -1,8 +1,16 @@
-const express=require('express');
-const { bill } = require('../controllers/billController');
+// routes/historyRoute.js (or saleBill.routes.js)
+const express = require('express');
+const billRouter = express.Router();
 
-const historyRouter=express.Router();
+const {
+  createSaleBill,
+  getBillById,
+  listBills,
+} = require('../controllers/billController');
 
-historyRouter.post('/bill',bill);
+// ✅ Pass function references (no parentheses)
+billRouter.post('/bills', createSaleBill);
+billRouter.get('/bills', listBills);
+billRouter.get('/bills/:id', getBillById);
 
-module.exports=historyRouter;
+module.exports = billRouter;
