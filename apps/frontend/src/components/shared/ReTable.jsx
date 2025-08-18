@@ -1,36 +1,22 @@
 import React, { useState } from "react";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
+  Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 /**
- * ReTable: A reusable table with built-in view, edit, and delete actions.
- * Supports custom edit handling via onEditClick or a fully custom form via renderEditForm.
- *
+ * ReTable (generic)
  * Props:
- * - data: Array of items to display.
- * - columns: Array<{ key: string; label: string }> defining visible columns.
- * - onDelete: (id: string) => void
- * - onEdit: (id: string, updatedData: object) => void (default internal submit handler)
- * - onEditClick?: (item: object) => void  (external edit handler)
- * - renderEditForm?: (formState: object, handleChange: (e) => void) => ReactNode
- * - showViewButton?: boolean
- * - showEditButton?: boolean
+ * - data, columns, onDelete, onEdit, onEditClick, renderEditForm
+ * - showViewButton?: boolean (default true)
+ * - showEditButton?: boolean (default true)
+ * - onView?: (item) => void   // NEW -> control "View" action
+ * - onRowClick?: (item) => void // NEW -> row click navigation
+ * - viewButtonText?: string
  */
 
 const ReTable = ({
@@ -42,6 +28,9 @@ const ReTable = ({
   renderEditForm,
   showViewButton = true,
   showEditButton = true,
+  onView,                // NEW
+  onRowClick,            // NEW
+  viewButtonText = "View",
 }) => {
   const [editItem, setEditItem] = useState(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -49,10 +38,10 @@ const ReTable = ({
 
   const openEditDialog = (item) => {
     setEditItem(item);
-    // Flatten nested objects (e.g., address, size, color) into top-level formState
+    // flatten nested objects into top-level fields for quick editing
     const flattened = { ...item };
     Object.entries(item).forEach(([key, value]) => {
-      if (value && typeof value === 'object' && !Array.isArray(value)) {
+      if (value && typeof value === "object" && !Array.isArray(value)) {
         Object.entries(value).forEach(([subKey, subVal]) => {
           flattened[subKey] = subVal;
         });
@@ -73,15 +62,8 @@ const ReTable = ({
   };
 
   const handleEditSubmit = () => {
-    // Reconstruct nested objects if needed (e.g., address)
     const updatedData = { ...formState };
-    // Example for address: combine street, area, city, pincode back
-    if (
-      'street' in formState &&
-      'area' in formState &&
-      'city' in formState &&
-      'pincode' in formState
-    ) {
+    if ("street" in formState && "area" in formState && "city" in formState && "pincode" in formState) {
       updatedData.address = {
         street: formState.street,
         area: formState.area,
@@ -115,16 +97,25 @@ const ReTable = ({
             </TableHead>
           </TableRow>
         </TableHeader>
+
         <TableBody>
           {data.length > 0 ? (
             data.map((item, idx) => (
-              <TableRow key={idx} className="last:border-none">
+              <TableRow
+                key={idx}
+                className={
+                  onRowClick
+                    ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                    : "last:border-none"
+                }
+                onClick={onRowClick ? () => onRowClick(item) : undefined}
+              >
                 {columns.map((col) => {
-                  let value = col.key.includes('.')
-                    ? col.key.split('.').reduce((o, k) => o?.[k], item)
+                  let value = col.key.includes(".")
+                    ? col.key.split(".").reduce((o, k) => o?.[k], item)
                     : item[col.key];
-                  if (typeof value === 'object' && value !== null) {
-                    if (col.key === 'address') {
+                  if (typeof value === "object" && value !== null) {
+                    if (col.key === "address") {
                       const { street, area, city, pincode } = value;
                       value = `${street}, ${area}, ${city} - ${pincode}`;
                     } else {
@@ -137,28 +128,44 @@ const ReTable = ({
                     </TableCell>
                   );
                 })}
+
                 <TableCell className="text-right space-x-2">
-                  {showViewButton && (
+                  {showViewButton && onView && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => (window.location.href = `/layout/staff/${item._id}`)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onView(item); // ✅ delegate to caller
+                      }}
                     >
-                      View
+                      {viewButtonText}
                     </Button>
                   )}
+
                   {showEditButton && (
-                    <Button size="sm" onClick={() => handleEditButtonClick(item)}>
+                    <Button
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditButtonClick(item);
+                      }}
+                    >
                       Edit
                     </Button>
                   )}
+
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button variant="destructive" size="sm">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         Delete
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent onClick={(e) => e.stopPropagation()}>
                       <DialogHeader>
                         <DialogTitle>Are you sure?</DialogTitle>
                       </DialogHeader>
@@ -170,7 +177,10 @@ const ReTable = ({
                           className="w-[30%]"
                           size="sm"
                           variant="destructive"
-                          onClick={() => onDelete(item._id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(item._id);
+                          }}
                         >
                           Confirm
                         </Button>
@@ -208,7 +218,7 @@ const ReTable = ({
                   key={col.key}
                   name={col.key}
                   placeholder={col.label}
-                  value={formState[col.key] || ''}
+                  value={formState[col.key] || ""}
                   onChange={handleChange}
                 />
               ))

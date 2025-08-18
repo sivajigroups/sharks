@@ -10,8 +10,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogClose,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -24,8 +22,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import ReTable from "@/components/shared/ReTable";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 export default function Customers() {
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -309,7 +309,9 @@ export default function Customers() {
                 columns={customerColumns}
                 onDelete={handleDelete}
                 onEdit={handleEdit}
-                showViewButton={false}
+                showViewButton
+                onView={false}
+                // onRowClick={(row) => navigate(`/layout/customers/${row._id}`)}
               />
             )}
           </CardContent>

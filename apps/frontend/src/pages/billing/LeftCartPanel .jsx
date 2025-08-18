@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { toast } from "sonner";
-
+import { Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
+  DialogHeader,
   DialogTrigger,
   DialogContent,
   DialogClose,
@@ -16,7 +19,14 @@ import {
 const TAX_RATE = 0.13;
 
 const LeftCartPanel = ({ cartItems, setCartItems }) => {
+  const { t } = useTranslation();
   const API = import.meta.env.VITE_API_BASE;
+
+  // dialogs
+  const [selectOpen, setSelectOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+
+  // customer states
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -27,12 +37,127 @@ const LeftCartPanel = ({ cartItems, setCartItems }) => {
   const [page] = useState(1);
   const limit = 10;
 
-  // Totals (from cart)
+  // add customer form
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [alternatePhone, setAlternatePhone] = useState("");
+  const [street, setStreet] = useState("");
+  const [area, setArea] = useState("");
+  const [city, setCity] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [idProofType, setIdProofType] = useState("");
+  const [idProofNumber, setIdProofNumber] = useState("");
+
+  // totals
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.qty, 0);
   const taxAmount = +(subtotal * TAX_RATE).toFixed(2);
   const totalAmount = +(subtotal + taxAmount).toFixed(2);
 
-  // -------- Invoice (from saved bill) --------
+  // ----------------------------------------
+  // Utility: fetch customers
+  const fetchCustomers = async (query = "", pageNum = 1) => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `${API}/customer/details?search=${encodeURIComponent(query)}&page=${pageNum}&limit=${limit}`,
+        { method: "GET", credentials: "include" }
+      );
+      if (!response.ok) throw new Error("Failed to fetch customers");
+      const json = await response.json();
+      setCustomers(json.data || []);
+      setError("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      fetchCustomers(searchTerm, 1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // ----------------------------------------
+  // Add customer
+  const resetAddForm = () => {
+    setName("");
+    setPhone("");
+    setAlternatePhone("");
+    setStreet("");
+    setArea("");
+    setCity("");
+    setPincode("");
+    setIdProofType("");
+    setIdProofNumber("");
+  };
+
+const handleInsert = async () => {
+  // (optional) minimal checks; you can add more if you want
+  if (
+    !name || !phone || !street || !area || !city ||
+    !pincode || !idProofType || !idProofNumber
+  ) {
+    toast.error("Please fill all the fields");
+    return;
+  }
+
+  try {
+    setSaving(true);
+
+    // ✅ match Customers page body exactly
+    const body = {
+      name,
+      phone,
+      alternatePhone,
+      address: { street, area, city, pincode },
+      idProofType,
+      idProofNumber,
+    };
+
+    const res = await fetch(`${API}/customer/details`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Failed to add customer");
+
+    // pick returned customer object (fallback to body if API doesn’t echo)
+    const newCustomer = data.data || body;
+
+    toast.success("Customer added");
+
+    // ✅ select the new customer and close dialogs
+    setSelectedCustomer(newCustomer);
+    setAddOpen(false);
+    setSelectOpen(false);
+
+    // refresh list + reset form
+    await fetchCustomers("", 1);
+    setName("");
+    setPhone("");
+    setAlternatePhone("");
+    setStreet("");
+    setArea("");
+    setCity("");
+    setPincode("");
+    setIdProofType("");
+    setIdProofNumber("");
+  } catch (err) {
+    toast.error(err.message);
+  } finally {
+    setSaving(false);
+  }
+};
+
+
+  // ----------------------------------------
+  // Payment / invoice (unchanged logic)
   const generateInvoiceFromBill = (bill) => {
     const doc = new jsPDF();
     const primary = "#6366F1";
@@ -40,7 +165,6 @@ const LeftCartPanel = ({ cartItems, setCartItems }) => {
     const green = "#10B981";
     const lightGray = "#F3F4F6";
 
-    // Header
     doc.setFillColor(primary);
     doc.roundedRect(0, 0, 210, 30, 0, 0, "F");
     doc.setTextColor("#ffffff");
@@ -52,7 +176,6 @@ const LeftCartPanel = ({ cartItems, setCartItems }) => {
 
     let y = 40;
 
-    // From + Invoice info
     doc.setTextColor("#000");
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
@@ -63,7 +186,6 @@ const LeftCartPanel = ({ cartItems, setCartItems }) => {
 
     y += 25;
 
-    // Customer
     if (bill.customer) {
       const addr = bill.customer.address || {};
       doc.setFont("helvetica", "bold");
@@ -80,14 +202,13 @@ const LeftCartPanel = ({ cartItems, setCartItems }) => {
 
     y += 25;
 
-    // Table from saved bill snapshots
-    const body = bill.items.map((it, i) => ([
+    const body = bill.items.map((it, i) => [
       i + 1,
       `${it.productName}${it.size ? ` (${it.size})` : ""}${it.brand ? ` • ${it.brand}` : ""}${it.color ? ` • ${it.color}` : ""}`,
       it.quantity,
       `₹${it.unitPrice.toFixed(2)}`,
-      `₹${it.lineTotal.toFixed(2)}`
-    ]));
+      `₹${it.lineTotal.toFixed(2)}`,
+    ]);
 
     autoTable(doc, {
       startY: y,
@@ -101,7 +222,6 @@ const LeftCartPanel = ({ cartItems, setCartItems }) => {
       margin: { left: 16, right: 16 },
     });
 
-    // Totals (from bill)
     y += 10;
     doc.setFontSize(10);
     doc.setTextColor("#000");
@@ -122,7 +242,6 @@ const LeftCartPanel = ({ cartItems, setCartItems }) => {
     doc.text("Total:", 140, y, { align: "right" });
     doc.text(`₹${bill.totalAmount.toFixed(2)}`, 190, y, { align: "right" });
 
-    // Footer & watermark
     y += 10;
     doc.setFont("helvetica", "italic");
     doc.setFontSize(9);
@@ -144,40 +263,9 @@ const LeftCartPanel = ({ cartItems, setCartItems }) => {
     }
   };
 
-  // -------- API: customers --------
-  const fetchCustomers = async (query = "", page = 1) => {
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `${API}/customer/details?search=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
-        { method: "GET", credentials: "include" }
-      );
-      if (!response.ok) throw new Error("Failed to fetch customers");
-      const json = await response.json();
-      setCustomers(json.data || []);
-      setError("");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const t = setTimeout(() => { fetchCustomers(searchTerm, 1); }, 400);
-    return () => clearTimeout(t);
-  }, [searchTerm]);
-
-  // -------- API: create bill --------
   const handlePayment = async () => {
-    if (!cartItems.length) {
-      toast.error("Cart is empty");
-      return;
-    }
-    if (!selectedCustomer?._id) {
-      toast.error("Select a customer first");
-      return;
-    }
+    if (!cartItems.length) return toast.error("Cart is empty");
+    if (!selectedCustomer?._id) return toast.error("Select a customer first");
 
     setSaving(true);
     try {
@@ -185,12 +273,11 @@ const LeftCartPanel = ({ cartItems, setCartItems }) => {
         customerId: selectedCustomer._id,
         paymentMode,
         discount: 0,
-        tax: taxAmount, // numeric amount; your backend expects a number
+        tax: taxAmount,
         items: cartItems.map((i) => ({
-          inventoryId: i.inventoryId,   // comes from SalesBilling handleAddToCart
+          inventoryId: i.inventoryId,
           variantId: i.variantId,
-          quantity: i.qty
-          // overridePrice: i.price   // optional; omit to use variant price
+          quantity: i.qty,
         })),
       };
 
@@ -206,9 +293,7 @@ const LeftCartPanel = ({ cartItems, setCartItems }) => {
 
       const savedBill = json.data;
       toast.success(`Bill ${savedBill.billNo} created`);
-      // Print from saved bill (has snapshots + billNo)
       generateInvoiceFromBill(savedBill);
-      // Clear cart
       setCartItems([]);
     } catch (err) {
       toast.error(err.message);
@@ -231,12 +316,41 @@ const LeftCartPanel = ({ cartItems, setCartItems }) => {
                 <div className="font-medium">{item.name}</div>
                 <div className="text-xs text-gray-500">
                   {item.qty} x ₹{item.price.toFixed(2)}
-                </div>
-                <div className="text-[10px] text-gray-400">
-                  {item.variant?.brand} • {item.variant?.size}{item.variant?.color ? ` • ${item.variant.color}` : ""}
+                  <div className="text-[10px] text-gray-400">
+                    {item.variant?.brand} • {item.variant?.size}
+                    {item.variant?.color ? ` • ${item.variant.color}` : ""}
+                  </div>
                 </div>
               </div>
-              <div className="font-semibold">₹{(item.qty * item.price).toFixed(2)}</div>
+
+              <div className="flex flex-col items-center">
+                <div className="font-semibold">₹{(item.qty * item.price).toFixed(2)}</div>
+                <div className="flex items-center gap-2 border rounded px-2 mt-1">
+                  <button
+                    className="px-2 py-1 font-bold text-lg"
+                    onClick={() =>
+                      setCartItems((prev) =>
+                        prev
+                          .map((i) => (i.id === item.id ? { ...i, qty: i.qty - 1 } : i))
+                          .filter((i) => i.qty > 0)
+                      )
+                    }
+                  >
+                    -
+                  </button>
+                  <span>{item.qty}</span>
+                  <button
+                    className="px-2 py-1 font-bold text-lg"
+                    onClick={() =>
+                      setCartItems((prev) =>
+                        prev.map((i) => (i.id === item.id ? { ...i, qty: i.qty + 1 } : i))
+                      )
+                    }
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
             </div>
           ))
         )}
@@ -257,25 +371,40 @@ const LeftCartPanel = ({ cartItems, setCartItems }) => {
           <span className="font-bold">₹{totalAmount.toFixed(2)}</span>
         </div>
 
-        {/* customer select */}
-        <Dialog>
+        {/* SELECT CUSTOMER (controlled) */}
+        <Dialog open={selectOpen} onOpenChange={setSelectOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" className="w-full mt-2">
+            <Button variant="outline" className="w-full mt-2" onClick={() => setSelectOpen(true)}>
               {selectedCustomer ? `Customer: ${selectedCustomer.name}` : "Select Customer"}
             </Button>
           </DialogTrigger>
+
           <DialogContent className="h-[80vh] flex flex-col">
             <DialogTitle>Select a Customer</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
               Search and choose from customer list.
             </DialogDescription>
 
+            {/* Add Customer button: close this dialog, open Add dialog */}
+            <div className="mt-2">
+              <Button
+                variant="default"
+                onClick={() => {
+                  setSelectOpen(false);
+                  setAddOpen(true);
+                }}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {t("customers.addCustomer")}
+              </Button>
+            </div>
+
             <input
               type="text"
               placeholder="Search by name, city or phone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border rounded px-2 py-1 text-sm mb-2"
+              className="w-full border rounded px-2 py-1 text-sm my-2"
             />
 
             {loading && <p className="text-sm text-gray-500">Loading customers...</p>}
@@ -305,6 +434,68 @@ const LeftCartPanel = ({ cartItems, setCartItems }) => {
                 <p className="text-sm text-gray-400">No matching customers found.</p>
               )}
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ADD CUSTOMER (controlled, separate dialog) */}
+        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+          <DialogContent className="max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{t("customers.addCustomerTitle")}</DialogTitle>
+            </DialogHeader>
+
+            <form
+              className="space-y-3 mt-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleInsert();
+              }}
+            >
+              <Input placeholder={t("customers.name")} value={name} onChange={(e) => setName(e.target.value)} required />
+              <Input placeholder={t("customers.phone")} value={phone} onChange={(e) => setPhone(e.target.value)} required />
+              <Input placeholder={t("customers.altPhone")} value={alternatePhone} onChange={(e) => setAlternatePhone(e.target.value)} />
+
+              <Input placeholder={t("customers.street")} value={street} onChange={(e) => setStreet(e.target.value)} required />
+              <Input placeholder={t("customers.area")} value={area} onChange={(e) => setArea(e.target.value)} required />
+              <Input placeholder={t("customers.city")} value={city} onChange={(e) => setCity(e.target.value)} required />
+              <Input placeholder={t("customers.pincode")} value={pincode} onChange={(e) => setPincode(e.target.value)} required />
+
+              <select
+                value={idProofType}
+                onChange={(e) => setIdProofType(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md"
+                required
+              >
+                <option value="">{t("customers.idProof")}</option>
+                <option value="Aadhaar">{t("customers.aadhaar")}</option>
+                <option value="PAN">{t("customers.pan")}</option>
+                <option value="Voter ID">{t("customers.voter")}</option>
+                <option value="Driving License">{t("customers.license")}</option>
+              </select>
+
+              <Input
+                placeholder={t("customers.idProofNumber")}
+                value={idProofNumber}
+                onChange={(e) => setIdProofNumber(e.target.value)}
+                required
+              />
+
+              <div className="flex gap-2">
+                <Button type="submit" className="flex-1" disabled={saving}>
+                  {saving ? t("common.saving") : t("customers.save")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setAddOpen(false);
+                  }}
+                >
+                  {t("common.cancel")}
+                </Button>
+              </div>
+            </form>
           </DialogContent>
         </Dialog>
 

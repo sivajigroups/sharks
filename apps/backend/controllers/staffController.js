@@ -401,6 +401,21 @@ const getAllCustomers = async (req, res) => {
   }
 };
 
+const getCustomerById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customer = await Customer.findById(id);
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+    res.json({ data: customer });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching customer",
+      error: error.message,
+    });
+  }
+};
 
 const deleteCustomer = async (req, res) => {
   try {
@@ -561,6 +576,7 @@ module.exports = {
   insertCustomer,
   deleteCustomer,
   editCustomer,
+  getCustomerById,
   insertSales,
   updateSales,
   insertRental,

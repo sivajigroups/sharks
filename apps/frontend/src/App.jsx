@@ -14,8 +14,9 @@ import InventoryManager from "./pages/InventoryManager";
 import OrderManager from "./pages/orders/orderManager";
 import StaffDetail from "./pages/StaffDetail";
 import NewOrder from "./pages/orders/NewOrder";
-import './i18n'
+import "./i18n";
 import SalesBilling from "./pages/billing/SalesBilling";
+import CustomerDetails from "./pages/CustomerDetails";
 
 function App() {
   return (
@@ -31,20 +32,51 @@ function App() {
           {/* <Route path="salesInfo" element={<SalesInventory />} /> */}
           <Route path="customers" element={<Customers />} />
           <Route path="branches" element={<Branch />} />
-          <Route path="billing" element={<SalesBilling/>}/>
+          <Route path="billing" element={<SalesBilling />} />
           {/* <Route path="rentalOrder" element={<RentalOrdersPage />} /> */}
           {/* <Route path="rentalOrder" element={<OrderManager type="rental" title="Rental Orders" newOrderPath="/layout/rentalOrder/new" />} /> */}
           <Route path="rentalOrder/new" element={<NewOrder />} />
-          <Route path="salesOrder" element={<OrderManager type="sales" title="Sales Orders" newOrderPath="/layout/rentalOrder/new" />} />
-          <Route path="serviceOrder" element={<OrderManager type="service" title="Rental Orders" newOrderPath="/layout/rentalOrder/new" />} />
+          <Route
+            path="salesOrder"
+            element={
+              <OrderManager
+                type="sales"
+                title="Sales Orders"
+                newOrderPath="/layout/rentalOrder/new"
+              />
+            }
+          />
+          <Route
+            path="serviceOrder"
+            element={
+              <OrderManager
+                type="service"
+                title="Rental Orders"
+                newOrderPath="/layout/rentalOrder/new"
+              />
+            }
+          />
           <Route path="notification" element={<Notifications />} />
           <Route path="users" element={<StaffPage />} />
-          <Route path="attendance" element={<Attendance/>}/>
-          <Route path="/layout/salesInfo" element={<InventoryManager type="sales" title="Sales Inventory" />} />
-          <Route path="/layout/rentalInfo" element={<InventoryManager type="rental" title="Rental Inventory" />} />
-          <Route path="/layout/serviceInfo" element={<InventoryManager type="service" title="Service Inventory" />} />
+          <Route path="attendance" element={<Attendance />} />
+          <Route
+            path="/layout/salesInfo"
+            element={<InventoryManager type="sales" title="Sales Inventory" />}
+          />
+          <Route
+            path="/layout/rentalInfo"
+            element={
+              <InventoryManager type="rental" title="Rental Inventory" />
+            }
+          />
+          <Route
+            path="/layout/serviceInfo"
+            element={
+              <InventoryManager type="service" title="Service Inventory" />
+            }
+          />
           <Route path="/layout/staff/:id" element={<StaffDetail />} />
-
+          <Route path="customers/:id" element={<CustomerDetails />} />
         </Route>
       </Routes>
     </Router>

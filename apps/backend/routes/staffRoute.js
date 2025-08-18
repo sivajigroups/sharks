@@ -18,6 +18,7 @@ const {
   insertAttribute,
   getAttribute,
   updateSales,
+  getCustomerById,
 } = require("../controllers/staffController");
 const staffRouter = express.Router();
 
@@ -37,7 +38,8 @@ staffRouter.get("/inventory/attributes", userAuth, getAttribute);
 staffRouter.post("/customer/details", userAuth, insertCustomer);
 staffRouter.get("/customer/details", userAuth, getAllCustomers);
 staffRouter.delete("/customer/details/:id", userAuth, deleteCustomer);
-staffRouter.put("/customer/details/:id", userAuth, editCustomer); // Assuming this is for editing customer details
+staffRouter.put("/customer/details/:id", userAuth, editCustomer);
+staffRouter.get("/customer/details/:id",userAuth,getCustomerById); // Assuming this is for editing customer details
 
 
 staffRouter.post("/checkin", userAuth, insertCheckin);
