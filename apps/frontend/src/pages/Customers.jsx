@@ -308,10 +308,8 @@ export default function Customers() {
                 data={filtered}
                 columns={customerColumns}
                 onDelete={handleDelete}
-                onEdit={handleEdit}
-                showViewButton
-                onView={false}
-                // onRowClick={(row) => navigate(`/layout/customers/${row._id}`)}
+               showEditButton={false}
+                onRowClick={(row) => navigate(`/layout/customers/${row._id}`)}
               />
             )}
           </CardContent>

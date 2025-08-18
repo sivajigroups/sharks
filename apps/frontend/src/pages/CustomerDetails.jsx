@@ -5,20 +5,39 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableHeader, TableRow, TableHead, TableBody, TableCell,
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
 } from "@/components/ui/table";
 import {
-  ArrowLeft, MapPin, Pencil, IdCard, Smartphone, CircleAlert, Check, X, Hash, User2, Receipt, RefreshCw, Search,
+  ArrowLeft,
+  MapPin,
+  Pencil,
+  IdCard,
+  Smartphone,
+  Hash,
+  User2,
+  Receipt,
+  RefreshCw,
+  Search,
+  Check,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Info, History } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+/* ===================== COMPONENT ===================== */
 export default function CustomerDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const API = import.meta.env.VITE_API_BASE;
 
   const [customer, setCustomer] = useState(null);
-  const [form, setForm] = useState(null);
+  const [form, setForm] = useState(normalizeForm()); // ✅ safe default
   const [isEditing, setIsEditing] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
@@ -31,12 +50,15 @@ export default function CustomerDetails() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
 
-  // --- data loaders (unchanged)
+  // --- data loaders
   const fetchCustomer = async () => {
     try {
       setLoading(true);
       setError("");
-      const res = await fetch(`${API}/customer/details/${id}`, { method: "GET", credentials: "include" });
+      const res = await fetch(`${API}/customer/details/${id}`, {
+        method: "GET",
+        credentials: "include",
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.message || "Failed to load customer");
       const data = json.data || json;
@@ -49,25 +71,83 @@ export default function CustomerDetails() {
     }
   };
 
+  // helper
+  async function fetchJSON(url, opts) {
+    const res = await fetch(url, opts);
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = json?.message || `HTTP ${res.status}`;
+      const err = new Error(msg);
+      err.status = res.status;
+      err.body = json;
+      throw err;
+    }
+    return json;
+  }
+
   const fetchBills = async () => {
     try {
       setBillsLoading(true);
       setBillsError("");
-      const res = await fetch(`${API}/bills?customerId=${encodeURIComponent(id)}`, { method: "GET", credentials: "include" });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.message || "Failed to load bills");
-      const list = (json.data || json || []).map((b) => ({
+
+      const urlQuery = `${API}/bills?customerId=${encodeURIComponent(id)}`;
+      const urlParam = `${API}/bills/customer/${encodeURIComponent(id)}`;
+
+      let json;
+      try {
+        json = await fetchJSON(urlQuery, {
+          method: "GET",
+          credentials: "include",
+        });
+      } catch (err) {
+        if (err.status === 400 || err.status === 404) {
+          json = await fetchJSON(urlParam, {
+            method: "GET",
+            credentials: "include",
+          });
+        } else {
+          throw err;
+        }
+      }
+
+      // --- robust client-side filter by this customer id ---
+      const asString = (v) => (v == null ? "" : String(v));
+      const billCustomerId = (c) => {
+        // c can be: string ObjectId, {_id}, {id}, {$oid}, or fully populated doc
+        if (typeof c === "string") return c;
+        if (!c || typeof c !== "object") return "";
+        return asString(c._id || c.id || c.$oid || c.value || c); // last c for weird drivers
+      };
+
+      const raw = json.data || json || [];
+      const mineOnly = raw.filter(
+        (b) => asString(billCustomerId(b.customer)) === asString(id)
+      );
+
+      const list = mineOnly.map((b) => ({
         id: b._id || b.id,
         billNo: b.billNo || b.number || b.invoiceNo || "-",
-        date: b.createdAt || b.date || b.issuedAt || null,
+        date: b.createdAt || b.date || b.issuedAt || b.billingDate || null,
         total: Number(
-          b.total ?? b.grandTotal ?? b.amount ??
-          (Array.isArray(b.items) ? b.items.reduce((sum, it) => sum + Number(it.price||0)*Number(it.qty||0), 0) : 0)
+          b.total ??
+            b.grandTotal ??
+            b.totalAmount ??
+            b.amount ??
+            (Array.isArray(b.items)
+              ? b.items.reduce(
+                  (sum, it) =>
+                    sum +
+                    Number(it.unitPrice ?? it.price ?? 0) *
+                      Number(it.quantity ?? it.qty ?? 0),
+                  0
+                )
+              : 0)
         ),
         items: Array.isArray(b.items) ? b.items : [],
         itemsCount: Array.isArray(b.items) ? b.items.length : b.itemsCount || 0,
         status: (b.status || "Paid").toString(),
       }));
+
       setBills(list);
     } catch (e) {
       setBillsError(e.message || "Something went wrong");
@@ -83,11 +163,12 @@ export default function CustomerDetails() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // --- handlers (unchanged)
+  // --- handlers
   const handleBack = () => {
     if (window.history.length <= 1) navigate("/customers");
     else navigate(-1);
   };
+
   const onChange = (path, value) => {
     setForm((f) => {
       const next = structuredClone(f ?? {});
@@ -95,26 +176,48 @@ export default function CustomerDetails() {
       return next;
     });
   };
+
   const validate = (f) => {
     const e = {};
     if (!f.name?.trim()) e.name = "Name is required";
     if (!f.phone?.trim()) e.phone = "Phone is required";
-    if (f.phone && !/^[0-9+\-\s]{7,15}$/.test(f.phone)) e.phone = "Invalid phone";
-    if (f.alternatePhone && !/^[0-9+\-\s]{7,15}$/.test(f.alternatePhone)) e.alternatePhone = "Invalid phone";
-    if (f.address?.pincode && !/^\d{6}$/.test(f.address.pincode)) e["address.pincode"] = "Pincode must be 6 digits";
-    if (f.idProofType && !f.idProofNumber) e.idProofNumber = "ID number required for selected ID proof";
+    if (f.phone && !/^[0-9+\-\s]{7,15}$/.test(f.phone))
+      e.phone = "Invalid phone";
+    if (f.alternatePhone && !/^[0-9+\-\s]{7,15}$/.test(f.alternatePhone))
+      e.alternatePhone = "Invalid phone";
+    if (f.address?.pincode && !/^\d{6}$/.test(f.address.pincode))
+      e["address.pincode"] = "Pincode must be 6 digits";
+    if (f.idProofType && !f.idProofNumber)
+      e.idProofNumber = "ID number required for selected ID proof";
     return e;
   };
-  const startEdit = () => { setForm(normalizeForm(customer)); setErrors({}); setIsEditing(true); };
-  const cancelEdit = () => { setForm(normalizeForm(customer)); setErrors({}); setIsEditing(false); };
+
+  const startEdit = () => {
+    setForm(normalizeForm(customer));
+    setErrors({});
+    setIsEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setForm(normalizeForm(customer));
+    setErrors({});
+    setIsEditing(false);
+  };
+
   const save = async () => {
     if (!form) return;
-    const ve = validate(form); setErrors(ve);
-    if (Object.keys(ve).length) { toast.error("Please fix the highlighted fields."); return; }
+    const ve = validate(form);
+    setErrors(ve);
+    if (Object.keys(ve).length) {
+      toast.error("Please fix the highlighted fields.");
+      return;
+    }
     try {
       setSaving(true);
       const res = await fetch(`${API}/customer/details/${id}`, {
-        method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include",
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(denormalizeForm(form)),
       });
       const json = await res.json();
@@ -133,230 +236,394 @@ export default function CustomerDetails() {
   const filteredBills = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = [...bills];
-    if (status !== "all") list = list.filter((b) => b.status.toLowerCase() === status);
+    if (status !== "all")
+      list = list.filter((b) => b.status.toLowerCase() === status);
     if (q) {
       list = list.filter((b) => {
-        const inBill = (b.billNo || "").toLowerCase().includes(q) || (formatDate(b.date) || "").toLowerCase().includes(q);
-        const inItems = b.items?.some((it) => (it.name || it.item || it.title || "").toString().toLowerCase().includes(q));
+        const inBill =
+          (b.billNo || "").toLowerCase().includes(q) ||
+          (formatDate(b.date) || "").toLowerCase().includes(q);
+        const inItems = b.items?.some((it) =>
+          (it.name || it.item || it.title || "")
+            .toString()
+            .toLowerCase()
+            .includes(q)
+        );
         return inBill || inItems;
       });
     }
     return list.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
   }, [bills, query, status]);
 
-  /* ===================== LAYOUT ===================== */
-  return (
-    <div className="flex flex-col flex-1 w-full h-full p-4 gap-4 overflow-auto overflow-x-hidden min-w-0">
-      {/* Sticky topbar inside the scroll container */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2">
-        <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <Button variant="ghost" size="sm" className="gap-2 hover:bg-muted" onClick={handleBack}>
-              <ArrowLeft className="h-4 w-4" /> Back
-            </Button>
-            {customer?.name && (
-              <div className="text-sm text-muted-foreground truncate">
-                Viewing <span className="font-medium text-foreground">{customer.name}</span>
-                {customer?.phone ? <span className="hidden sm:inline"> • {customer.phone}</span> : null}
-              </div>
-            )}
-          </div>
+  /* ===================== RENDER ===================== */
+  if (loading) {
+    return (
+      <div className="p-4">
+        <Button variant="ghost" onClick={handleBack} className="mb-3">
+          <ArrowLeft className="h-4 w-4 mr-2" /> Back
+        </Button>
 
+        {/* Full-width skeleton card */}
+        <Card className="border border-border rounded-2xl w-full">
+          <CardContent className="p-6 space-y-6">
+            {/* Header placeholder */}
+            <div className="flex items-center gap-2">
+              <div className="h-5 w-5 bg-muted rounded-full animate-pulse" />
+              <div className="h-5 w-40 bg-muted rounded animate-pulse" />
+            </div>
+
+            {/* Grid of fake fields */}
+            <div className="flex flex-wrap gap-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-16 flex-1 min-w-[240px] bg-muted rounded-xl animate-pulse"
+                />
+              ))}
+            </div>
+
+            <Separator />
+
+            {/* Address placeholder */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="h-5 w-5 bg-muted rounded-full animate-pulse" />
+                <div className="h-5 w-32 bg-muted rounded animate-pulse" />
+              </div>
+              <div className="flex flex-wrap gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-16 flex-1 min-w-[200px] bg-muted rounded-xl animate-pulse"
+                  />
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 space-y-4">
+        <Button variant="ghost" onClick={handleBack}>
+          <ArrowLeft className="h-4 w-4 mr-2" /> Back
+        </Button>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-red-600">{String(error)}</div>
+            <Button onClick={fetchCustomer} className="mt-3">
+              <RefreshCw className="h-4 w-4 mr-2" /> Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <Button variant="ghost" onClick={handleBack}>
+          <ArrowLeft className="h-4 w-4 mr-2" /> Back
+        </Button>
+
+        <div className="flex items-center gap-2">
           {!isEditing ? (
-            <Button size="sm" className="gap-2" onClick={startEdit} disabled={!customer}>
-              <Pencil className="h-4 w-4" /> Edit
+            <Button onClick={startEdit}>
+              <Pencil className="h-4 w-4 mr-2" /> Edit
             </Button>
           ) : (
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={cancelEdit} disabled={saving}>
-                <X className="h-4 w-4" /> Cancel
+            <>
+              <Button variant="outline" onClick={cancelEdit}>
+                <X className="h-4 w-4 mr-2" /> Cancel
               </Button>
-              <Button size="sm" onClick={save} disabled={saving}>
-                <Check className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
+              <Button onClick={save} disabled={saving}>
+                {saving ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Saving…
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4 mr-2" /> Save
+                  </>
+                )}
               </Button>
-            </div>
+            </>
           )}
         </div>
       </div>
 
-      {/* Two boxes: use flex so right side flexes when sidebar collapses */}
-      <div className="flex flex-col gap-4 md:gap-6 lg:flex-row min-w-0">
-        {/* LEFT: fixed-ish width that doesn't grow */}
-        <div className="min-w-0 lg:basis-[420px] lg:shrink-0">
-          {loading && <MonoSkeleton />}
+      <Tabs defaultValue="details" className="w-full">
+        <TabsList>
+          <TabsTrigger value="details" className="flex items-center gap-2">
+            <Info className="h-4 w-4" />
+            Details
+          </TabsTrigger>
 
-          {!loading && error && (
-            <Card className="border border-destructive/30">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-3">
-                  <CircleAlert className="h-5 w-5 text-destructive mt-0.5" />
-                  <div className="space-y-2">
-                    <p className="font-medium text-destructive">Failed to load customer</p>
-                    <p className="text-sm text-muted-foreground">{error}</p>
-                    <div className="pt-2">
-                      <Button size="sm" variant="outline" onClick={fetchCustomer}>Retry</Button>
-                    </div>
-                  </div>
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            History
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ===================== DETAILS TAB ===================== */}
+        <TabsContent value="details" className="space-y-6">
+          <Card className="border border-border rounded-2xl">
+            <CardContent className="p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <User2 className="h-5 w-5 text-muted-foreground" />
+                  <h3 className="font-medium tracking-tight">
+                    Customer Details
+                  </h3>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                {customer?.idProofType && (
+                  <Badge variant="outline" className="text-xs">
+                    {customer.idProofType}
+                  </Badge>
+                )}
+              </div>
 
-          {!loading && !error && customer && form && (
-            <Card className="border border-border shadow-sm rounded-2xl h-full">
-              <CardContent className="p-6 space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <User2 className="h-5 w-5 text-muted-foreground" />
-                    <h3 className="font-medium tracking-tight">Customer Details</h3>
-                  </div>
-                  {customer?.idProofType && <Badge variant="outline" className="text-xs">{customer.idProofType}</Badge>}
+              {/* Horizontal fields */}
+              <div className="mt-4 flex flex-wrap gap-4">
+                <Detail
+                  icon={<User2 className="h-4 w-4" />}
+                  label="Name"
+                  editing={isEditing}
+                  value={form?.name ?? ""}
+                  onChange={(v) => onChange("name", v)}
+                  error={errors?.name}
+                  className="min-w-[240px] flex-1"
+                />
+                <Detail
+                  icon={<Smartphone className="h-4 w-4" />}
+                  label="Phone"
+                  editing={isEditing}
+                  value={form?.phone ?? ""}
+                  onChange={(v) => onChange("phone", v)}
+                  error={errors?.phone}
+                  className="min-w-[240px] flex-1"
+                />
+                <Detail
+                  icon={<Smartphone className="h-4 w-4" />}
+                  label="Alt Phone"
+                  editing={isEditing}
+                  value={form?.alternatePhone ?? ""}
+                  onChange={(v) => onChange("alternatePhone", v)}
+                  error={errors?.alternatePhone}
+                  placeholder="Optional"
+                  className="min-w-[240px] flex-1"
+                />
+                <Detail
+                  icon={<IdCard className="h-4 w-4" />}
+                  label="ID Proof Type"
+                  editing={isEditing}
+                  value={form?.idProofType ?? ""}
+                  onChange={(v) => onChange("idProofType", v)}
+                  type="select"
+                  options={[
+                    "",
+                    "Aadhaar",
+                    "PAN",
+                    "Voter ID",
+                    "Driving License",
+                  ]}
+                  className="min-w-[240px] flex-1"
+                />
+                <Detail
+                  icon={<Hash className="h-4 w-4" />}
+                  label="ID Number"
+                  editing={isEditing}
+                  value={form?.idProofNumber ?? ""}
+                  onChange={(v) => onChange("idProofNumber", v)}
+                  error={errors?.idProofNumber}
+                  className="min-w-[240px] flex-1"
+                />
+                <Detail
+                  icon={<Hash className="h-4 w-4" />}
+                  label="ID Number"
+                  editing={isEditing}
+                  value={form?.idProofNumber ?? ""}
+                  onChange={(v) => onChange("idProofNumber", v)}
+                  error={errors?.idProofNumber}
+                  className="min-w-[240px] flex-1"
+                />
+              </div>
+
+              <Separator className="my-6" />
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-muted-foreground" />
+                  <h3 className="font-medium">Address</h3>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Detail icon={<User2 className="h-4 w-4" />} label="Name" editing={isEditing}
-                    value={form.name} onChange={(v) => onChange("name", v)} error={errors.name} />
-                  <Detail icon={<Smartphone className="h-4 w-4" />} label="Phone" editing={isEditing}
-                    value={form.phone} onChange={(v) => onChange("phone", v)} error={errors.phone} />
-                  <Detail icon={<Smartphone className="h-4 w-4" />} label="Alt Phone" editing={isEditing}
-                    value={form.alternatePhone} onChange={(v) => onChange("alternatePhone", v)}
-                    error={errors.alternatePhone} placeholder="Optional" />
-                  <Detail icon={<IdCard className="h-4 w-4" />} label="ID Proof Type" editing={isEditing}
-                    value={form.idProofType} onChange={(v) => onChange("idProofType", v)}
-                    type="select" options={["", "Aadhaar", "PAN", "Voter ID", "Driving License"]} />
-                  <Detail icon={<Hash className="h-4 w-4" />} label="ID Number" editing={isEditing}
-                    value={form.idProofNumber} onChange={(v) => onChange("idProofNumber", v)} error={errors.idProofNumber} />
+                <div className="flex flex-wrap gap-4">
+                  <Detail
+                    label="Street"
+                    editing={isEditing}
+                    value={form?.address?.street ?? ""}
+                    onChange={(v) => onChange("address.street", v)}
+                    className="min-w-[260px] flex-1"
+                  />
+                  <Detail
+                    label="Area"
+                    editing={isEditing}
+                    value={form?.address?.area ?? ""}
+                    onChange={(v) => onChange("address.area", v)}
+                    className="min-w-[200px] flex-1"
+                  />
+                  <Detail
+                    label="City"
+                    editing={isEditing}
+                    value={form?.address?.city ?? ""}
+                    onChange={(v) => onChange("address.city", v)}
+                    className="min-w-[200px] flex-1"
+                  />
+                  <Detail
+                    label="Pincode"
+                    editing={isEditing}
+                    value={form?.address?.pincode ?? ""}
+                    onChange={(v) => onChange("address.pincode", v)}
+                    error={errors?.["address.pincode"]}
+                    className="min-w-[160px] flex-1"
+                  />
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-                <Separator />
-
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-muted-foreground" />
-                    <h3 className="font-medium">Address</h3>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Detail label="Street" editing={isEditing} value={form.address.street}
-                      onChange={(v) => onChange("address.street", v)} />
-                    <Detail label="Area" editing={isEditing} value={form.address.area}
-                      onChange={(v) => onChange("address.area", v)} />
-                    <Detail label="City" editing={isEditing} value={form.address.city}
-                      onChange={(v) => onChange("address.city", v)} />
-                    <Detail label="Pincode" editing={isEditing} value={form.address.pincode}
-                      onChange={(v) => onChange("address.pincode", v)} error={errors["address.pincode"]} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* RIGHT: grows with available space */}
-        <div className="lg:flex-1 min-w-0">
-          <Card className="border border-border shadow-sm rounded-2xl h-full">
-            <CardContent className="p-6 space-y-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-2 min-w-0">
+        {/* ===================== HISTORY TAB ===================== */}
+        <TabsContent value="history" className="space-y-4">
+          <Card className="w-full border border-border rounded-2xl min-h-[520px]">
+            {" "}
+            {/* <- w-full + min-h */}
+            <CardContent className="p-6 space-y-4 h-full w-full">
+              <div className="flex flex-wrap gap-3 items-center justify-between">
+                <div className="flex items-center gap-2">
                   <Receipt className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="font-medium tracking-tight">Purchased Items</h3>
-                  {bills.length > 0 && <Badge variant="secondary" className="ml-1">{bills.length}</Badge>}
+                  <h3 className="font-medium tracking-tight">Bills</h3>
                 </div>
-
-                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                <div className="flex flex-wrap gap-2">
                   <div className="relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <input
-                      value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search bill # or item name"
-                      className="pl-8 pr-3 py-2 text-sm rounded-md border bg-background w-[260px]"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search bills or items"
+                      className="pl-8 pr-3 py-2 rounded-md border bg-background border-input text-sm w-[240px] focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-foreground/10"
                     />
                   </div>
-
                   <select
-                    value={status} onChange={(e) => setStatus(e.target.value)}
-                    className="px-3 py-2 text-sm rounded-md border bg-background"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="px-3 py-2 rounded-md border bg-background border-input text-sm w-[260px] focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-foreground/10"
                   >
-                    <option value="all">All status</option>
+                    <option value="all">All</option>
                     <option value="paid">Paid</option>
                     <option value="unpaid">Unpaid</option>
                     <option value="pending">Pending</option>
                     <option value="cancelled">Cancelled</option>
                   </select>
-
-                  <Button variant="outline" size="sm" className="gap-2" onClick={fetchBills} disabled={billsLoading} title="Refresh">
-                    <RefreshCw className="h-4 w-4" /> Refresh
+                  <Button variant="outline" onClick={fetchBills}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                  {/* 
+                  duplicate invisible buttons for layout allignments */}
+                  <Button variant="outline" className="invisible">
+                    Show
+                  </Button>
+                  <Button variant="outline" className="invisible">
+                    Show
+                  </Button>
+                  <Button variant="outline" className="invisible">
+                    Show
+                  </Button>
+                  <Button variant="outline" className="invisible">
+                    Show
+                  </Button>
+                  <Button variant="outline" className="invisible">
+                    Show
+                  </Button>
+                  <Button variant="outline" className="invisible">
+                    Show
+                  </Button>
+                  <Button variant="outline" className="invisible">
+                    Show
+                  </Button>
+                  <Button variant="outline" className="invisible">
+                    Show
+                  </Button>
+                  <Button variant="outline" className="invisible">
+                    Show
+                  </Button>
+                  <Button variant="outline" className="invisible">
+                    Show
                   </Button>
                 </div>
               </div>
 
-              {billsLoading && <MonoSkeletonRows rows={6} />}
-
-              {!billsLoading && billsError && (
-                <div className="flex items-start gap-3 p-4 border rounded-lg border-destructive/30">
-                  <CircleAlert className="h-5 w-5 text-destructive mt-0.5" />
-                  <div>
-                    <p className="font-medium text-destructive">Failed to load bills</p>
-                    <p className="text-sm text-muted-foreground">{billsError}</p>
-                    <div className="pt-2">
-                      <Button size="sm" variant="outline" onClick={fetchBills}>Retry</Button>
-                    </div>
-                  </div>
+              {billsLoading ? (
+                <MonoSkeletonRows rows={6} />
+              ) : billsError ? (
+                <div className="text-red-600">{billsError}</div>
+              ) : filteredBills.length === 0 ? (
+                <div className="text-sm text-muted-foreground">
+                  No bills found.
                 </div>
-              )}
-
-              {!billsLoading && !billsError && (
-                <div className="rounded-lg border overflow-x-auto">
+              ) : (
+                <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Bill #</TableHead>
+                        <TableHead>Bill No</TableHead>
                         <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Items</TableHead>
                         <TableHead className="text-right">Total</TableHead>
+                        <TableHead>Items</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredBills.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
-                            {query || status !== "all" ? "No bills match your filters." : "No purchases yet."}
+                      {filteredBills.map((b) => (
+                        <TableRow key={b.id}>
+                          <TableCell className="font-medium">
+                            {b.billNo}
+                          </TableCell>
+                          <TableCell>{formatDate(b.date)}</TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(b.total)}
+                          </TableCell>
+                          <TableCell>{b.itemsCount}</TableCell>
+                          <TableCell>
+                            <StatusBadge value={b.status} />
                           </TableCell>
                         </TableRow>
-                      ) : (
-                        filteredBills.map((b) => (
-                          <TableRow key={b.id || b.billNo}>
-                            <TableCell className="font-medium">{b.billNo}</TableCell>
-                            <TableCell>{formatDate(b.date)}</TableCell>
-                            <TableCell className="text-right">{b.itemsCount}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(b.total)}</TableCell>
-                            <TableCell><StatusBadge value={b.status} /></TableCell>
-                            <TableCell className="text-right">
-                              <Button size="sm" variant="outline" onClick={() => toast.message("Open bill", { description: `Bill ${b.billNo}` })}>
-                                View
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
+                      ))}
                     </TableBody>
                   </Table>
                 </div>
               )}
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
 
-/* ---------- UI bits ---------- */
+/* ===================== UI BITS ===================== */
 function StatusBadge({ value }) {
   const v = (value || "").toLowerCase();
-  if (v === "paid") return <Badge className="bg-emerald-600 hover:bg-emerald-600">Paid</Badge>;
-  if (v === "unpaid") return <Badge className="bg-red-600 hover:bg-red-600">Unpaid</Badge>;
-  if (v === "pending") return <Badge className="bg-amber-600 hover:bg-amber-600">Pending</Badge>;
+  if (v === "paid")
+    return <Badge className="bg-emerald-600 hover:bg-emerald-600">Paid</Badge>;
+  if (v === "unpaid")
+    return <Badge className="bg-red-600 hover:bg-red-600">Unpaid</Badge>;
+  if (v === "pending")
+    return <Badge className="bg-amber-600 hover:bg-amber-600">Pending</Badge>;
   if (v === "cancelled") return <Badge variant="outline">Cancelled</Badge>;
   return <Badge variant="secondary">{value}</Badge>;
 }
@@ -388,12 +655,26 @@ function MonoSkeletonRows({ rows = 6 }) {
   );
 }
 
-function Detail({ icon, label, value, onChange, editing, error, placeholder, type = "text", options = [] }) {
+function Detail({
+  icon,
+  label,
+  value,
+  onChange,
+  editing,
+  error,
+  placeholder,
+  type = "text",
+  options = [],
+  className = "",
+}) {
   return (
-    <div className="rounded-xl border border-border p-4 bg-background min-w-0">
+    <div
+      className={`rounded-xl border border-border p-4 bg-background min-w-0 ${className}`}
+    >
       {label && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {icon}<span>{label}</span>
+          {icon}
+          <span>{label}</span>
         </div>
       )}
       <div className="mt-1">
@@ -401,12 +682,22 @@ function Detail({ icon, label, value, onChange, editing, error, placeholder, typ
           type === "select" ? (
             <select
               className={`w-full px-3 py-2 rounded-md border bg-background ${error ? "border-red-500" : "border-input"}`}
-              value={value ?? ""} onChange={(e) => onChange(e.target.value)}
+              value={value ?? ""}
+              onChange={(e) => onChange(e.target.value)}
             >
-              {options.map((opt) => (<option key={opt || "empty"} value={opt}>{opt || "Select"}</option>))}
+              {options.map((opt) => (
+                <option key={opt || "empty"} value={opt}>
+                  {opt || "Select"}
+                </option>
+              ))}
             </select>
           ) : (
-            <Field value={value ?? ""} onChange={(v) => onChange(v)} placeholder={placeholder} error={error} />
+            <Field
+              value={value ?? ""}
+              onChange={(v) => onChange(v)}
+              placeholder={placeholder}
+              error={error}
+            />
           )
         ) : (
           <div className="font-medium truncate">{value || "—"}</div>
@@ -420,18 +711,22 @@ function Detail({ icon, label, value, onChange, editing, error, placeholder, typ
 function Field({ value, onChange, placeholder, error }) {
   return (
     <input
-      value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} autoComplete="off"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      autoComplete="off"
       className={[
         "w-full px-3 py-2 rounded-md outline-none",
         "bg-background text-foreground",
-        "border", error ? "border-red-500" : "border-input",
+        "border",
+        error ? "border-red-500" : "border-input",
         "focus:ring-2 focus:ring-offset-0 focus:ring-foreground/10",
       ].join(" ")}
     />
   );
 }
 
-/* ---------- Utils ---------- */
+/* ===================== UTILS ===================== */
 function setByPath(obj, path, value) {
   const parts = path.split(".");
   let cur = obj;
@@ -442,21 +737,23 @@ function setByPath(obj, path, value) {
   }
   cur[parts[parts.length - 1]] = value;
 }
+
 function normalizeForm(data = {}) {
   return {
-    name: data.name || "",
-    phone: data.phone || "",
-    alternatePhone: data.alternatePhone || "",
-    idProofType: data.idProofType || "",
-    idProofNumber: data.idProofNumber || "",
+    name: data?.name || "",
+    phone: data?.phone || "",
+    alternatePhone: data?.alternatePhone || "",
+    idProofType: data?.idProofType || "",
+    idProofNumber: data?.idProofNumber || "",
     address: {
-      street: data.address?.street || "",
-      area: data.address?.area || "",
-      city: data.address?.city || "",
-      pincode: data.address?.pincode || "",
+      street: data?.address?.street || "",
+      area: data?.address?.area || "",
+      city: data?.address?.city || "",
+      pincode: data?.address?.pincode || "",
     },
   };
 }
+
 function denormalizeForm(f) {
   return {
     name: f.name?.trim(),
@@ -472,16 +769,30 @@ function denormalizeForm(f) {
     },
   };
 }
+
 function formatCurrency(n) {
   if (Number.isNaN(Number(n))) return "₹0.00";
   try {
-    return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(Number(n));
-  } catch { return `₹${Number(n).toFixed(2)}`; }
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 2,
+    }).format(Number(n));
+  } catch {
+    return `₹${Number(n).toFixed(2)}`;
+  }
 }
+
 function formatDate(d) {
   if (!d) return "—";
   try {
     const date = new Date(d);
-    return date.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "2-digit" });
-  } catch { return "—"; }
+    return date.toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+  } catch {
+    return "—";
+  }
 }

@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const { SaleBill } = require('../models/saleBillModel');
 const { SalesInventory } = require('../models/Inventory/SalesInventoryModel');
 const { Customer } = require('../models/customerModel');
+const { Types: { ObjectId } } = mongoose;
 
 // Simple bill number generator: INV-YYYY-######
 // You can replace this with a counter collection if you prefer strict sequential.
@@ -98,19 +99,34 @@ const createSaleBill = async (req, res) => {
   }
 };
 
-const getBillById = async (req, res) => {
+const getBillsByCustomer = async (req, res) => {
   try {
-    const { id } = req.params;
-    const bill = await SaleBill.findById(id)
-      .populate('customer') // basic customer details
+    const customerId = req.query.customerId || req.params.customerId;
+    if (!customerId) {
+      return res.status(400).json({ message: "customerId is required" });
+    }
+
+    // Cast only if stored as ObjectId
+    const filter = {};
+    if (ObjectId.isValid(customerId)) {
+      filter.customer = new ObjectId(customerId);
+    } else {
+      // If you stored customer as string (rare), fall back to string match
+      filter.customer = customerId;
+    }
+
+    const bills = await SaleBill.find(filter)
+      .sort({ createdAt: -1 })
+      .populate("customer")           // optional
       .lean();
 
-    if (!bill) return res.status(404).json({ message: 'Bill not found' });
-    res.json({ data: bill });
+    // Prefer 200 + [] for "none", avoids breaking clients
+    return res.json({ data: bills });
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    return res.status(500).json({ message: err.message || "Server error" });
   }
 };
+
 
 const listBills = async (req, res) => {
   try {
@@ -148,4 +164,4 @@ const listBills = async (req, res) => {
   }
 };
 
-module.exports = { createSaleBill, getBillById, listBills };
+module.exports = { createSaleBill, getBillsByCustomer, listBills };

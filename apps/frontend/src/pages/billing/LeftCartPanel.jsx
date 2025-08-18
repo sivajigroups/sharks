@@ -340,7 +340,7 @@ const handleInsert = async () => {
                   </button>
                   <span>{item.qty}</span>
                   <button
-                    className="px-2 py-1 font-bold text-lg"
+                    className="px-2 py-1 font-bold text-lg text-green-500"
                     onClick={() =>
                       setCartItems((prev) =>
                         prev.map((i) => (i.id === item.id ? { ...i, qty: i.qty + 1 } : i))

@@ -3,10 +3,10 @@ import Login from "./pages/Login";
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import Report from "./pages/Report";
-import SalesInventory from "./pages/SalesInventory";
+
 import Customers from "./pages/Customers";
 import Branch from "./pages/Branch";
-import RentalOrdersPage from "./pages/orders/RentalOrderPage";
+
 import Notifications from "./pages/Notification";
 import StaffPage from "./pages/StaffPage";
 import Attendance from "./pages/Attendance";
