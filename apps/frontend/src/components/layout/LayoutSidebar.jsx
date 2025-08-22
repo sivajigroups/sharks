@@ -9,6 +9,7 @@ import {
   UserRoundPen,
   Languages,
   Wrench,
+  ListOrdered,
 } from "lucide-react";
 import {
   Sidebar,
@@ -71,6 +72,11 @@ const LayoutSidebar = () => {
           icon: ShoppingCart,
           url: "/layout/billing",
         },
+         {
+          title: "Order List",
+          icon: ListOrdered,
+          url: "/layout/order",
+        }
       ],
     },
     {

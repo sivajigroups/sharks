@@ -449,7 +449,7 @@ export default function CustomerDetails() {
                   value={form?.idProofNumber ?? ""}
                   onChange={(v) => onChange("idProofNumber", v)}
                   error={errors?.idProofNumber}
-                  className="min-w-[240px] flex-1"
+                  className="min-w-[240px] flex-1 invisible"
                 />
               </div>
 

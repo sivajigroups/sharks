@@ -17,6 +17,7 @@ import NewOrder from "./pages/orders/NewOrder";
 import "./i18n";
 import SalesBilling from "./pages/billing/SalesBilling";
 import CustomerDetails from "./pages/CustomerDetails";
+import OrderList from "./pages/billing/OrderList";
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
           <Route path="customers" element={<Customers />} />
           <Route path="branches" element={<Branch />} />
           <Route path="billing" element={<SalesBilling />} />
+          <Route path="order" element={<OrderList/>} />
           {/* <Route path="rentalOrder" element={<RentalOrdersPage />} /> */}
           {/* <Route path="rentalOrder" element={<OrderManager type="rental" title="Rental Orders" newOrderPath="/layout/rentalOrder/new" />} /> */}
           <Route path="rentalOrder/new" element={<NewOrder />} />
@@ -77,6 +79,7 @@ function App() {
           />
           <Route path="/layout/staff/:id" element={<StaffDetail />} />
           <Route path="customers/:id" element={<CustomerDetails />} />
+          
         </Route>
       </Routes>
     </Router>

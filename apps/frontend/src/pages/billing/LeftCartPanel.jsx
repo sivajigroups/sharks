@@ -49,7 +49,10 @@ const LeftCartPanel = ({ cartItems, setCartItems }) => {
   const [idProofNumber, setIdProofNumber] = useState("");
 
   // totals
-  const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.qty, 0);
+  const subtotal = cartItems.reduce(
+    (acc, item) => acc + item.price * item.qty,
+    0
+  );
   const taxAmount = +(subtotal * TAX_RATE).toFixed(2);
   const totalAmount = +(subtotal + taxAmount).toFixed(2);
 
@@ -94,67 +97,72 @@ const LeftCartPanel = ({ cartItems, setCartItems }) => {
     setIdProofNumber("");
   };
 
-const handleInsert = async () => {
-  // (optional) minimal checks; you can add more if you want
-  if (
-    !name || !phone || !street || !area || !city ||
-    !pincode || !idProofType || !idProofNumber
-  ) {
-    toast.error("Please fill all the fields");
-    return;
-  }
+  const handleInsert = async () => {
+    // (optional) minimal checks; you can add more if you want
+    if (
+      !name ||
+      !phone ||
+      !street ||
+      !area ||
+      !city ||
+      !pincode ||
+      !idProofType ||
+      !idProofNumber
+    ) {
+      toast.error("Please fill all the fields");
+      return;
+    }
 
-  try {
-    setSaving(true);
+    try {
+      setSaving(true);
 
-    // ✅ match Customers page body exactly
-    const body = {
-      name,
-      phone,
-      alternatePhone,
-      address: { street, area, city, pincode },
-      idProofType,
-      idProofNumber,
-    };
+      // ✅ match Customers page body exactly
+      const body = {
+        name,
+        phone,
+        alternatePhone,
+        address: { street, area, city, pincode },
+        idProofType,
+        idProofNumber,
+      };
 
-    const res = await fetch(`${API}/customer/details`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    });
+      const res = await fetch(`${API}/customer/details`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.message || "Failed to add customer");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "Failed to add customer");
 
-    // pick returned customer object (fallback to body if API doesn’t echo)
-    const newCustomer = data.data || body;
+      // pick returned customer object (fallback to body if API doesn’t echo)
+      const newCustomer = data.data || body;
 
-    toast.success("Customer added");
+      toast.success("Customer added");
 
-    // ✅ select the new customer and close dialogs
-    setSelectedCustomer(newCustomer);
-    setAddOpen(false);
-    setSelectOpen(false);
+      // ✅ select the new customer and close dialogs
+      setSelectedCustomer(newCustomer);
+      setAddOpen(false);
+      setSelectOpen(false);
 
-    // refresh list + reset form
-    await fetchCustomers("", 1);
-    setName("");
-    setPhone("");
-    setAlternatePhone("");
-    setStreet("");
-    setArea("");
-    setCity("");
-    setPincode("");
-    setIdProofType("");
-    setIdProofNumber("");
-  } catch (err) {
-    toast.error(err.message);
-  } finally {
-    setSaving(false);
-  }
-};
-
+      // refresh list + reset form
+      await fetchCustomers("", 1);
+      setName("");
+      setPhone("");
+      setAlternatePhone("");
+      setStreet("");
+      setArea("");
+      setCity("");
+      setPincode("");
+      setIdProofType("");
+      setIdProofNumber("");
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // ----------------------------------------
   // Payment / invoice (unchanged logic)
@@ -180,9 +188,15 @@ const handleInsert = async () => {
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.text("From:", 16, y);
-    doc.text("Sivaji Power Tools\n123 Tool Street\nChennai, TN - 600001", 16, y + 5);
+    doc.text(
+      "Sivaji Power Tools\n123 Tool Street\nChennai, TN - 600001",
+      16,
+      y + 5
+    );
     const billDate = bill.billingDate ? new Date(bill.billingDate) : new Date();
-    doc.text(`Invoice Date: ${billDate.toLocaleDateString()}`, 150, y, { align: "left" });
+    doc.text(`Invoice Date: ${billDate.toLocaleDateString()}`, 150, y, {
+      align: "left",
+    });
 
     y += 25;
 
@@ -197,7 +211,8 @@ const handleInsert = async () => {
         16,
         y + 10
       );
-      if (bill.customer.phone) doc.text(`Mobile: ${bill.customer.phone}`, 16, y + 15);
+      if (bill.customer.phone)
+        doc.text(`Mobile: ${bill.customer.phone}`, 16, y + 15);
     }
 
     y += 25;
@@ -214,11 +229,18 @@ const handleInsert = async () => {
       startY: y,
       head: [["#", "Item", "Qty", "Price", "Total"]],
       body,
-      styles: { font: "helvetica", fontSize: 10, cellPadding: 3, halign: "center" },
+      styles: {
+        font: "helvetica",
+        fontSize: 10,
+        cellPadding: 3,
+        halign: "center",
+      },
       headStyles: { fillColor: primary, textColor: "#fff", fontStyle: "bold" },
       alternateRowStyles: { fillColor: lightGray },
       columnStyles: { 1: { halign: "left" }, 4: { fontStyle: "bold" } },
-      didDrawPage: (data) => { y = data.cursor.y; },
+      didDrawPage: (data) => {
+        y = data.cursor.y;
+      },
       margin: { left: 16, right: 16 },
     });
 
@@ -259,7 +281,10 @@ const handleInsert = async () => {
     const pdfUrl = doc.output("bloburl");
     const win = window.open(pdfUrl, "_blank");
     if (win) {
-      win.onload = () => { win.focus(); win.print(); };
+      win.onload = () => {
+        win.focus();
+        win.print();
+      };
     }
   };
 
@@ -293,7 +318,7 @@ const handleInsert = async () => {
 
       const savedBill = json.data;
       toast.success(`Bill ${savedBill.billNo} created`);
-      generateInvoiceFromBill(savedBill);
+      //  generateInvoiceFromBill(savedBill);
       setCartItems([]);
     } catch (err) {
       toast.error(err.message);
@@ -308,7 +333,9 @@ const handleInsert = async () => {
 
       <div className="flex-1 overflow-y-auto pr-1 scrollbar-hide scroll-smooth space-y-2">
         {cartItems.length === 0 ? (
-          <div className="text-sm text-gray-400">Click a tool to add to cart...</div>
+          <div className="text-sm text-gray-400">
+            Click a tool to add to cart...
+          </div>
         ) : (
           cartItems.map((item) => (
             <div key={item.id} className="flex justify-between border-b pb-1">
@@ -324,14 +351,18 @@ const handleInsert = async () => {
               </div>
 
               <div className="flex flex-col items-center">
-                <div className="font-semibold">₹{(item.qty * item.price).toFixed(2)}</div>
+                <div className="font-semibold">
+                  ₹{(item.qty * item.price).toFixed(2)}
+                </div>
                 <div className="flex items-center gap-2 border rounded px-2 mt-1">
                   <button
                     className="px-2 py-1 font-bold text-lg"
                     onClick={() =>
                       setCartItems((prev) =>
                         prev
-                          .map((i) => (i.id === item.id ? { ...i, qty: i.qty - 1 } : i))
+                          .map((i) =>
+                            i.id === item.id ? { ...i, qty: i.qty - 1 } : i
+                          )
                           .filter((i) => i.qty > 0)
                       )
                     }
@@ -343,7 +374,9 @@ const handleInsert = async () => {
                     className="px-2 py-1 font-bold text-lg text-green-500"
                     onClick={() =>
                       setCartItems((prev) =>
-                        prev.map((i) => (i.id === item.id ? { ...i, qty: i.qty + 1 } : i))
+                        prev.map((i) =>
+                          i.id === item.id ? { ...i, qty: i.qty + 1 } : i
+                        )
                       )
                     }
                   >
@@ -374,8 +407,14 @@ const handleInsert = async () => {
         {/* SELECT CUSTOMER (controlled) */}
         <Dialog open={selectOpen} onOpenChange={setSelectOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" className="w-full mt-2" onClick={() => setSelectOpen(true)}>
-              {selectedCustomer ? `Customer: ${selectedCustomer.name}` : "Select Customer"}
+            <Button
+              variant="outline"
+              className="w-full mt-2"
+              onClick={() => setSelectOpen(true)}
+            >
+              {selectedCustomer
+                ? `Customer: ${selectedCustomer.name}`
+                : "Select Customer"}
             </Button>
           </DialogTrigger>
 
@@ -407,7 +446,9 @@ const handleInsert = async () => {
               className="w-full border rounded px-2 py-1 text-sm my-2"
             />
 
-            {loading && <p className="text-sm text-gray-500">Loading customers...</p>}
+            {loading && (
+              <p className="text-sm text-gray-500">Loading customers...</p>
+            )}
             {error && <p className="text-sm text-red-500">{error}</p>}
 
             <div className="flex-1 overflow-y-auto space-y-1">
@@ -424,14 +465,137 @@ const handleInsert = async () => {
                         {customer.address &&
                           `${customer.address.street}, ${customer.address.area}, ${customer.address.city} - ${customer.address.pincode}`}
                       </div>
-                      <div className="text-xs text-gray-500">📞 {customer.phone}</div>
+                      <div className="text-xs text-gray-500">
+                        📞 {customer.phone}
+                      </div>
                     </div>
                   </Button>
                 </DialogClose>
               ))}
-
               {!loading && customers.length === 0 && (
-                <p className="text-sm text-gray-400">No matching customers found.</p>
+                <div>
+                  <p className="text-sm text-gray-400 mb-2">
+                    No matching customers found.
+                  </p>
+
+                  {/* Add Customer Button */}
+                  <Button
+                    onClick={() => {
+                      setPhone(searchTerm); // Pre-fill searched phone
+                      setAddOpen(true); // Open dialog
+                    }}
+                    className="m-3"
+                    variant="outline"
+                  >
+                    + Add Customer
+                  </Button>
+
+                  {/* Add Customer Dialog */}
+                  <Dialog open={addOpen} onOpenChange={setAddOpen}>
+                    <DialogContent className="max-h-[85vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>
+                          {t("customers.addCustomerTitle")}
+                        </DialogTitle>
+                      </DialogHeader>
+
+                      <form
+                        className="space-y-3 mt-2"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleInsert();
+                        }}
+                      >
+                        <Input
+                          placeholder={t("customers.name")}
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          required
+                        />
+                        <Input
+                          placeholder={t("customers.phone")}
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          required
+                        />
+                        <Input
+                          placeholder={t("customers.altPhone")}
+                          value={alternatePhone}
+                          onChange={(e) => setAlternatePhone(e.target.value)}
+                        />
+
+                        <Input
+                          placeholder={t("customers.street")}
+                          value={street}
+                          onChange={(e) => setStreet(e.target.value)}
+                          required
+                        />
+                        <Input
+                          placeholder={t("customers.area")}
+                          value={area}
+                          onChange={(e) => setArea(e.target.value)}
+                          required
+                        />
+                        <Input
+                          placeholder={t("customers.city")}
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          required
+                        />
+                        <Input
+                          placeholder={t("customers.pincode")}
+                          value={pincode}
+                          onChange={(e) => setPincode(e.target.value)}
+                          required
+                        />
+
+                        <select
+                          value={idProofType}
+                          onChange={(e) => setIdProofType(e.target.value)}
+                          className="w-full px-3 py-2 border rounded-md"
+                          required
+                        >
+                          <option value="">{t("customers.idProof")}</option>
+                          <option value="Aadhaar">
+                            {t("customers.aadhaar")}
+                          </option>
+                          <option value="PAN">{t("customers.pan")}</option>
+                          <option value="Voter ID">
+                            {t("customers.voter")}
+                          </option>
+                          <option value="Driving License">
+                            {t("customers.license")}
+                          </option>
+                        </select>
+
+                        <Input
+                          placeholder={t("customers.idProofNumber")}
+                          value={idProofNumber}
+                          onChange={(e) => setIdProofNumber(e.target.value)}
+                          required
+                        />
+
+                        <div className="flex gap-2">
+                          <Button
+                            type="submit"
+                            className="flex-1"
+                            disabled={saving}
+                          >
+                            {saving ? t("common.saving") : t("customers.save")}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => setAddOpen(false)}
+                          >
+                            {t("common.cancel")}
+                          </Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               )}
             </div>
           </DialogContent>
@@ -451,14 +615,48 @@ const handleInsert = async () => {
                 handleInsert();
               }}
             >
-              <Input placeholder={t("customers.name")} value={name} onChange={(e) => setName(e.target.value)} required />
-              <Input placeholder={t("customers.phone")} value={phone} onChange={(e) => setPhone(e.target.value)} required />
-              <Input placeholder={t("customers.altPhone")} value={alternatePhone} onChange={(e) => setAlternatePhone(e.target.value)} />
+              <Input
+                placeholder={t("customers.name")}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+              <Input
+                placeholder={t("customers.phone")}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
+              <Input
+                placeholder={t("customers.altPhone")}
+                value={alternatePhone}
+                onChange={(e) => setAlternatePhone(e.target.value)}
+              />
 
-              <Input placeholder={t("customers.street")} value={street} onChange={(e) => setStreet(e.target.value)} required />
-              <Input placeholder={t("customers.area")} value={area} onChange={(e) => setArea(e.target.value)} required />
-              <Input placeholder={t("customers.city")} value={city} onChange={(e) => setCity(e.target.value)} required />
-              <Input placeholder={t("customers.pincode")} value={pincode} onChange={(e) => setPincode(e.target.value)} required />
+              <Input
+                placeholder={t("customers.street")}
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+                required
+              />
+              <Input
+                placeholder={t("customers.area")}
+                value={area}
+                onChange={(e) => setArea(e.target.value)}
+                required
+              />
+              <Input
+                placeholder={t("customers.city")}
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                required
+              />
+              <Input
+                placeholder={t("customers.pincode")}
+                value={pincode}
+                onChange={(e) => setPincode(e.target.value)}
+                required
+              />
 
               <select
                 value={idProofType}
@@ -470,7 +668,9 @@ const handleInsert = async () => {
                 <option value="Aadhaar">{t("customers.aadhaar")}</option>
                 <option value="PAN">{t("customers.pan")}</option>
                 <option value="Voter ID">{t("customers.voter")}</option>
-                <option value="Driving License">{t("customers.license")}</option>
+                <option value="Driving License">
+                  {t("customers.license")}
+                </option>
               </select>
 
               <Input
@@ -501,7 +701,9 @@ const handleInsert = async () => {
 
         {/* payment mode */}
         <div className="mt-2">
-          <label className="block text-xs text-gray-500 mb-1">Payment Mode</label>
+          <label className="block text-xs text-gray-500 mb-1">
+            Payment Mode
+          </label>
           <select
             className="w-full border rounded px-2 py-1 text-sm"
             value={paymentMode}
