@@ -1,4 +1,5 @@
-const { Sales } = require("../models/salesInventory");
+const { SalesInventory } = require("../models/Inventory/SalesInventoryModel");
+
 
 
 const insertSale = async (req, res) => {
@@ -10,7 +11,7 @@ const insertSale = async (req, res) => {
       });
     }
     
-    const salesSave = new Sales({
+    const salesSave = new SalesInventory({
       customer,
       inventory,
       quantity,

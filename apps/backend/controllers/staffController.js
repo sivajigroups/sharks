@@ -3,20 +3,25 @@ const { Customer } = require("../models/customerModel");
 const { Inventory } = require("../models/Inventory/inventoryModel");
 const { RentalInventory } = require("../models/Inventory/RentalInventoryModel");
 const { SalesInventory } = require("../models/Inventory/SalesInventoryModel");
+const { Branch } = require("../models/branchModel");
 const Attribute = require("../models/Inventory/variantModel");
 const insertSales = async (req, res) => {
   try {
-    const { name, description, category, variants } = req.body;
+    const { name, description, category, variants, branchId } = req.body;
 
-    if (
-      !name ||
-      !variants ||
-      !Array.isArray(variants) ||
-      variants.length === 0
-    ) {
+    if (!name || !Array.isArray(variants) || variants.length === 0) {
       return res
         .status(400)
         .json({ message: "Missing required fields: name or variants" });
+    }
+    if (!branchId) {
+      return res.status(400).json({ message: "branchId is required" });
+    }
+
+    // Ensure branch exists
+    const branch = await Branch.findById(branchId).lean();
+    if (!branch) {
+      return res.status(404).json({ message: "Branch not found" });
     }
 
     // Generate SKU and validate each variant
@@ -25,39 +30,38 @@ const insertSales = async (req, res) => {
       const size = variant.size || "STD";
       const sku = `${name}-${brand}-${size}`.replace(/\s+/g, "").toUpperCase();
 
-      if (!variant.price || !variant.stock) {
+      if (variant.price == null || variant.stock == null) {
         throw new Error("Each variant must have price and stock");
       }
 
-      return {
-        ...variant,
-        sku,
-      };
+      return { ...variant, sku };
     });
 
-    // Check for duplicate SKUs in DB
+    // Check for duplicate SKUs in THIS branch
     const skuList = processedVariants.map((v) => v.sku);
     const existing = await SalesInventory.findOne({
+      branch: branchId,
       "variants.sku": { $in: skuList },
-    });
+    }).lean();
 
     if (existing) {
       return res
         .status(400)
-        .json({ message: "One or more SKUs already exist" });
+        .json({ message: "One or more SKUs already exist in this branch" });
     }
 
     const sales = new SalesInventory({
       name,
       description,
       category,
+      branch: branchId,
       variants: processedVariants,
     });
 
-    await sales.save();
+    await sales.save(); // compound index also guards race conditions
 
     const lowStockSKUs = processedVariants
-      .filter((v) => v.stock < 5)
+      .filter((v) => Number(v.stock) < 5)
       .map((v) => v.sku);
 
     if (lowStockSKUs.length > 0) {
@@ -67,12 +71,19 @@ const insertSales = async (req, res) => {
       });
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Inventory item(s) added successfully",
       data: sales,
     });
   } catch (error) {
-    res.status(500).json({
+    // Friendly duplicate error if index is hit
+    if (error?.code === 11000) {
+      return res.status(400).json({
+        message: "Duplicate SKU in this branch",
+        error: error.message,
+      });
+    }
+    return res.status(500).json({
       message: "Error in adding Tools in Inventory",
       error: error.message,
     });
