@@ -1,4 +1,4 @@
-import React from "react";
+import React, { lazy } from "react";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import {
   UserRoundPen,
   Languages,
   Wrench,
+  DollarSign,
   ListOrdered,
 } from "lucide-react";
 import {
@@ -32,64 +33,116 @@ const LayoutSidebar = () => {
     i18n.changeLanguage(nextLang);
   };
 
-  const adminSidebar = [
-    {
-      label: t("sidebar.general"),
-      items: [
-        { title: t("sidebar.dashboard"), icon: Home, url: "/layout/dashboard" },
-      ],
-    },
-    // {
-    //   label: t("sidebar.inventory"),
-    //   items: [
-    //     {
-    //       title: t("sidebar.salesInventory"),
-    //       icon: Wrench,
-    //       url: "/layout/salesInfo",
-    //     },
-    //   ],
-    // },
-    {
-      label: t("sidebar.management"),
-      items: [
-        {
-          title: t("sidebar.salesInventory"),
-          icon: Wrench,
-          url: "/layout/salesInfo",
-        },
-        {
-          title: t("sidebar.customers"),
-          icon: Users,
-          url: "/layout/customers",
-        },
-      ],
-    },
-    {
-      label: t("sidebar.Billing"),
-      items: [
-        {
-          title: t("sidebar.sales"),
-          icon: ShoppingCart,
-          url: "/layout/billing",
-        },
-         {
-          title: "Order List",
-          icon: ListOrdered,
-          url: "/layout/order",
-        }
-      ],
-    },
-    {
-      label: t("sidebar.administration"),
-      items: [
-        {
-          title: t("sidebar.profile"),
-          icon: UserRoundPen,
-          url: "/layout/users",
-        },
-      ],
-    },
-  ];
+const adminSidebar = [
+  {
+    label: t("sidebar.general"),
+    items: [
+      { title: t("sidebar.dashboard"), icon: Home, url: "/layout/dashboard" },
+    ],
+  },
+  // {
+  //   label: t("sidebar.inventory"),
+  //   items: [
+  //     {
+  //       title: t("sidebar.salesInventory"),
+  //       icon: Wrench,
+  //       url: "/layout/salesInfo",
+  //     },
+  //   ],
+  // },
+  {
+    label: t("sidebar.management"),
+    items: [
+      {
+        title: t("sidebar.salesInventory"),
+        icon: Wrench,
+        url: "/layout/salesInfo",
+      },
+      {
+        title: t("sidebar.rentalInventory"),
+        icon: Wrench,
+        url: "/layout/rentalInfo",
+      },
+      {
+        title: t("sidebar.customers"),
+        icon: Users,
+        url: "/layout/customers",
+      },
+    ],
+  },
+  {
+    label: t("sidebar.Billing"),
+    items: [
+      {
+        title: t("sidebar.sales"),
+        icon: ShoppingCart,
+        url: "/layout/billing",
+      },
+      {
+        title: "Order List",
+        icon: ListOrdered,
+        url: "/layout/order",
+      }
+      ,{
+        title: t("sidebar.rentalOrders"),
+        icon: ListOrdered,
+        url: "/layout/rentalOrderList",
+      }
+    ],
+  },
+  {
+    label: t("sidebar.reports"),
+    items: [
+      // {
+      //   title: t("sidebar.salesReport"),  
+      //   icon: ShoppingCart,
+      //   url: "/layout/salesReport",
+      // },
+      {
+        title: t("sidebar.inventoryReport"),  
+        icon: Wrench,
+        url: "/layout/salesInventoryReport",
+      },
+     
+      {
+        title: t("sidebar.inactiveCustomers"),  
+        icon: Users,
+        url: "/layout/customers/inactive",
+      }
+      // {
+      //   title: t("sidebar.financialSummary"),  
+      //   icon: DollarSign,  // Assuming DollarSign icon is available; adjust if needed
+      //   url: "/layout/financialSummary",
+      // },
+      // {
+      //   title: t("sidebar.orderTrends"),  
+      //   icon: ListOrdered,
+      //   url: "/layout/orderTrends",
+      // },
+    ],
+  },
+  {
+    label:t("sidebar.purchase"),
+    items:[
+      {
+        title: t("sidebar.purchaseOrder"),
+        icon: ShoppingCart,
+        url: "/layout/purchaseOrder",
+      },
+    ]
+  }
+  ,
+  {
+    label: t("sidebar.administration"),
+    items: [
+      {
+        title: t("sidebar.profile"),
+        icon: UserRoundPen,
+        url: "/layout/users",
+      },
+    ],
+  },
+];
 
   return (
     <Sidebar>

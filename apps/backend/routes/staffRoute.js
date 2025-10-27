@@ -14,11 +14,14 @@ const {
   insertSales,
   insertRental,
   getAllsales,
-  getAllrental,
   insertAttribute,
   getAttribute,
   updateSales,
   getCustomerById,
+  getAllRental,
+  updateRental,
+  deleteRental,
+  rentalToSales,
 } = require("../controllers/staffController");
 const staffRouter = express.Router();
 
@@ -26,10 +29,14 @@ staffRouter.post("/inventory/sales",userAuth,insertSales);
 staffRouter.put("/inventory/sales/:id", userAuth, updateSales); // Assuming this is for updating sales
 staffRouter.post("/inventory/rental", userAuth, insertRental);
 
+staffRouter.put("/inventory/rental/:id", userAuth, updateRental); // Assuming this is for updating rental
 
 staffRouter.get("/inventory/sales",userAuth,getAllsales);
-staffRouter.get("/inventory/rental", userAuth, getAllrental);
-staffRouter.delete("/inventory/:id",deleteInventory);
+staffRouter.get("/inventory/rental", userAuth, getAllRental);
+staffRouter.delete("/inventory/sales/:id",deleteInventory);
+staffRouter.delete("/inventory/rental/:id",deleteRental);
+
+staffRouter.post("/inventory/transfer/rental-to-sales", userAuth, rentalToSales);
 
 
 staffRouter.post("/inventory/attributes",userAuth,insertAttribute);

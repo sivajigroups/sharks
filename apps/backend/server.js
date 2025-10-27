@@ -8,9 +8,9 @@ const userRouter = require("./routes/userRoute");
 const staffRouter = require("./routes/staffRoute");
 const saleRouter = require("./routes/saleRoute");
 const adminRouter = require("./routes/adminRoute");
-const transRouter = require("./routes/transactionRoute");
 const billRouter = require("./routes/historyRoute");
 const transferRouter = require("./routes/transfer");
+const rentalPurchaseRouter = require("./routes/rentalPurchaseRoutes");
 
 const app = express();
 app.use(cookieParser());
@@ -38,7 +38,7 @@ app.use("/api", userRouter);
 app.use("/api", staffRouter);
 app.use("/api", saleRouter);
 app.use("/api", adminRouter);
-app.use("/api", transRouter);
+app.use("/api", rentalPurchaseRouter);
 app.use("/api",billRouter);
 app.use("/api", transferRouter);
 

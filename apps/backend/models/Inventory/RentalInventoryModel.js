@@ -1,40 +1,48 @@
+// models/RentalInventory.js
 const mongoose = require("mongoose");
+const { Schema } = mongoose;
 
-const RentalInventorySchema = new mongoose.Schema({
-  name: {
+// ── Variant Schema
+const variantSchema = new Schema({
+  sku: {
     type: String,
     required: true,
     trim: true,
+    uppercase: true,       // normalize so ABC-1 and abc-1 are identical
   },
-  description: {
-    type: String,
-    trim: true,
-  },
-  category: {
-    type: String,
-    trim: true,
-  },
-  quantity: {
-    type: Number,
-    default: 0,
-  },
-  pricePerDay: {
-    type: Number,
-    required: function () {
-      return this.type === "rental";
+  brand: { type: String, trim: true },
+  size:  { type: String, trim: true },
+  color: { type: String, default: null, trim: true },
+  pricePerDay: { type: Number, required: true },
+  stock: { type: Number, required: true, min: 0 },
+});
+
+// ── Rental Inventory Schema
+const rentalInventorySchema = new Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    description: { type: String, trim: true },
+    category: { type: String, trim: true },
+    branch: {
+      type: Schema.Types.ObjectId,
+      ref: "Branch",
+      required: true,
+      index: true,
     },
+    variants: [variantSchema],
   },
-  branch: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Branch",
-    required: true,
-  },
-  barcode: {
-    type: String,
+  { timestamps: true }
+);
+
+// ── Enforce uniqueness of SKU per branch (ignore null/non-string)
+rentalInventorySchema.index(
+  { branch: 1, "variants.sku": 1 },
+  {
     unique: true,
-  },
-},{timestamps: true});
+    name: "uniq_rental_variant_sku_per_branch",
+    partialFilterExpression: { "variants.sku": { $type: "string" } },
+  }
+);
 
-const RentalInventory = mongoose.model("RentalInventory", RentalInventorySchema);   
-
+const RentalInventory = mongoose.model("RentalInventory", rentalInventorySchema);
 module.exports = { RentalInventory };

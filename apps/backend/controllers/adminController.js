@@ -1,5 +1,6 @@
 const { Branch } = require("../models/branchModel");
 const { User } = require("../models/userModel");
+const Purchase = require("../models/purchaseModel");
 
 const addingBranch = async (req, res) => {
   try {
@@ -187,6 +188,75 @@ const deleteStaff = async (req, res) => {
   }
 };
 
+const purchaseEntry = async (req, res) => {
+  try {
+    const doc = await Purchase.create(req.body); // works fine now
+    res.status(201).json({ success: true, data: doc });
+  } catch (err) {
+    console.error("Purchase Entry Error:", err);
+    res.status(400).json({ success: false, error: err.message });
+  }
+};
+
+// 📋 Get all Purchase Bills
+const getAllPurchases = async (req, res) => {
+  try {
+    const purchases = await Purchase.find().sort({ billDate: -1 });
+    res.status(200).json({ success: true, data: purchases });
+  } catch (err) {
+    console.error("Get All Purchases Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// 🔍 Get Purchase Bill by ID
+const getPurchaseById = async (req, res) => {
+  try {
+    const doc = await Purchase.findById(req.params.id);
+    if (!doc)
+      return res
+        .status(404)
+        .json({ success: false, error: "Purchase not found" });
+    res.status(200).json({ success: true, data: doc });
+  } catch (err) {
+    console.error("Get Purchase By ID Error:", err);
+    res.status(400).json({ success: false, error: err.message });
+  }
+};
+
+// ✏️ Update Purchase Bill
+const updatePurchase = async (req, res) => {
+  try {
+    const updated = await Purchase.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    if (!updated)
+      return res
+        .status(404)
+        .json({ success: false, error: "Purchase not found" });
+    res.status(200).json({ success: true, data: updated });
+  } catch (err) {
+    console.error("Update Purchase Error:", err);
+    res.status(400).json({ success: false, error: err.message });
+  }
+};
+
+// ❌ Delete Purchase Bill
+const deletePurchase = async (req, res) => {
+  try {
+    const deleted = await Purchase.findByIdAndDelete(req.params.id);
+    if (!deleted)
+      return res
+        .status(404)
+        .json({ success: false, error: "Purchase not found" });
+    res.status(200).json({ success: true, message: "Purchase deleted" });
+  } catch (err) {
+    console.error("Delete Purchase Error:", err);
+    res.status(400).json({ success: false, error: err.message });
+  }
+};
+
 module.exports = {
   addingBranch,
   getAllBranches,
@@ -196,5 +266,10 @@ module.exports = {
   getAllStaff,
   updateStaff,
   getStaffById,
-  deleteStaff
+  deleteStaff,
+  purchaseEntry,
+  getAllPurchases,
+  getPurchaseById,
+  updatePurchase,
+  deletePurchase,
 };

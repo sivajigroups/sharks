@@ -23,8 +23,10 @@ import ReTable from "@/components/shared/ReTable";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// ⬇️ import your ready-made dialog
-import TransferSkuDialog from "../components/TransferSkuDialog"; // <-- update path if needed
+// Keep branch-to-branch transfer
+import TransferSkuDialog from "../components/TransferSkuDialog";
+// Simple sales ↔ rental transfer
+import TransferToOtherTypeDialog from "../components/TransferToOtherTypeDialog";
 
 const categories = [
   "Power Tools",
@@ -35,14 +37,19 @@ const categories = [
   "Plumbing",
 ];
 
-export default function InventoryManager({ type }) {
+export default function InventoryManager({ type = "sales", title }) {
   const { t } = useTranslation();
   const API_BASE = import.meta.env.VITE_API_BASE;
-  const TRANSFER_API = `${API_BASE}/transfers`; // change if your route differs
 
-  // ─────────────────────────────────────────────────────────────
+  // endpoint for branch↔branch transfer now depends on page type
+  const BRANCH_TRANSFER_API = `${API_BASE}/transfers/${type}`;
+
+  const isRental = type === "rental";
+  const priceLabel = isRental
+    ? t("inventory.rentPrice") || "Price per Day (₹)"
+    : t("inventory.salePrice") || "Sale Price (₹)";
+
   // Table columns
-  // ─────────────────────────────────────────────────────────────
   const columns = [
     { key: "name", label: t("inventory.itemName") || "Item" },
     { key: "category", label: t("inventory.category") || "Category" },
@@ -50,29 +57,28 @@ export default function InventoryManager({ type }) {
     { key: "updatedAt", label: t("inventory.lastUpdated") || "Last Updated" },
   ];
 
-  // ─────────────────────────────────────────────────────────────
   // State
-  // ─────────────────────────────────────────────────────────────
   const [rawInventories, setRawInventories] = useState([]);
   const [inventories, setInventories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Create/Edit dialog state
+  // Create/Edit dialog
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
+  // UI keeps `price`; maps to backend `price` (sales) or `pricePerDay` (rental)
   const [variants, setVariants] = useState([
     { brand: "", size: "", color: "", price: "", stock: "" },
   ]);
 
   // Branches
   const [branches, setBranches] = useState([]);
-  const [branchId, setBranchId] = useState(""); // for create/edit dialog
+  const [branchId, setBranchId] = useState("");
 
-  // 🔎 Branch filter state for the table view (ALL or a specific branch id)
+  // Table branch filter
   const [selectedBranchId, setSelectedBranchId] = useState("ALL");
 
   // Attributes
@@ -84,12 +90,11 @@ export default function InventoryManager({ type }) {
   const [openColorDialog, setOpenColorDialog] = useState(false);
   const [newAttr, setNewAttr] = useState("");
 
-  // TransferSkuDialog state
-  const [transferOpen, setTransferOpen] = useState(false);
+  // Transfer dialogs
+  const [transferOpen, setTransferOpen] = useState(false); // branch↔branch
+  const [crossOpen, setCrossOpen] = useState(false); // sales↔rental
 
-  // ─────────────────────────────────────────────────────────────
-  // Branch id -> name map
-  // ─────────────────────────────────────────────────────────────
+  // Branch id -> name
   const branchNameById = useMemo(() => {
     const map = {};
     for (const b of branches) {
@@ -100,9 +105,7 @@ export default function InventoryManager({ type }) {
     return map;
   }, [branches]);
 
-  // ─────────────────────────────────────────────────────────────
   // Helpers
-  // ─────────────────────────────────────────────────────────────
   const normalizeList = (data = [], idToName = {}) =>
     data.map((item) => {
       let branchLabel = "-";
@@ -116,14 +119,12 @@ export default function InventoryManager({ type }) {
       return { ...item, branch: branchLabel };
     });
 
-  // (still used by create/edit UI; not needed for filter)
   const itemOptions = useMemo(() => {
     const seen = new Set();
     const opts = [];
     for (const it of rawInventories) {
       const id = it._id || it.itemId || it.id;
-      const label =
-        it.name || it.itemName || `Item-${id?.slice?.(0, 6) || ""}`;
+      const label = it.name || it.itemName || `Item-${id?.slice?.(0, 6) || ""}`;
       if (id && !seen.has(id)) {
         seen.add(id);
         opts.push({ id, label, category: it.category });
@@ -132,9 +133,7 @@ export default function InventoryManager({ type }) {
     return opts.sort((a, b) => a.label.localeCompare(b.label));
   }, [rawInventories]);
 
-  // ─────────────────────────────────────────────────────────────
   // Fetchers
-  // ─────────────────────────────────────────────────────────────
   const fetchInventories = async () => {
     setLoading(true);
     try {
@@ -160,7 +159,7 @@ export default function InventoryManager({ type }) {
       const res = await fetch(`${API_BASE}/inventory/attributes`, {
         credentials: "include",
       });
-    const json = await res.json();
+      const json = await res.json();
       const data = json?.data || {};
       setBrands(data?.brand || []);
       setSizes(data?.size || []);
@@ -185,15 +184,11 @@ export default function InventoryManager({ type }) {
       setBranches(list);
     } catch (err) {
       console.error(err);
-      toast.error(
-        t("inventory.branchFetchError") || "Failed to load branches."
-      );
+      toast.error(t("inventory.branchFetchError") || "Failed to load branches.");
     }
   };
 
-  // ─────────────────────────────────────────────────────────────
   // Effects
-  // ─────────────────────────────────────────────────────────────
   useEffect(() => {
     fetchInventories();
   }, [type]);
@@ -203,7 +198,6 @@ export default function InventoryManager({ type }) {
     fetchBranches();
   }, []);
 
-  // Maintain a copy with human-readable branch label for the table
   useEffect(() => {
     setInventories(normalizeList(rawInventories, branchNameById));
   }, [rawInventories, branchNameById]);
@@ -212,9 +206,7 @@ export default function InventoryManager({ type }) {
     if (open && branches.length === 0) fetchBranches();
   }, [open, branches.length]);
 
-  // ─────────────────────────────────────────────────────────────
-  // Create/Edit dialog open/close
-  // ─────────────────────────────────────────────────────────────
+  // Open form
   const openForm = (item = null) => {
     if (item) {
       setEditId(item._id);
@@ -222,16 +214,25 @@ export default function InventoryManager({ type }) {
       setDescription(item.description || "");
       setCategory(item.category || "");
       const bId =
-        item.branch?._id || item.branch?.id || item.branchId || "";
+        item.branch?._id ||
+        item.branch?.id ||
+        item.branchId ||
+        item.branch ||
+        "";
       setBranchId(bId);
+
+      // Backend → UI mapping
+      const mappedVariants = (item.variants || []).map((v) => ({
+        brand: v.brand ?? "",
+        size: v.size ?? "",
+        color: v.color ?? "",
+        price: isRental ? v.pricePerDay ?? "" : v.price ?? "",
+        stock: v.stock ?? "",
+      }));
       setVariants(
-        (item.variants || []).map((v) => ({
-          brand: v.brand ?? "",
-          size: v.size ?? "",
-          color: v.color ?? "",
-          price: v.price ?? "",
-          stock: v.stock ?? "",
-        }))
+        mappedVariants.length
+          ? mappedVariants
+          : [{ brand: "", size: "", color: "", price: "", stock: "" }]
       );
     } else {
       setEditId(null);
@@ -244,18 +245,48 @@ export default function InventoryManager({ type }) {
     setOpen(true);
   };
 
-  // ─────────────────────────────────────────────────────────────
   // Save (create/update)
-  // ─────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!branchId) {
-      toast.error(
-        t("inventory.selectBranchFirst") || "Please select a branch"
-      );
+      toast.error(t("inventory.selectBranchFirst") || "Please select a branch");
       return;
     }
-    const payload = { name, description, category, variants, branchId };
+
+    for (let idx = 0; idx < variants.length; idx++) {
+      const v = variants[idx];
+      if (v.price === "" || Number.isNaN(Number(v.price))) {
+        toast.error(
+          `Variant ${idx + 1}: ${isRental ? "Price per Day" : "Price"} is required`
+        );
+        return;
+      }
+      if (v.stock === "" || Number.isNaN(Number(v.stock))) {
+        toast.error(`Variant ${idx + 1}: Stock is required`);
+        return;
+      }
+    }
+
+    const payloadVariants = variants.map((v) => {
+      const base = {
+        brand: v.brand || undefined,
+        size: v.size || undefined,
+        color: v.color || null,
+        stock: Number(v.stock),
+      };
+      return isRental
+        ? { ...base, pricePerDay: Number(v.price) }
+        : { ...base, price: Number(v.price) };
+    });
+
+    const payload = {
+      name,
+      description,
+      category,
+      branchId,
+      variants: payloadVariants,
+    };
+
     try {
       const url = editId
         ? `${API_BASE}/inventory/${type}/${editId}`
@@ -267,14 +298,18 @@ export default function InventoryManager({ type }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.message || "Request failed");
+      }
       toast.success(
         t(editId ? "inventory.updateSuccess" : "inventory.insertSuccess") ||
           (editId ? "Updated successfully" : "Inserted successfully")
       );
       await fetchInventories();
       setOpen(false);
-    } catch {
+    } catch (err) {
+      console.error(err);
       toast.error(
         t(editId ? "inventory.updateError" : "inventory.insertError") ||
           (editId ? "Update failed" : "Insert failed")
@@ -282,12 +317,10 @@ export default function InventoryManager({ type }) {
     }
   };
 
-  // ─────────────────────────────────────────────────────────────
   // Delete
-  // ─────────────────────────────────────────────────────────────
   const handleDelete = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/inventory/${id}`, {
+      const res = await fetch(`${API_BASE}/inventory/${type}/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -299,12 +332,11 @@ export default function InventoryManager({ type }) {
     }
   };
 
-  // ─────────────────────────────────────────────────────────────
-  // Variants handlers
-  // ─────────────────────────────────────────────────────────────
+  // Variant handlers
   const handleVariantChange = (i, field, val) => {
     const arr = [...variants];
-    arr[i][field] = field === "price" || field === "stock" ? Number(val) : val;
+    const numeric = field === "price" || field === "stock";
+    arr[i][field] = numeric ? Number(val) : val;
     setVariants(arr);
   };
   const addVariant = () =>
@@ -312,11 +344,10 @@ export default function InventoryManager({ type }) {
       ...v,
       { brand: "", size: "", color: "", price: "", stock: "" },
     ]);
-  const removeVariant = (i) => setVariants((v) => v.filter((_, idx) => idx !== i));
+  const removeVariant = (i) =>
+    setVariants((v) => v.filter((_, idx) => idx !== i));
 
-  // ─────────────────────────────────────────────────────────────
-  // Add attribute (brand/size/color)
-  // ─────────────────────────────────────────────────────────────
+  // Add attribute
   const handleAddAttr = async (kind, setter) => {
     if (!newAttr.trim())
       return toast.error(t("inventory.emptyAttribute") || "Enter a value");
@@ -341,19 +372,12 @@ export default function InventoryManager({ type }) {
     }
   };
 
-  // ─────────────────────────────────────────────────────────────
-  // Branch filter logic for table
-  // ─────────────────────────────────────────────────────────────
-  // Filter at the RAW level by branch id, then normalize for labels
+  // Branch filter for table
   const branchFilteredRaw = useMemo(() => {
     if (selectedBranchId === "ALL") return rawInventories;
     return (rawInventories || []).filter((it) => {
       const bId =
-        it?.branch?._id ||
-        it?.branch?.id ||
-        it?.branch ||
-        it?.branchId ||
-        "";
+        it?.branch?._id || it?.branch?.id || it?.branch || it?.branchId || "";
       return String(bId) === String(selectedBranchId);
     });
   }, [rawInventories, selectedBranchId]);
@@ -363,7 +387,6 @@ export default function InventoryManager({ type }) {
     [branchFilteredRaw, branchNameById]
   );
 
-  // Text search on the branch-filtered data
   const filtered = useMemo(() => {
     if (!searchTerm) return tableData;
     const q = searchTerm.toLowerCase();
@@ -377,13 +400,11 @@ export default function InventoryManager({ type }) {
       ? t("inventory.allBranches") || "All branches"
       : branchNameById[selectedBranchId] || "—";
 
-  // ─────────────────────────────────────────────────────────────
   // Render
-  // ─────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col flex-1 p-4 gap-4 overflow-auto">
       <h1 className="text-2xl font-bold">
-        {t("inventory.title") || "Inventory"}
+        {title || t("inventory.title") || "Inventory"}
       </h1>
 
       {/* Toolbar */}
@@ -395,7 +416,9 @@ export default function InventoryManager({ type }) {
           onChange={(e) => setSelectedBranchId(e.target.value)}
           aria-label="Filter by branch"
         >
-          <option value="ALL">{t("inventory.allBranches") || "All branches"}</option>
+          <option value="ALL">
+            {t("inventory.allBranches") || "All branches"}
+          </option>
           {branches.map((b) => (
             <option key={b._id || b.id} value={b._id || b.id}>
               {b.name || b.branchName || "Unnamed Branch"}
@@ -403,7 +426,7 @@ export default function InventoryManager({ type }) {
           ))}
         </select>
 
-        {/* Text search within the chosen branch */}
+        {/* Search */}
         <Input
           placeholder={
             t("inventory.searchIn")?.replace?.("%s", selectedBranchLabel) ||
@@ -418,6 +441,9 @@ export default function InventoryManager({ type }) {
         <Button variant="outline" onClick={() => setTransferOpen(true)}>
           <Repeat className="mr-2 h-4 w-4" />
           {t("inventory.transferStock") || "Transfer Stock"}
+        </Button>
+        <Button variant="outline" onClick={() => setCrossOpen(true)}>
+          {isRental ? "Move to Sales" : "Move to Rental"}
         </Button>
         <Button onClick={() => openForm()}>
           <Plus className="mr-2" />
@@ -451,7 +477,7 @@ export default function InventoryManager({ type }) {
               />
             </div>
 
-            {/* Branch (for the item being created/edited) */}
+            {/* Branch */}
             <select
               className="w-full p-2 border rounded"
               value={branchId}
@@ -563,9 +589,9 @@ export default function InventoryManager({ type }) {
                   </option>
                 </select>
 
-                {/* Price */}
+                {/* Price (UI) */}
                 <Input
-                  placeholder={t("inventory.price") || "Price"}
+                  placeholder={priceLabel}
                   type="number"
                   value={v.price}
                   onChange={(e) => handleVariantChange(i, "price", e.target.value)}
@@ -684,16 +710,15 @@ export default function InventoryManager({ type }) {
         </DialogContent>
       </Dialog>
 
-      {/* ✅ Transfer SKU Dialog */}
+      {/* Branch-to-Branch Transfer (same model) */}
       <TransferSkuDialog
         open={transferOpen}
         onOpenChange={setTransferOpen}
         branches={branches}
-        inventories={rawInventories} // pass raw for accurate stocks
+        inventories={rawInventories}
         t={t}
         onSubmit={async (payload) => {
-          // payload: { itemId, brand, size, color, fromBranch, toBranch, quantity, reason? }
-          const res = await fetch(TRANSFER_API, {
+          const res = await fetch(BRANCH_TRANSFER_API, {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
@@ -702,16 +727,27 @@ export default function InventoryManager({ type }) {
           const json = await res.json().catch(() => ({}));
           if (!res.ok) {
             throw new Error(
-              json?.error ||
-                t("inventory.transferError") ||
-                "Transfer failed"
+              json?.error || t("inventory.transferError") || "Transfer failed"
             );
           }
           await fetchInventories();
         }}
       />
 
-      {/* Inventory Table (filtered by branch + search) */}
+      {/* Simple Sales ↔ Rental Transfer (same-branch) */}
+      <TransferToOtherTypeDialog
+        open={crossOpen}
+        onOpenChange={(v) => {
+          setCrossOpen(v);
+          if (!v) fetchInventories();
+        }}
+        type={type}                  // "rental" or "sales" (current page)
+        inventories={rawInventories} // items of current page
+        API_BASE={API_BASE}
+        t={t}
+      />
+
+      {/* Inventory Table */}
       <Card className="w-full">
         <CardContent className="p-4 overflow-auto">
           {loading ? (

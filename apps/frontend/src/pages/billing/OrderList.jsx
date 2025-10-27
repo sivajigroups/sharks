@@ -53,14 +53,17 @@ export default function OrderList() {
   const [limit, setLimit] = useState(PAGE_SIZE_DEFAULT);
   const [total, setTotal] = useState(0);
 
-  // Keep transitions smooth on paging
+  // Whether server returns a reliable total; whether there’s another page
+  const [hasPagination, setHasPagination] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+
   const [isPending, startTransition] = useTransition();
 
   // Abort stale requests
   const abortRef = useRef(null);
 
   // Simple in-memory page cache
-  const cacheRef = useRef(new Map()); // key -> { rows, total, timestamp }
+  const cacheRef = useRef(new Map()); // key -> { rows, total, hasPagination, timestamp }
 
   // ---------- DEBOUNCE SEARCH ----------
   useEffect(() => {
@@ -68,7 +71,7 @@ export default function OrderList() {
     return () => clearTimeout(id);
   }, [q]);
 
-  // Always reset to first page when query changes
+  // Reset to first page on query/limit changes
   useEffect(() => {
     setPage(1);
   }, [debouncedQ, limit]);
@@ -92,6 +95,12 @@ export default function OrderList() {
         setTotal(
           typeof cached.total === "number" ? cached.total : cached.rows.length
         );
+        setHasPagination(!!cached.hasPagination);
+        setHasMore(
+          cached.hasPagination
+            ? pageArg * limitArg < (cached.total ?? cached.rows.length)
+            : cached.rows.length === limitArg
+        );
         setErr("");
         setLoading(false);
         return;
@@ -107,10 +116,12 @@ export default function OrderList() {
     setErr("");
 
     try {
-      // Prefer server-side pagination if supported
       const url = new URL(`${API}/bills`);
       url.searchParams.set("page", String(pageArg));
       url.searchParams.set("limit", String(limitArg));
+      // Add common alternates so whatever the backend expects will work
+      url.searchParams.set("offset", String((pageArg - 1) * limitArg));
+      url.searchParams.set("per_page", String(limitArg));
       if (qArg) url.searchParams.set("q", qArg);
       url.searchParams.set("sort", "-billingDate");
 
@@ -126,24 +137,31 @@ export default function OrderList() {
 
       const payload = await res.json();
       const list = Array.isArray(payload.data) ? payload.data : [];
-      const hasPagination =
+      const serverHasTotal =
         payload.pagination && typeof payload.pagination.total === "number";
 
-      if (hasPagination) {
+      if (serverHasTotal) {
+        const serverTotal = payload.pagination.total ?? list.length;
         setRows(list);
-        setTotal(payload.pagination.total ?? list.length);
+        setTotal(serverTotal);
+        setHasPagination(true);
+        setHasMore(pageArg * limitArg < serverTotal);
         writeToCache(cacheKey, {
           rows: list,
-          total: payload.pagination.total ?? list.length,
+          total: serverTotal,
+          hasPagination: true,
         });
       } else {
-        // Fallback: emulate pagination client-side
-        const all = list;
-        const start = (pageArg - 1) * limitArg;
-        const slice = all.slice(start, start + limitArg);
-        setRows(slice);
-        setTotal(all.length);
-        writeToCache(cacheKey, { rows: slice, total: all.length });
+        // Server is already paging but didn't give total — use response as-is (no double-slice)
+        setRows(list);
+        setTotal(list.length); // visible count only
+        setHasPagination(false);
+        setHasMore(list.length === limitArg); // full page => likely next page exists
+        writeToCache(cacheKey, {
+          rows: list,
+          total: list.length,
+          hasPagination: false,
+        });
       }
     } catch (e) {
       if (e.name === "AbortError") return;
@@ -170,11 +188,12 @@ export default function OrderList() {
       for (const p of neighbors) {
         const cacheKey = keyOf(debouncedQ, p, limit);
         if (readFromCache(cacheKey)) continue;
-        // fire-and-forget; don't clobber UI state
         try {
           const url = new URL(`${API}/bills`);
           url.searchParams.set("page", String(p));
           url.searchParams.set("limit", String(limit));
+          url.searchParams.set("offset", String((p - 1) * limit));
+          url.searchParams.set("per_page", String(limit));
           if (debouncedQ) url.searchParams.set("q", debouncedQ);
           url.searchParams.set("sort", "-billingDate");
 
@@ -186,16 +205,23 @@ export default function OrderList() {
           if (!res.ok) continue;
           const payload = await res.json();
           const list = Array.isArray(payload.data) ? payload.data : [];
-          const hasPagination =
+          const serverHasTotal =
             payload.pagination && typeof payload.pagination.total === "number";
 
-          if (hasPagination) {
+          if (serverHasTotal) {
+            const serverTotal = payload.pagination.total ?? list.length;
             writeToCache(cacheKey, {
               rows: list,
-              total: payload.pagination.total ?? list.length,
+              total: serverTotal,
+              hasPagination: true,
             });
           } else {
-            // If fallback, we can't know slice reliably without all rows; skip caching
+            // Cache as-is (no slicing)
+            writeToCache(cacheKey, {
+              rows: list,
+              total: list.length,
+              hasPagination: false,
+            });
           }
         } catch {
           /* ignore prefetch errors */
@@ -228,10 +254,9 @@ export default function OrderList() {
   }, [rows]);
 
   const canPrev = page > 1;
-  const canNext = page < pageCount;
+  const canNext = hasPagination ? page < pageCount : hasMore;
 
   const onRefresh = () => {
-    // Bust cache for current key then refetch
     cacheRef.current.delete(keyOf(debouncedQ, page, limit));
     startTransition(() =>
       fetchBillingOrders(
@@ -240,6 +265,9 @@ export default function OrderList() {
       )
     );
   };
+
+  const startIdx = (page - 1) * limit + 1;
+  const endIdx = startIdx + rows.length - 1;
 
   // ---------- RENDER ----------
   return (
@@ -275,36 +303,18 @@ export default function OrderList() {
           >
             {loading ? "Refreshing…" : "Refresh"}
           </Button>
-          <Button variant="outline" className="invisible">
-            Refresh
-          </Button>
-          <Button variant="outline" className="invisible">
-            {" "}
-            Refresh
-          </Button>
-          <Button variant="outline" className="invisible">
-            Refresh
-          </Button>{" "}
-          <Button variant="outline" className="invisible">
-            Refresh
-          </Button>
-          <Button variant="outline" className="invisible">
-            Refresh
-          </Button>
-          <Button variant="outline" className="invisible">
-            Refresh
-          </Button>
-          <Button variant="outline" className="invisible">
-            Refresh
-          </Button>
-          <Button variant="outline" className="invisible">
-            Refresh
-          </Button>
-          <Button variant="outline" className="invisible">
-            Refresh
-          </Button>
+          {/* layout spacers (as in your code) */}
+          <Button variant="outline" className="invisible">Refresh</Button>
+          <Button variant="outline" className="invisible">Refresh</Button>
+          <Button variant="outline" className="invisible">Refresh</Button>
+          <Button variant="outline" className="invisible">Refresh</Button>
+          <Button variant="outline" className="invisible">Refresh</Button>
+          <Button variant="outline" className="invisible">Refresh</Button>
+          <Button variant="outline" className="invisible">Refresh</Button>
+          <Button variant="outline" className="invisible">Refresh</Button>
+          <Button variant="outline" className="invisible">Refresh</Button>
+          <Button variant="outline" className="invisible">Refresh</Button>
           <div className="relative mx-1">
-            {/* tiny typing indicator */}
             <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">
               {q !== debouncedQ ? "…" : ""}
             </div>
@@ -327,11 +337,11 @@ export default function OrderList() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="">Bill No</TableHead>
+              <TableHead>Bill No</TableHead>
               <TableHead className="pe-5">Customer</TableHead>
               <TableHead className="pe-5">Phone</TableHead>
               <TableHead className="text-right pe-5">Items</TableHead>
-              <TableHead className="text-right pe-5" >Subtotal</TableHead>
+              <TableHead className="text-right pe-5">Subtotal</TableHead>
               <TableHead className="text-right pe-5">Tax</TableHead>
               <TableHead className="text-right pe-5">Total</TableHead>
               <TableHead>Payment</TableHead>
@@ -340,46 +350,24 @@ export default function OrderList() {
           </TableHeader>
 
           <TableBody>
-            {/* Skeleton header shadow — optional, but looks slick */}
             {loading &&
               Array.from({ length: Math.min(limit, 10) }).map((_, i) => (
                 <TableRow key={`sk-${i}`}>
-                  <TableCell>
-                    <Skeleton className="h-4 w-28" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-40" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-28" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Skeleton className="h-4 w-8 ml-auto" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Skeleton className="h-4 w-16 ml-auto" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Skeleton className="h-4 w-16 ml-auto" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Skeleton className="h-4 w-20 ml-auto" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-16 rounded-full" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-32" />
-                  </TableCell>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-4 w-8 ml-auto" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                 </TableRow>
               ))}
 
             {!loading && formatted.length === 0 && !err && (
               <TableRow>
-                <TableCell
-                  colSpan={9}
-                  className="h-24 text-center text-gray-500"
-                >
+                <TableCell colSpan={9} className="h-24 text-center text-gray-500">
                   No orders found.
                 </TableCell>
               </TableRow>
@@ -387,7 +375,7 @@ export default function OrderList() {
 
             {!loading &&
               formatted.map((b) => (
-                <TableRow key={b.id} >
+                <TableRow key={b.id}>
                   <TableCell className="font-mono pe-5">{b.billNo}</TableCell>
                   <TableCell className="pe-5">{b.customer}</TableCell>
                   <TableCell className="pe-5">{b.phone}</TableCell>
@@ -410,7 +398,9 @@ export default function OrderList() {
       {/* Pagination footer */}
       <div className="mt-4 flex items-center justify-between">
         <div className="text-sm text-gray-600">
-          {total > 0 ? (
+          {loading ? (
+            <Skeleton className="h-4 w-40" />
+          ) : hasPagination ? (
             <>
               Showing{" "}
               <span className="font-medium">{(page - 1) * limit + 1}</span>–
@@ -419,8 +409,12 @@ export default function OrderList() {
               </span>{" "}
               of <span className="font-medium">{total}</span>
             </>
-          ) : loading ? (
-            <Skeleton className="h-4 w-40" />
+          ) : rows.length ? (
+            <>
+              Showing <span className="font-medium">{startIdx}</span>–
+              <span className="font-medium">{endIdx}</span>{" "}
+              (total unknown)
+            </>
           ) : (
             "—"
           )}
@@ -453,14 +447,16 @@ export default function OrderList() {
             /{" "}
             {loading ? (
               <Skeleton className="inline-block h-4 w-10 align-middle" />
+            ) : hasPagination ? (
+              Math.max(1, Math.ceil(total / limit))
             ) : (
-              pageCount
+              "?"
             )}
           </span>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+            onClick={() => setPage((p) => p + 1)}
             disabled={!canNext}
           >
             Next
@@ -468,8 +464,11 @@ export default function OrderList() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage(pageCount)}
-            disabled={!canNext}
+            onClick={() => {
+              if (hasPagination) setPage(Math.max(1, Math.ceil(total / limit)));
+            }}
+            disabled={!hasPagination || !canNext}
+            title={hasPagination ? "Last page" : "Disabled: total unknown"}
           >
             Last
           </Button>
@@ -478,52 +477,3 @@ export default function OrderList() {
     </div>
   );
 }
-
-// <div className="flex flex-wrap items-center gap-2 w-[100%]">
-//           <h1 className="text-2xl font-bold mx-3">Billing Orders</h1>
-//           {/* <p className="text-gray-600">List of all billing orders.</p> */}
-//           <Input
-//             placeholder="Search by Bill No / customer / phone…"
-//             value={q}
-//             onChange={(e) => setQ(e.target.value)}
-//             className="w-72 mx-3"
-//           />
-//           <Button variant="outline" onClick={fetchBillingOrders}>
-//             Refresh
-//           </Button>
-//           <Button variant="outline" className="invisible">
-//             Refresh
-//           </Button>
-//           <Button variant="outline" className="invisible">
-//             Refresh
-//           </Button>
-//           <Button variant="outline" className="invisible">
-//             Refresh
-//           </Button>
-//           <Button variant="outline" className="invisible">
-//             Refresh
-//           </Button>
-//           <Button variant="outline" className="invisible">
-//             Refresh
-//           </Button>
-//           <Button variant="outline" className="invisible">
-//             Refresh
-//           </Button>
-//           <Button variant="outline" className="invisible">
-//             Refresh
-//           </Button>
-//           <Button variant="outline" className="invisible">
-//             Refresh
-//           </Button>
-//           <Button variant="outline" className="invisible">
-//             Refresh
-//           </Button>
-//           <Button variant="outline" className="invisible">
-//             Refresh
-//           </Button>
-//           <Button variant="outline" className="invisible">
-//             Refresh
-//           </Button>
-
-//           {/* <Button variant="outline" onClick={fetchBillingOrders}>Refresh</Button> */}
-//         </div>
