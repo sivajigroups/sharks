@@ -16,7 +16,7 @@ import autoTable from "jspdf-autotable";
 
 const TAX_RATE = 0.13;
 
-// util: compute toDate from start date + days
+// ── Utility: compute toDate from start date + days
 function computeToDateISO(fromDateStr, days) {
   if (!fromDateStr || !days || days < 1) return "";
   const d = new Date(fromDateStr);
@@ -80,7 +80,9 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
     setLoading(true);
     try {
       const res = await fetch(
-        `${API}/customer/details?search=${encodeURIComponent(q)}&page=${pageNum}&limit=${limit}`,
+        `${API}/customer/details?search=${encodeURIComponent(
+          q
+        )}&page=${pageNum}&limit=${limit}`,
         { credentials: "include" }
       );
       if (!res.ok) throw new Error("Failed to fetch customers");
@@ -152,6 +154,9 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
 
     setSaving(true);
     try {
+      let billNo = "";
+      let modeTitle = mode === "sale" ? "Sale Bill" : "Rental Bill";
+
       if (mode === "sale") {
         // --- Sale Bill ---
         const tax = +(
@@ -183,7 +188,20 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
         if (!res.ok) throw new Error(json?.message || "Failed to create bill");
 
         toast.success(`Sale Bill ${json.data.billNo} created`);
+        billNo = json.data.billNo;
         setCartItems([]);
+
+        // Generate PDF
+        generateBillPDF({
+          billNo,
+          modeTitle,
+          customer: selectedCustomer,
+          items: cartItems,
+          subtotal,
+          taxAmount,
+          totalAmount,
+          paymentMode,
+        });
       } else {
         // --- Rental Transaction ---
         for (const item of cartItems) {
@@ -210,14 +228,26 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
 
           const json = await res.json();
           if (!res.ok)
-            throw new Error(json?.message || "Failed to create rental transaction");
-
-          console.log("Rental saved:", json.rental);
+            throw new Error(
+              json?.message || "Failed to create rental transaction"
+            );
         }
 
         toast.success("Rental transactions created successfully");
         setCartItems([]);
-        setRentalDeposit(0);
+
+        // Generate PDF
+        generateBillPDF({
+          billNo: `R-${Date.now()}`,
+          modeTitle,
+          customer: selectedCustomer,
+          items: cartItems,
+          subtotal,
+          taxAmount,
+          totalAmount,
+          paymentMode,
+          rentalDeposit,
+        });
       }
     } catch (e) {
       toast.error(e.message);
@@ -226,7 +256,7 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
     }
   };
 
-  // ── Render
+  // ── Render UI
   return (
     <div className="w-[340px] bg-white shadow-md rounded-md p-4 text-sm flex flex-col h-full max-h-screen">
       <h2 className="text-lg font-semibold mb-2">
@@ -236,7 +266,9 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
       {/* Cart items */}
       <div className="flex-1 overflow-y-auto pr-1 scrollbar-hide scroll-smooth space-y-2">
         {cartItems.length === 0 ? (
-          <div className="text-sm text-gray-400">Click a tool to add to cart...</div>
+          <div className="text-sm text-gray-400">
+            Click a tool to add to cart...
+          </div>
         ) : (
           cartItems.map((item) => (
             <div key={item.id} className="flex justify-between border-b pb-1">
@@ -258,7 +290,8 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
                   </div>
                 )}
               </div>
-              {/* qty controls */}
+
+              {/* Quantity controls */}
               <div className="flex flex-col items-center">
                 <div className="font-semibold">
                   ₹
@@ -349,7 +382,9 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
                         }}
                         className="w-14 border rounded px-1 py-0.5"
                       />
-                      <span>day{(item.days || 1) > 1 ? "s" : ""}</span>
+                      <span>
+                        day{(item.days || 1) > 1 ? "s" : ""}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -359,7 +394,7 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
         )}
       </div>
 
-      {/* Totals & Customer */}
+      {/* Totals & customer section */}
       <div className="pt-2 space-y-1 border-t mt-2">
         <div className="flex justify-between font-semibold text-base">
           <span>Subtotal:</span>
@@ -449,7 +484,9 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
                         {c.address &&
                           `${c.address.street}, ${c.address.area}, ${c.address.city} - ${c.address.pincode}`}
                       </div>
-                      <div className="text-xs text-gray-500">📞 {c.phone}</div>
+                      <div className="text-xs text-gray-500">
+                        📞 {c.phone}
+                      </div>
                     </div>
                   </Button>
                 </DialogClose>
@@ -471,16 +508,51 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
                 handleInsertCustomer();
               }}
             >
-              <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
-              <Input placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-              <Input placeholder="Alt Phone" value={alternatePhone} onChange={(e) => setAlternatePhone(e.target.value)} />
-              <Input placeholder="Street" value={street} onChange={(e) => setStreet(e.target.value)} required />
-              <Input placeholder="Area" value={area} onChange={(e) => setArea(e.target.value)} required />
-              <Input placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} required />
-              <Input placeholder="Pincode" value={pincode} onChange={(e) => setPincode(e.target.value)} required />
+              <Input
+                placeholder="Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+              <Input
+                placeholder="Phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
+              <Input
+                placeholder="Alt Phone"
+                value={alternatePhone}
+                onChange={(e) => setAlternatePhone(e.target.value)}
+              />
+              <Input
+                placeholder="Street"
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+                required
+              />
+              <Input
+                placeholder="Area"
+                value={area}
+                onChange={(e) => setArea(e.target.value)}
+                required
+              />
+              <Input
+                placeholder="City"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                required
+              />
+              <Input
+                placeholder="Pincode"
+                value={pincode}
+                onChange={(e) => setPincode(e.target.value)}
+                required
+              />
               <select
                 value={idProofType}
                 onChange={(e) => setIdProofType(e.target.value)}
+                class
                 className="w-full px-3 py-2 border rounded-md"
                 required
               >
@@ -490,6 +562,7 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
                 <option value="Voter ID">Voter ID</option>
                 <option value="Driving License">Driving License</option>
               </select>
+
               <Input
                 placeholder="ID Proof Number"
                 value={idProofNumber}
@@ -547,4 +620,174 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
       </div>
     </div>
   );
+}
+
+/* ------------------------------------------------------------------
+   ✅ PDF BILL GENERATOR FUNCTION
+------------------------------------------------------------------ */
+
+
+export function generateBillPDF({
+  billNo,
+  modeTitle,
+  customer,
+  items,
+  subtotal,
+  taxAmount,
+  totalAmount,
+  paymentMode,
+  rentalDeposit,
+}) {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const centerX = pageWidth / 2;
+  const marginLeft = 20;
+  const marginRight = pageWidth - 20;
+
+  // --- HEADER ---
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.text("Sivaji Power Tools", centerX, 18, { align: "center" });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text("Power Tools • Rentals • Services", centerX, 24, { align: "center" });
+  // doc.text(
+  //   "Madurai, Tamil Nadu • Ph: +91 98765 43210 • Email: info@sivaijpowertools.com",
+  //   centerX,
+  //   30,
+  //   { align: "center" }
+  // );
+
+  // Divider
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.3);
+  doc.line(marginLeft, 35, marginRight, 35);
+
+  // --- TITLE ---
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text(modeTitle, marginLeft, 48);
+
+  // --- BILL INFO ---
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  const infoY = 56;
+  doc.text(`Bill No: ${billNo}`, marginLeft, infoY);
+  doc.text(
+    `Date: ${new Date().toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })}`,
+    marginLeft,
+    infoY + 6
+  );
+  doc.text(`Payment Mode: ${paymentMode}`, marginLeft, infoY + 12);
+
+  // --- CUSTOMER INFO ---
+  const customerY = infoY + 22;
+  doc.setDrawColor(200);
+  doc.setLineWidth(0.3);
+  doc.rect(marginLeft, customerY - 5, pageWidth - 40, 28);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Bill To:", marginLeft + 3, customerY);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+
+  const customerText = `${customer.name || ""}
+${customer.address?.street || ""}, ${customer.address?.area || ""}
+${customer.address?.city || ""} - ${customer.address?.pincode || ""}
+Ph: ${customer.phone || ""}${customer.email ? ` | Email: ${customer.email}` : ""}`;
+  doc.text(customerText, marginLeft + 3, customerY + 5, { maxWidth: pageWidth - 50 });
+
+  // --- ITEMS TABLE ---
+  const tableData = items.map((it, i) => [
+    i + 1,
+    it.name,
+    modeTitle.includes("Rental")
+      ? `${it.days} days × ₹${it.pricePerDay}/day`
+      : `${it.qty} × ₹${it.price}`,
+    modeTitle.includes("Rental")
+      ? (it.qty * it.days * it.pricePerDay).toFixed(2)
+      : (it.qty * it.price).toFixed(2),
+  ]);
+
+  autoTable(doc, {
+    startY: customerY + 32,
+    head: [["#", "Description", "Details", "Amount (₹)"]],
+    body: tableData,
+    headStyles: {
+      fillColor: [240, 240, 240],
+      textColor: 0,
+      fontStyle: "bold",
+      halign: "center",
+    },
+    bodyStyles: { fontSize: 9, cellPadding: 3 },
+    styles: {
+      lineColor: [220, 220, 220],
+      lineWidth: 0.2,
+    },
+    theme: "grid",
+    columnStyles: {
+      0: { cellWidth: 12, halign: "center" },
+      1: { cellWidth: 80 },
+      2: { cellWidth: 50 },
+      3: { cellWidth: 30, halign: "right" },
+    },
+    margin: { left: marginLeft, right: marginRight },
+  });
+
+  // --- TOTALS ---
+  let y = doc.lastAutoTable.finalY + 10;
+  const totalsX = marginRight - 70;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text("Subtotal:", totalsX, y);
+  doc.text(`₹${subtotal.toFixed(2)}`, marginRight, y, { align: "right" });
+  y += 6;
+
+  if (modeTitle.includes("Rental") && rentalDeposit) {
+    doc.text("Deposit:", totalsX, y);
+    doc.text(`₹${Number(rentalDeposit).toFixed(2)}`, marginRight, y, { align: "right" });
+    y += 6;
+  }
+
+  doc.text("GST (13%):", totalsX, y);
+  doc.text(`₹${taxAmount.toFixed(2)}`, marginRight, y, { align: "right" });
+  y += 6;
+
+  doc.setFont("helvetica", "bold");
+  doc.text("TOTAL:", totalsX, y);
+  doc.text(`₹${totalAmount.toFixed(2)}`, marginRight, y, { align: "right" });
+
+  doc.setLineWidth(0.4);
+  doc.line(totalsX - 5, y + 1, marginRight, y + 1);
+
+  // --- FOOTER ---
+  const pageHeight = doc.internal.pageSize.getHeight();
+  y = pageHeight - 40;
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(8);
+  doc.text("Thank you for your business with Sivaji Power Tools.", centerX, y, {
+    align: "center",
+  });
+  y += 6;
+  doc.setFont("helvetica", "normal");
+  doc.text("We appreciate your trust. For queries, contact us anytime.", centerX, y, {
+    align: "center",
+  });
+  y += 6;
+  doc.setFontSize(7);
+  doc.setTextColor(100);
+  doc.text(
+    "Terms: All rentals include insurance. Deposits refundable post-inspection. GSTIN: 33ABCDE1234F1Z5",
+    centerX,
+    y,
+    { align: "center" }
+  );
+
+  doc.save(`Bill_${billNo}_${new Date().toISOString().split("T")[0]}.pdf`);
 }

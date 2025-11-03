@@ -1,5 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -17,14 +23,23 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
-import { CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { X, CalendarRange } from "lucide-react";
 import { toast } from "sonner";
+import { useSelector } from "react-redux";
 import GenericCartPanel from "./GenericCartPanel";
 
-const categories = ["All", "Power Tools", "Hand Tools", "Safety Gear", "Electrical", "Cleaning", "Plumbing"];
+// ── Constants ──
+const categories = [
+  "All",
+  "Power Tools",
+  "Hand Tools",
+  "Safety Gear",
+  "Electrical",
+  "Cleaning",
+  "Plumbing",
+];
 
-// util in this file too
+// ── Utility ──
 function computeToDateISO(fromDateStr, days) {
   if (!fromDateStr || !days || days < 1) return "";
   const d = new Date(fromDateStr);
@@ -33,34 +48,39 @@ function computeToDateISO(fromDateStr, days) {
   return d.toISOString().slice(0, 10);
 }
 
+// ── Main Component ──
 export default function BillingPage() {
   const API_BASE = import.meta.env.VITE_API_BASE;
+  const role = useSelector((state) => state.auth.role) || "";
+  const userBranch = useSelector((state) => state.auth.branch) || null;
 
-  // ── Mode: "sale" | "rental"
   const [mode, setMode] = useState("sale");
-
-  const [loading, setLoading] = useState(false);
   const [inventories, setInventories] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // carts
   const [saleCart, setSaleCart] = useState([]);
   const [rentalCart, setRentalCart] = useState([]);
 
-  // filters
+  // Filters
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedBrand, setSelectedBrand] = useState("All");
   const [selectedSize, setSelectedSize] = useState("All");
+  const [selectedBranch, setSelectedBranch] = useState("All");
 
-  // ── Fetch inventories by mode
+  // ── Fetch inventories ──
   useEffect(() => {
     const fetchInventories = async () => {
       setLoading(true);
       try {
-        const url = mode === "sale" ? `${API_BASE}/inventory/sales` : `${API_BASE}/inventory/rental`;
+        const url =
+          mode === "sale"
+            ? `${API_BASE}/inventory/sales`
+            : `${API_BASE}/inventory/rental`;
         const res = await fetch(url, { credentials: "include" });
         const json = await res.json();
-        setInventories(json?.data || []);
-      } catch (e) {
+        setInventories(json?.data || json || []);
+      } catch (err) {
         toast.error("Failed to fetch inventory");
       } finally {
         setLoading(false);
@@ -69,7 +89,28 @@ export default function BillingPage() {
     fetchInventories();
   }, [mode, API_BASE]);
 
-  // ── Dependent options
+  // ── Fetch branches (Admin only) ──
+  useEffect(() => {
+    if (role.toLowerCase() === "admin") {
+      (async () => {
+        try {
+          const res = await fetch(`${API_BASE}/branch/all`, {
+            credentials: "include",
+          });
+          if (!res.ok) throw new Error("Could not load branches");
+          const arr = await res.json();
+          setBranches([{ _id: "All", name: "All" }, ...arr]);
+        } catch (err) {
+          toast.error("Failed to fetch branches");
+        }
+      })();
+    } else if (userBranch?._id) {
+      // Staff: auto-select their branch
+      setSelectedBranch(userBranch._id);
+    }
+  }, [role, API_BASE, userBranch]);
+
+  // ── Filter Options ──
   const toolsForCategory = useMemo(() => {
     if (selectedCategory === "All") return inventories;
     return inventories.filter((t) => t.category === selectedCategory);
@@ -93,31 +134,20 @@ export default function BillingPage() {
     return ["All", ...Array.from(set)];
   }, [toolsForCategory, selectedBrand]);
 
-  useEffect(() => {
-    if (!brandOptions.includes(selectedBrand)) {
-      setSelectedBrand("All");
-      setSelectedSize("All");
-    }
-  }, [brandOptions, selectedBrand]);
-
-  useEffect(() => {
-    if (!sizeOptions.includes(selectedSize)) setSelectedSize("All");
-  }, [sizeOptions, selectedSize]);
-
   const clearFilters = () => {
     setSelectedCategory("All");
     setSelectedBrand("All");
     setSelectedSize("All");
+    if (role.toLowerCase() === "admin") setSelectedBranch("All");
   };
 
-  // ── Add to cart handlers
+  // ── Cart Handlers ──
   const handleAddSale = (tool, variant) => {
     const id = `sale-${tool._id}-${variant._id}`;
     setSaleCart((prev) => {
       const existing = prev.find((i) => i.id === id);
-      if (existing) {
+      if (existing)
         return prev.map((i) => (i.id === id ? { ...i, qty: i.qty + 1 } : i));
-      }
       return [
         ...prev,
         {
@@ -128,14 +158,14 @@ export default function BillingPage() {
           variantId: variant._id,
           variant,
           qty: 1,
-          price: variant.price, // sale price
+          price: variant.price,
         },
       ];
     });
   };
 
-  // rental: Start Date + Days + Qty dialog
-  const [pendingRental, setPendingRental] = useState(null); // {tool, variant}
+  // Rental Logic
+  const [pendingRental, setPendingRental] = useState(null);
   const [rentStart, setRentStart] = useState("");
   const [rentDays, setRentDays] = useState(1);
   const [rentQty, setRentQty] = useState(1);
@@ -150,13 +180,11 @@ export default function BillingPage() {
   };
 
   const confirmAddRental = () => {
-    const d = Math.max(1, Number(rentDays || 1));
     if (!rentStart) return toast.error("Choose a start date");
-    const toDate = computeToDateISO(rentStart, d);
-
+    const days = Math.max(1, Number(rentDays || 1));
+    const toDate = computeToDateISO(rentStart, days);
     const { tool, variant } = pendingRental || {};
-    const id = `rent-${tool._id}-${variant._id}-${rentStart}-${d}`;
-
+    const id = `rent-${tool._id}-${variant._id}-${rentStart}-${days}`;
     setRentalCart((prev) => [
       ...prev,
       {
@@ -169,7 +197,7 @@ export default function BillingPage() {
         qty: Number(rentQty),
         fromDate: rentStart,
         toDate,
-        days: d,
+        days,
         pricePerDay: variant.rentPrice ?? variant.pricePerDay ?? 0,
       },
     ]);
@@ -177,12 +205,46 @@ export default function BillingPage() {
     setPendingRental(null);
   };
 
-  // ── Final filtered grid
+  // ── Filtered Tools ──
   const filtered = useMemo(() => {
-    return inventories.filter((tool) => {
-      const matchCat = selectedCategory === "All" || tool.category === selectedCategory;
+   const extractId = (b) => {
+  try {
+    if (!b) return "";
+    if (typeof b === "string") return b.trim();
+    if (b.$oid) return String(b.$oid).trim();
+
+    // 🟢 NEW: handle { id: "..." } for staff user branch
+    if (b.id) return String(b.id).trim();
+
+    if (b._id) {
+      if (typeof b._id === "string") return b._id.trim();
+      if (b._id.$oid) return String(b._id.$oid).trim();
+    }
+
+    if (typeof b.toString === "function") {
+      const id = b.toString();
+      if (id.length === 24 && !id.includes("[object")) return id;
+    }
+
+    return "";
+  } catch {
+    return "";
+  }
+};
+
+
+    const unique = new Map();
+    inventories.forEach((tool) => {
+      const key = `${tool.name}-${extractId(tool.branch)}`;
+      if (!unique.has(key)) unique.set(key, tool);
+    });
+
+    return Array.from(unique.values()).filter((tool) => {
+      const matchCat =
+        selectedCategory === "All" || tool.category === selectedCategory;
       const matchBrand =
-        selectedBrand === "All" || (tool.variants || []).some((v) => v.brand === selectedBrand);
+        selectedBrand === "All" ||
+        (tool.variants || []).some((v) => v.brand === selectedBrand);
       const matchSize =
         selectedSize === "All" ||
         (tool.variants || []).some(
@@ -190,36 +252,62 @@ export default function BillingPage() {
             v.brand === (selectedBrand === "All" ? v.brand : selectedBrand) &&
             v.size === selectedSize
         );
-      return matchCat && matchBrand && matchSize;
-    });
-  }, [inventories, selectedCategory, selectedBrand, selectedSize]);
 
-  // cart binding by mode
+      const branchId = extractId(tool.branch);
+      const userBranchId = extractId(userBranch);
+      const selectedBranchId = extractId(selectedBranch);
+
+      const matchBranch =
+        role.toLowerCase() === "admin"
+          ? selectedBranchId === "All" || branchId === selectedBranchId
+          : branchId === userBranchId;
+
+      return matchCat && matchBrand && matchSize && matchBranch;
+    });
+  }, [
+    inventories,
+    selectedCategory,
+    selectedBrand,
+    selectedSize,
+    selectedBranch,
+    role,
+    userBranch,
+  ]);
+
   const cartItems = mode === "sale" ? saleCart : rentalCart;
   const setCartItems = mode === "sale" ? setSaleCart : setRentalCart;
 
+  // ── UI ──
   return (
     <div className="flex flex-1 min-w-0 h-full overflow-hidden">
-      {/* Left: Cart */}
+      {/* Left Cart */}
       <div className="w-[360px] shrink-0 bg-white border-r p-2">
-        <GenericCartPanel mode={mode} cartItems={cartItems} setCartItems={setCartItems} />
+        <GenericCartPanel
+          mode={mode}
+          cartItems={cartItems}
+          setCartItems={setCartItems}
+        />
       </div>
 
-      {/* Right: Filters + Grid */}
-      <div className="flex-1 min-w-0 overflow-y-auto p-4 scrollbar-hide scroll-smooth">
-        {/* Mode toggle */}
+      {/* Right Filters */}
+      <div className="flex-1 min-w-0 overflow-y-auto p-4">
+        {/* Billing Type */}
         <Card className="mb-4">
           <CardContent className="p-4 flex items-center gap-2">
             <span className="text-sm font-medium">Billing Type:</span>
             <div className="inline-flex rounded-md border">
               <button
-                className={`px-3 py-1 text-sm ${mode === "sale" ? "bg-black text-white" : "bg-white"}`}
+                className={`px-3 py-1 text-sm ${
+                  mode === "sale" ? "bg-black text-white" : "bg-white"
+                }`}
                 onClick={() => setMode("sale")}
               >
                 Sale
               </button>
               <button
-                className={`px-3 py-1 text-sm border-l ${mode === "rental" ? "bg-black text-white" : "bg-white"}`}
+                className={`px-3 py-1 text-sm border-l ${
+                  mode === "rental" ? "bg-black text-white" : "bg-white"
+                }`}
                 onClick={() => setMode("rental")}
               >
                 Rent
@@ -232,186 +320,201 @@ export default function BillingPage() {
         <Card className="mb-4 shadow-sm">
           <CardContent className="p-4 space-y-3">
             {/* Pills */}
-            <div className="min-h-[36px]">
-              <div className="flex flex-wrap items-center gap-2">
-                {selectedCategory !== "All" && (
-                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs bg-green-100 text-green-800 border-green-200">
-                    <span className="font-medium">Category:</span>
-                    <span className="font-semibold">{selectedCategory}</span>
-                    <button
-                      className="ml-1 rounded-full p-0.5 hover:bg-green-200/70"
-                      onClick={() => setSelectedCategory("All")}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </span>
-                )}
-                {selectedBrand !== "All" && (
-                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs bg-blue-100 text-blue-800 border-blue-200">
-                    <span className="font-medium">Brand:</span>
-                    <span className="font-semibold">{selectedBrand}</span>
-                    <button
-                      className="ml-1 rounded-full p-0.5 hover:bg-blue-200/70"
-                      onClick={() => setSelectedBrand("All")}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </span>
-                )}
-                {selectedSize !== "All" && (
-                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs bg-yellow-100 text-yellow-800 border-yellow-200">
-                    <span className="font-medium">Size:</span>
-                    <span className="font-semibold">{selectedSize}</span>
-                    <button
-                      className="ml-1 rounded-full p-0.5 hover:bg-yellow-200/70"
-                      onClick={() => setSelectedSize("All")}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </span>
-                )}
-                {(selectedCategory !== "All" || selectedBrand !== "All" || selectedSize !== "All") && (
-                  <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={clearFilters}>
-                    Clear all
-                  </Button>
-                )}
-              </div>
+            <div className="flex flex-wrap gap-2 items-center">
+              {selectedCategory !== "All" && (
+                <FilterPill
+                  label="Category"
+                  value={selectedCategory}
+                  onClear={() => setSelectedCategory("All")}
+                  color="green"
+                />
+              )}
+              {selectedBrand !== "All" && (
+                <FilterPill
+                  label="Brand"
+                  value={selectedBrand}
+                  onClear={() => setSelectedBrand("All")}
+                  color="blue"
+                />
+              )}
+              {selectedSize !== "All" && (
+                <FilterPill
+                  label="Size"
+                  value={selectedSize}
+                  onClear={() => setSelectedSize("All")}
+                  color="yellow"
+                />
+              )}
+              {role.toLowerCase() === "admin" && selectedBranch !== "All" && (
+                <FilterPill
+                  label="Branch"
+                  value={
+                    branches.find((b) => b._id === selectedBranch)?.name ||
+                    "Unknown"
+                  }
+                  onClear={() => setSelectedBranch("All")}
+                  color="purple"
+                />
+              )}
+              {(selectedCategory !== "All" ||
+                selectedBrand !== "All" ||
+                selectedSize !== "All" ||
+                (role.toLowerCase() === "admin" &&
+                  selectedBranch !== "All")) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-3 text-xs border"
+                  onClick={clearFilters}
+                >
+                  Clear All
+                </Button>
+              )}
             </div>
 
-            {/* Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex flex-col">
-                <Label className="mb-1 text-sm font-medium">Filter by Category</Label>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-full h-10">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col">
-                <Label className="mb-1 text-sm font-medium">Filter by Brand</Label>
-                <Select
-                  value={selectedBrand}
-                  onValueChange={(v) => {
-                    setSelectedBrand(v);
-                    setSelectedSize("All");
-                  }}
-                >
-                  <SelectTrigger className="w-full h-10">
-                    <SelectValue placeholder="Select a brand" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {brandOptions.map((b) => (
-                      <SelectItem key={b} value={b}>
-                        {b}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col">
-                <Label className="mb-1 text-sm font-medium">Filter by Size</Label>
-                <Select value={selectedSize} onValueChange={setSelectedSize}>
-                  <SelectTrigger className="w-full h-10">
-                    <SelectValue placeholder="Select a size" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sizeOptions.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Dropdown Filters */}
+            <div
+              className={`grid ${
+                role.toLowerCase() === "admin" ? "grid-cols-4" : "grid-cols-3"
+              } gap-4`}
+            >
+              <FilterSelect
+                label="Category"
+                value={selectedCategory}
+                setValue={setSelectedCategory}
+                options={categories}
+              />
+              <FilterSelect
+                label="Brand"
+                value={selectedBrand}
+                setValue={(v) => {
+                  setSelectedBrand(v);
+                  setSelectedSize("All");
+                }}
+                options={brandOptions}
+              />
+              <FilterSelect
+                label="Size"
+                value={selectedSize}
+                setValue={setSelectedSize}
+                options={sizeOptions}
+              />
+              {role.toLowerCase() === "admin" && (
+                <FilterSelect
+                  label="Branch"
+                  value={selectedBranch}
+                  setValue={setSelectedBranch}
+                  options={branches.map((b) => ({
+                    label: b.name,
+                    value: b._id,
+                  }))}
+                />
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Grid */}
+        {/* Item Grid */}
         <div className="flex flex-wrap gap-2">
-          {loading
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <Card key={`sk-${i}`} className="min-w-[180px] h-[100px] rounded-xl shadow-sm">
-                  <CardHeader className="p-3 space-y-2">
-                    <div className="w-2/3 h-4 bg-muted rounded" />
-                    <div className="w-full h-3 bg-muted rounded" />
-                  </CardHeader>
-                </Card>
-              ))
-            : filtered.length === 0
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <Card key={`gh-${i}`} aria-hidden className="min-w-[180px] h-[100px] rounded-xl shadow-sm invisible" />
-              ))
-            : filtered.map((tool) => (
-                <Dialog key={tool._id}>
-                  <DialogTrigger asChild>
-                    <Card className="min-w-[180px] h-[100px] rounded-xl shadow-sm cursor-pointer">
-                      <CardHeader className="p-3">
-                        <CardTitle className="text-sm font-semibold line-clamp-1">{tool.name}</CardTitle>
-                        <CardDescription className="text-xs line-clamp-2">{tool.description}</CardDescription>
-                      </CardHeader>
-                    </Card>
-                  </DialogTrigger>
+          {loading ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <Card
+                key={i}
+                className="min-w-[180px] h-[100px] rounded-xl shadow-sm"
+              >
+                <CardHeader className="p-3 space-y-2">
+                  <div className="w-2/3 h-4 bg-muted rounded" />
+                  <div className="w-full h-3 bg-muted rounded" />
+                </CardHeader>
+              </Card>
+            ))
+          ) : filtered.length === 0 ? (
+            <p className="text-sm text-gray-500 italic px-2">No tools found</p>
+          ) : (
+            filtered.map((tool) => (
+              <Dialog key={tool._id}>
+                <DialogTrigger asChild>
+                  <Card className="min-w-[180px] h-[100px] rounded-xl shadow-sm cursor-pointer relative">
+                    {(role.toLowerCase() === "admin" ||
+                      role.toLowerCase() === "staff") && (
+                      <span className="absolute top-1 right-1 text-[10px] bg-purple-100 text-purple-700 px-2 py-[1px] rounded-full">
+                        {branches.find(
+                          (b) =>
+                            b._id === String(tool.branch?._id || tool.branch)
+                        )?.name || "—"}
+                      </span>
+                    )}
+                    <CardHeader className="p-3">
+                      <CardTitle className="text-sm font-semibold line-clamp-1">
+                        {tool.name}
+                      </CardTitle>
+                      <CardDescription className="text-xs line-clamp-2">
+                        {tool.description}
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </DialogTrigger>
 
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>
-                        {mode === "sale" ? "Select Variant for Sale" : "Select Variant to Rent"} — {tool.name}
-                      </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-2">
-                      {(tool.variants || []).map((variant) => {
-                        const rightPrice =
-                          mode === "sale" ? variant.price ?? 0 : variant.rentPrice ?? variant.pricePerDay ?? 0;
-
-                        return (
-                          <div key={variant._id} className="flex items-center gap-2">
-                            {mode === "sale" ? (
-                              <DialogClose asChild>
-                                <Button
-                                  variant="outline"
-                                  className="w-full justify-between"
-                                  onClick={() => handleAddSale(tool, variant)}
-                                >
-                                  <span>
-                                    {variant.brand} – {variant.size}
-                                    {variant.color && ` – ${variant.color}`}
-                                  </span>
-                                  <span>₹{rightPrice}</span>
-                                </Button>
-                              </DialogClose>
-                            ) : (
+                {/* Variants */}
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      {mode === "sale"
+                        ? "Select Variant for Sale"
+                        : "Select Variant to Rent"}{" "}
+                      — {tool.name}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-2">
+                    {(tool.variants || []).map((variant) => {
+                      const price =
+                        mode === "sale"
+                          ? (variant.price ?? 0)
+                          : (variant.rentPrice ?? variant.pricePerDay ?? 0);
+                      return (
+                        <div
+                          key={variant._id}
+                          className="flex items-center gap-2"
+                        >
+                          {mode === "sale" ? (
+                            <DialogClose asChild>
                               <Button
                                 variant="outline"
                                 className="w-full justify-between"
-                                onClick={() => startAddRental(tool, variant)}
+                                onClick={() => handleAddSale(tool, variant)}
                               >
                                 <span>
                                   {variant.brand} – {variant.size}
-                                  {variant.color && ` – ${variant.color}`} • /day
+                                  {variant.color && ` – ${variant.color}`}
                                 </span>
-                                <span>₹{rightPrice}</span>
+                                <span>₹{price}</span>
                               </Button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              ))}
+                            </DialogClose>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              className="w-full justify-between"
+                              onClick={() => startAddRental(tool, variant)}
+                            >
+                              <span>
+                                {variant.brand} – {variant.size}
+                                {variant.color && ` – ${variant.color}`} • /day
+                              </span>
+                              <span>₹{price}</span>
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            ))
+          )}
         </div>
       </div>
 
-      {/* Rental quick dialog: Start Date + Days + Qty */}
+      {/* Rental Dialog */}
       <Dialog open={openRentDlg} onOpenChange={setOpenRentDlg}>
         <DialogContent>
           <DialogHeader>
@@ -421,35 +524,13 @@ export default function BillingPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <div>
-              <Label className="text-xs">Start Date</Label>
-              <input
-                type="date"
-                className="w-full border rounded px-2 py-1 text-sm"
-                value={rentStart}
-                onChange={(e) => setRentStart(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label className="text-xs">Days</Label>
-              <input
-                type="number"
-                min={1}
-                className="w-full border rounded px-2 py-1 text-sm"
-                value={rentDays}
-                onChange={(e) => setRentDays(Math.max(1, Number(e.target.value || 1)))}
-              />
-            </div>
-            <div>
-              <Label className="text-xs">Qty</Label>
-              <input
-                type="number"
-                min={1}
-                className="w-full border rounded px-2 py-1 text-sm"
-                value={rentQty}
-                onChange={(e) => setRentQty(Math.max(1, Number(e.target.value || 1)))}
-              />
-            </div>
+            <DateInput
+              label="Start Date"
+              value={rentStart}
+              setValue={setRentStart}
+            />
+            <NumberInput label="Days" value={rentDays} setValue={setRentDays} />
+            <NumberInput label="Qty" value={rentQty} setValue={setRentQty} />
           </div>
           <div className="flex justify-end gap-2 mt-3">
             <Button variant="outline" onClick={() => setOpenRentDlg(false)}>
@@ -459,6 +540,83 @@ export default function BillingPage() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/* ── Helper Components ── */
+function FilterPill({ label, value, onClear, color }) {
+  const colorClasses = {
+    green: "bg-green-100 text-green-800 border-green-200",
+    blue: "bg-blue-100 text-blue-800 border-blue-200",
+    yellow: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    purple: "bg-purple-100 text-purple-800 border-purple-200",
+  };
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${colorClasses[color]}`}
+    >
+      <span className="font-medium">{label}:</span>
+      <span className="font-semibold">{value}</span>
+      <button
+        className="ml-1 rounded-full p-0.5 hover:bg-black/10"
+        onClick={onClear}
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </span>
+  );
+}
+
+function FilterSelect({ label, value, setValue, options }) {
+  const optList =
+    options[0]?.label !== undefined
+      ? options
+      : options.map((v) => ({ label: v, value: v }));
+  return (
+    <div className="flex flex-col">
+      <Label className="mb-1 text-sm font-medium">Filter by {label}</Label>
+      <Select value={value} onValueChange={setValue}>
+        <SelectTrigger className="w-full h-10">
+          <SelectValue placeholder={`Select a ${label.toLowerCase()}`} />
+        </SelectTrigger>
+        <SelectContent>
+          {optList.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function DateInput({ label, value, setValue }) {
+  return (
+    <div>
+      <Label className="text-xs">{label}</Label>
+      <input
+        type="date"
+        className="w-full border rounded px-2 py-1 text-sm"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+      />
+    </div>
+  );
+}
+
+function NumberInput({ label, value, setValue }) {
+  return (
+    <div>
+      <Label className="text-xs">{label}</Label>
+      <input
+        type="number"
+        min={1}
+        className="w-full border rounded px-2 py-1 text-sm"
+        value={value}
+        onChange={(e) => setValue(Math.max(1, Number(e.target.value || 1)))}
+      />
     </div>
   );
 }

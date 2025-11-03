@@ -1,16 +1,17 @@
-import React, { lazy } from "react";
+import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import {
   Home,
   ShoppingCart,
   Users,
   UserRoundPen,
-  Languages,
   Wrench,
-  DollarSign,
   ListOrdered,
+  DollarSign,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   Sidebar,
@@ -22,163 +23,191 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Link } from "react-router-dom";
 
 const LayoutSidebar = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const role = useSelector((state) => state.auth.role);
 
-  const toggleLanguage = () => {
-    const nextLang = i18n.language === "en" ? "ta" : "en";
-    i18n.changeLanguage(nextLang);
+  const [openGroups, setOpenGroups] = useState({}); // track which groups are expanded
+
+  const toggleGroup = (label) => {
+    setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
-const adminSidebar = [
-  {
-    label: t("sidebar.general"),
-    items: [
-      { title: t("sidebar.dashboard"), icon: Home, url: "/layout/dashboard" },
-    ],
-  },
-  // {
-  //   label: t("sidebar.inventory"),
-  //   items: [
-  //     {
-  //       title: t("sidebar.salesInventory"),
-  //       icon: Wrench,
-  //       url: "/layout/salesInfo",
-  //     },
-  //   ],
-  // },
-  {
-    label: t("sidebar.management"),
-    items: [
-      {
-        title: t("sidebar.salesInventory"),
-        icon: Wrench,
-        url: "/layout/salesInfo",
-      },
-      {
-        title: t("sidebar.rentalInventory"),
-        icon: Wrench,
-        url: "/layout/rentalInfo",
-      },
-      {
-        title: t("sidebar.customers"),
-        icon: Users,
-        url: "/layout/customers",
-      },
-    ],
-  },
-  {
-    label: t("sidebar.Billing"),
-    items: [
-      {
-        title: t("sidebar.sales"),
-        icon: ShoppingCart,
-        url: "/layout/billing",
-      },
-      {
-        title: "Order List",
-        icon: ListOrdered,
-        url: "/layout/order",
-      }
-      ,{
-        title: t("sidebar.rentalOrders"),
-        icon: ListOrdered,
-        url: "/layout/rentalOrderList",
-      }
-    ],
-  },
-  {
-    label: t("sidebar.reports"),
-    items: [
-      // {
-      //   title: t("sidebar.salesReport"),  
-      //   icon: ShoppingCart,
-      //   url: "/layout/salesReport",
-      // },
-      {
-        title: t("sidebar.inventoryReport"),  
-        icon: Wrench,
-        url: "/layout/salesInventoryReport",
-      },
-     
-      {
-        title: t("sidebar.inactiveCustomers"),  
-        icon: Users,
-        url: "/layout/customers/inactive",
-      }
-      // {
-      //   title: t("sidebar.financialSummary"),  
-      //   icon: DollarSign,  // Assuming DollarSign icon is available; adjust if needed
-      //   url: "/layout/financialSummary",
-      // },
-      // {
-      //   title: t("sidebar.orderTrends"),  
-      //   icon: ListOrdered,
-      //   url: "/layout/orderTrends",
-      // },
-    ],
-  },
-  {
-    label:t("sidebar.purchase"),
-    items:[
-      {
-        title: t("sidebar.purchaseOrder"),
-        icon: ShoppingCart,
-        url: "/layout/purchaseOrder",
-      },
-    ]
-  }
-  ,
-  {
-    label: t("sidebar.administration"),
-    items: [
-      {
-        title: t("sidebar.profile"),
-        icon: UserRoundPen,
-        url: "/layout/users",
-      },
-    ],
-  },
-];
+  // ── Common / Base Sidebar
+  const baseSidebar = [
+    {
+      label: t("sidebar.general"),
+      items: [
+        { title: t("sidebar.dashboard"), icon: Home, url: "/layout/dashboard" },
+      ],
+    },
+  ];
+
+  // ── Admin Sidebar
+  const adminSidebar = [
+    ...baseSidebar,
+    {
+      label: t("sidebar.management"),
+      items: [
+        {
+          title: t("sidebar.salesInventory"),
+          icon: Wrench,
+          url: "/layout/salesInfo",
+        },
+        {
+          title: t("sidebar.rentalInventory"),
+          icon: Wrench,
+          url: "/layout/rentalInfo",
+        },
+        {
+          title: t("sidebar.customers"),
+          icon: Users,
+          url: "/layout/customers",
+        },
+      ],
+    },
+    {
+      label: t("sidebar.Billing"),
+      items: [
+        {
+          title: t("sidebar.sales"),
+          icon: ShoppingCart,
+          url: "/layout/billing",
+        },
+        { title: "Order List", icon: ListOrdered, url: "/layout/order" },
+        {
+          title: t("sidebar.rentalOrders"),
+          icon: ListOrdered,
+          url: "/layout/rentalOrderList",
+        },
+      ],
+    },
+    {
+      label: t("sidebar.reports"),
+      items: [
+        {
+          title: t("sidebar.inventoryReport"),
+          icon: Wrench,
+          url: "/layout/salesInventoryReport",
+        },
+        {
+          title: t("sidebar.inactiveCustomers"),
+          icon: Users,
+          url: "/layout/customers/inactive",
+        },
+      ],
+    },
+    {
+      label: t("sidebar.administration"),
+      items: [
+        {
+          title: t("sidebar.profile"),
+          icon: UserRoundPen,
+          url: "/layout/users",
+        },
+        {
+          title: t("sidebar.branches"),
+          icon: DollarSign,
+          url: "/layout/branches",
+        },
+        {
+          title: t("sidebar.purchaseOrder"),
+          icon: ShoppingCart,
+          url: "/layout/purchaseOrder",
+        },
+      ],
+    },
+  ];
+
+  // ── Staff Sidebar
+  const staffSidebar = [
+    ...baseSidebar,
+    {
+      label: t("sidebar.billing"),
+      items: [
+        {
+          title: t("sidebar.sales"),
+          icon: ShoppingCart,
+          url: "/layout/billing",
+        },
+        { title: "Order List", icon: ListOrdered, url: "/layout/order" },
+        {
+          title: t("sidebar.rentalOrders"),
+          icon: ListOrdered,
+          url: "/layout/rentalOrderList",
+        },
+      ],
+    },
+    {
+      label: t("sidebar.management"),
+      items: [
+        {
+          title: t("sidebar.salesInventory"),
+          icon: Wrench,
+          url: "/layout/salesInfo",
+        },
+        {
+          title: t("sidebar.rentalInventory"),
+          icon: Wrench,
+          url: "/layout/rentalInfo",
+        },
+        {
+          title: t("sidebar.customers"),
+          icon: Users,
+          url: "/layout/customers",
+        },
+      ],
+    },
+  ];
+
+  const activeSidebar = role === "admin" ? adminSidebar : staffSidebar;
 
   return (
     <Sidebar>
       <SidebarContent>
-        {/* Sidebar Items */}
-        {adminSidebar.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <Link to={item.url}>
-                        <item.icon className="mr-2 h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
-        {/* Language Toggle Button
-        <div className="p-4">
-          <Button
-      variant="outline"
-      size="sm"
-      onClick={toggleLanguage}
-      className="flex items-center gap-2 px-3 py-1"
-    >
-      <Languages className="w-4 h-4" />
-      {i18n.language === "en" ? "தமிழில்" : "English"}
-    </Button>
-        </div> */}
+        {activeSidebar.map((group) => {
+          const isOpen = openGroups[group.label] ?? false;
+          return (
+            <SidebarGroup key={group.label}>
+              {/* ── Collapsible Header */}
+              <SidebarGroupLabel
+                className="flex items-center justify-between cursor-pointer select-none text-sm font-semibold"
+                onClick={() => toggleGroup(group.label)}
+              >
+                <span>{group.label}</span>
+                {isOpen ? (
+                  <ChevronDown className="w-4 h-4 transition-transform duration-200" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 transition-transform duration-200" />
+                )}
+              </SidebarGroupLabel>
+
+              {/* ── Collapsible Content */}
+              <SidebarGroupContent
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                }`}
+              >
+                <SidebarMenu>
+                  {group.items.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <Link
+                          to={item.url}
+                          className="flex items-center gap-2 pl-3 py-1.5 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-md transition-colors"
+                        >
+                          <item.icon className="w-4 h-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
     </Sidebar>
   );

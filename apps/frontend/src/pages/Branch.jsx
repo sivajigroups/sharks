@@ -16,12 +16,11 @@ import {
 import { toast } from "sonner";
 
 const Branch = () => {
-  const [branches, setBranches] = useState([]);
   const [branchData, setBranchData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // States for branch creation form
+  // Form fields
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [contactNumber, setContactNumber] = useState("");
@@ -34,7 +33,6 @@ const Branch = () => {
         credentials: "include",
       });
       if (!response.ok) throw new Error("Failed to fetch branches");
-
       const data = await response.json();
       setBranchData(data);
     } catch (error) {
@@ -50,26 +48,20 @@ const Branch = () => {
 
   const handleInsert = async () => {
     if (!name || !location || !contactNumber) {
-      alert("Please fill all fields.");
+      toast.error("Please fill all fields.");
       return;
     }
-
-    const body = { name, location, contactNumber };
 
     try {
       const res = await fetch("http://localhost:4000/api/branch/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(body),
+        body: JSON.stringify({ name, location, contactNumber }),
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.message || "Failed to add branch");
-        return;
-      }
+      if (!res.ok) throw new Error(data.message || "Failed to add branch");
 
       toast.success("Branch added successfully!");
       setName("");
@@ -77,53 +69,45 @@ const Branch = () => {
       setContactNumber("");
       fetchBranch();
     } catch (error) {
-      alert("Error adding branch: " + error.message);
+      toast.error("Error adding branch: " + error.message);
     }
   };
 
- const handleEdit = async (id, updatedItem) => {
-  try {
-    const response = await fetch(`http://localhost:4000/api/branch/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(updatedItem),
-    });
+  const handleEdit = async (id, updatedItem) => {
+    try {
+      const res = await fetch(`http://localhost:4000/api/branch/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(updatedItem),
+      });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      alert(data.message || "Failed to update branch");
-      return;
-    }
-
-    toast.success("Branch updated successfully!");
-    fetchBranch(); // Refresh data
-  } catch (error) {
-    alert("Error updating branch: " + error.message);
-  }
-};
-
-
-const handleDelete = async (id) => {
-  try {
-    const res = await fetch(`http://localhost:4000/api/branch/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-
-    if (!res.ok) {
       const data = await res.json();
-      throw new Error(data.message || "Failed to delete branch");
+      if (!res.ok) throw new Error(data.message || "Failed to update branch");
+
+      toast.success("Branch updated successfully!");
+      fetchBranch();
+    } catch (error) {
+      toast.error("Error updating branch: " + error.message);
     }
+  };
 
-    toast.success("Branch deleted successfully!");
-    fetchBranch(); // Refresh the list
-  } catch (error) {
-    alert("Error deleting branch: " + error.message);
-  }
-};
+  const handleDelete = async (id) => {
+    try {
+      const res = await fetch(`http://localhost:4000/api/branch/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
 
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to delete branch");
+
+      toast.success("Branch deleted successfully!");
+      fetchBranch();
+    } catch (error) {
+      toast.error("Error deleting branch: " + error.message);
+    }
+  };
 
   const filteredBranches = branchData.filter((branch) =>
     Object.values(branch).some((val) =>
@@ -138,9 +122,9 @@ const handleDelete = async (id) => {
   ];
 
   return (
-    <div className="min-h-screen p-6 bg-gray-100 dark:bg-gray-900 space-y-6 w-308">
+    <div className="p-6 bg-gray-100 dark:bg-gray-900 space-y-6 overflow-hidden">
       <h1 className="text-3xl font-bold text-center text-gray-800 dark:text-white">
-        Branches Management
+        Branch Management
       </h1>
 
       {loading ? (
@@ -153,23 +137,24 @@ const handleDelete = async (id) => {
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <Card className="shadow-lg">
           <CardContent className="p-4">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
               <Input
                 type="text"
                 placeholder="Search branches..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-1/2"
+                className="sm:w-1/2 w-full"
               />
+
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" /> Add Branch
+                  <Button className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" /> Add Branch
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="sm:max-w-[400px] max-h-[90vh] overflow-visible">
                   <DialogHeader>
                     <DialogTitle>Add New Branch</DialogTitle>
                   </DialogHeader>
@@ -199,13 +184,15 @@ const handleDelete = async (id) => {
               </Dialog>
             </div>
 
-            <ReTable
-              data={filteredBranches}
-              columns={columns}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              showViewButton={false}
-            />
+            <div className="overflow-x-auto">
+              <ReTable
+                data={filteredBranches}
+                columns={columns}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                showViewButton={false}
+              />
+            </div>
           </CardContent>
         </Card>
       )}
