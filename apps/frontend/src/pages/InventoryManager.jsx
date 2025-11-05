@@ -144,8 +144,8 @@ export default function InventoryManager({ type = "sales", title }) {
       const data = Array.isArray(json?.data)
         ? json.data
         : Array.isArray(json)
-        ? json
-        : [];
+          ? json
+          : [];
       setRawInventories(data);
     } catch {
       toast.error(t("inventory.fetchError") || "Failed to load inventory.");
@@ -179,12 +179,14 @@ export default function InventoryManager({ type = "sales", title }) {
       const list = Array.isArray(json?.data)
         ? json.data
         : Array.isArray(json)
-        ? json
-        : [];
+          ? json
+          : [];
       setBranches(list);
     } catch (err) {
       console.error(err);
-      toast.error(t("inventory.branchFetchError") || "Failed to load branches.");
+      toast.error(
+        t("inventory.branchFetchError") || "Failed to load branches."
+      );
     }
   };
 
@@ -213,12 +215,20 @@ export default function InventoryManager({ type = "sales", title }) {
       setName(item.name || "");
       setDescription(item.description || "");
       setCategory(item.category || "");
-      const bId =
-        item.branch?._id ||
-        item.branch?.id ||
-        item.branchId ||
-        item.branch ||
-        "";
+
+      // 🔧 Fix: detect if branch is already an ID or object
+      let bId = "";
+      if (item.branch?._id || item.branch?.id) {
+        bId = item.branch._id || item.branch.id;
+      } else if (item.branchId) {
+        bId = item.branchId;
+      } else if (branches.some((b) => b.name === item.branch)) {
+        // when branch is name, find its ID
+        const found = branches.find((b) => b.name === item.branch);
+        bId = found?._id || found?.id || "";
+      } else if (typeof item.branch === "string") {
+        bId = item.branch;
+      }
       setBranchId(bId);
 
       // Backend → UI mapping
@@ -226,7 +236,7 @@ export default function InventoryManager({ type = "sales", title }) {
         brand: v.brand ?? "",
         size: v.size ?? "",
         color: v.color ?? "",
-        price: isRental ? v.pricePerDay ?? "" : v.price ?? "",
+        price: isRental ? (v.pricePerDay ?? "") : (v.price ?? ""),
         stock: v.stock ?? "",
       }));
       setVariants(
@@ -594,7 +604,9 @@ export default function InventoryManager({ type = "sales", title }) {
                   placeholder={priceLabel}
                   type="number"
                   value={v.price}
-                  onChange={(e) => handleVariantChange(i, "price", e.target.value)}
+                  onChange={(e) =>
+                    handleVariantChange(i, "price", e.target.value)
+                  }
                   required
                 />
 
@@ -741,7 +753,7 @@ export default function InventoryManager({ type = "sales", title }) {
           setCrossOpen(v);
           if (!v) fetchInventories();
         }}
-        type={type}                  // "rental" or "sales" (current page)
+        type={type} // "rental" or "sales" (current page)
         inventories={rawInventories} // items of current page
         API_BASE={API_BASE}
         t={t}

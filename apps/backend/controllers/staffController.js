@@ -89,88 +89,114 @@ const insertSales = async (req, res) => {
     });
   }
 };
+//
 const updateSales = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, category, variants } = req.body;
 
-    // Basic validation
-    if (!name || !variants || !Array.isArray(variants) || variants.length === 0) {
+    // --- Basic validation ---
+    if (!name || !Array.isArray(variants) || variants.length === 0) {
       return res
         .status(400)
         .json({ message: "Missing required fields: name or variants" });
     }
 
-    // Re‐generate SKUs and validate each variant
-    const processedVariants = variants.map(variant => {
+    // --- Regenerate SKUs for each variant ---
+    const processedVariants = variants.map((variant) => {
       const brand = variant.brand || "GENERIC";
-      const size  = variant.size  || "STD";
-      const sku   = `${name}-${brand}-${size}`
-                        .replace(/\s+/g, "")
-                        .toUpperCase();
+      const size = variant.size || "STD";
+      const color = variant.color || "";
+      const sku = `${name}-${brand}-${size}${color ? "-" + color : ""}`
+        .replace(/\s+/g, "")
+        .toUpperCase();
 
       if (variant.price == null || variant.stock == null) {
-        throw new Error("Each variant must have price and stock");
+        throw new Error("Each variant must have both price and stock values");
       }
 
       return { ...variant, sku };
     });
 
-    // Prevent SKU collisions with *other* documents
-    const skuList = processedVariants.map(v => v.sku);
-    const collision = await SalesInventory.findOne({
-      _id:       { $ne: id },
-      "variants.sku": { $in: skuList }
-    });
+    // --- Prevent duplicate SKUs within the same update payload ---
+    const seen = new Set();
+    const duplicates = processedVariants
+      .map((v) => v.sku)
+      .filter((sku) => {
+        if (seen.has(sku)) return true;
+        seen.add(sku);
+        return false;
+      });
 
-    if (collision) {
-      return res
-        .status(400)
-        .json({ message: "One or more SKUs already exist in another item" });
+    if (duplicates.length > 0) {
+      return res.status(400).json({
+        message: `Duplicate variants found within this item: ${duplicates.join(", ")}`,
+      });
     }
 
-    // Perform the update
+    // --- Prevent SKU collisions with *other* items only ---
+    const skuList = processedVariants.map((v) => v.sku);
+    const conflict = await SalesInventory.findOne({
+      _id: { $ne: id },
+      "variants.sku": { $in: skuList },
+    }).lean();
+
+    if (conflict) {
+      // Find exactly which SKUs are conflicting
+      const conflictingSkus = conflict.variants
+        .map((v) => v.sku)
+        .filter((sku) => skuList.includes(sku));
+
+      return res.status(400).json({
+        message: `SKUs already exist in another item (${conflict.name}): ${conflictingSkus.join(
+          ", "
+        )}`,
+      });
+    }
+
+    // --- Proceed to update ---
     const updated = await SalesInventory.findByIdAndUpdate(
       id,
       {
         name,
         description,
         category,
-        variants: processedVariants
+        variants: processedVariants,
       },
       { new: true, runValidators: true }
     );
 
     if (!updated) {
-      return res
-        .status(404)
-        .json({ message: "Inventory item not found" });
+      return res.status(404).json({ message: "Inventory item not found" });
     }
 
-    // Check for low‐stock thresholds
-    const lowStockSKUs = processedVariants
-      .filter(v => v.stock < 5)
-      .map(v => v.sku);
+    // --- Check for low stock warning ---
+    const lowStock = processedVariants
+      .filter((v) => v.stock < 5)
+      .map((v) => v.sku);
 
-    if (lowStockSKUs.length) {
+    if (lowStock.length > 0) {
       return res.status(200).json({
-        message: `Updated, but low stock for SKUs: ${lowStockSKUs.join(", ")}`,
-        data: updated
+        message: `Updated successfully, but low stock for: ${lowStock.join(", ")}`,
+        data: updated,
       });
     }
 
-    res.status(200).json({
+    // --- Success ---
+    return res.status(200).json({
       message: "Inventory item updated successfully",
-      data: updated
+      data: updated,
     });
-
   } catch (error) {
+    console.error("❌ Error updating inventory:", error);
     res.status(500).json({
-      message: "Error updating inventory item",
-      error: error.message
+      message: error.message || "Error updating inventory item",
     });
   }
 };
+
+
+
 
 const updateRental = async (req, res) => {
   try {

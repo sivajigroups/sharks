@@ -27,21 +27,22 @@ import {
 const LayoutSidebar = () => {
   const { t } = useTranslation();
   const role = useSelector((state) => state.auth.role);
-
-  const [openGroups, setOpenGroups] = useState({}); // track which groups are expanded
-
+  const [openGroups, setOpenGroups] = useState({});
   const toggleGroup = (label) => {
     setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
+  // 💡 Environment check
+  const RENTAL_ENABLED = import.meta.env.VITE_RENTAL_TRUE === "true";
+
   // ── Common / Base Sidebar
   const baseSidebar = [
-    {
-      label: t("sidebar.general"),
-      items: [
-        { title: t("sidebar.dashboard"), icon: Home, url: "/layout/dashboard" },
-      ],
-    },
+    // {
+    //   label: t("sidebar.general"),
+    //   items: [
+    //     { title: t("sidebar.dashboard"), icon: Home, url: "/layout/dashboard" },
+    //   ],
+    // },
   ];
 
   // ── Admin Sidebar
@@ -55,11 +56,16 @@ const LayoutSidebar = () => {
           icon: Wrench,
           url: "/layout/salesInfo",
         },
-        {
-          title: t("sidebar.rentalInventory"),
-          icon: Wrench,
-          url: "/layout/rentalInfo",
-        },
+        // 💡 show rental inventory only if enabled
+        ...(RENTAL_ENABLED
+          ? [
+              {
+                title: t("sidebar.rentalInventory"),
+                icon: Wrench,
+                url: "/layout/rentalInfo",
+              },
+            ]
+          : []),
         {
           title: t("sidebar.customers"),
           icon: Users,
@@ -76,11 +82,16 @@ const LayoutSidebar = () => {
           url: "/layout/billing",
         },
         { title: "Order List", icon: ListOrdered, url: "/layout/order" },
-        {
-          title: t("sidebar.rentalOrders"),
-          icon: ListOrdered,
-          url: "/layout/rentalOrderList",
-        },
+        // 💡 show rental orders only if enabled
+        ...(RENTAL_ENABLED
+          ? [
+              {
+                title: t("sidebar.rentalOrders"),
+                icon: ListOrdered,
+                url: "/layout/rentalOrderList",
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -107,7 +118,7 @@ const LayoutSidebar = () => {
           url: "/layout/users",
         },
         {
-          title: t("sidebar.branches"),
+          title: t("sidebar.Branches"),
           icon: DollarSign,
           url: "/layout/branches",
         },
@@ -132,11 +143,15 @@ const LayoutSidebar = () => {
           url: "/layout/billing",
         },
         { title: "Order List", icon: ListOrdered, url: "/layout/order" },
-        {
-          title: t("sidebar.rentalOrders"),
-          icon: ListOrdered,
-          url: "/layout/rentalOrderList",
-        },
+        ...(RENTAL_ENABLED
+          ? [
+              {
+                title: t("sidebar.rentalOrders"),
+                icon: ListOrdered,
+                url: "/layout/rentalOrderList",
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -147,11 +162,15 @@ const LayoutSidebar = () => {
           icon: Wrench,
           url: "/layout/salesInfo",
         },
-        {
-          title: t("sidebar.rentalInventory"),
-          icon: Wrench,
-          url: "/layout/rentalInfo",
-        },
+        ...(RENTAL_ENABLED
+          ? [
+              {
+                title: t("sidebar.rentalInventory"),
+                icon: Wrench,
+                url: "/layout/rentalInfo",
+              },
+            ]
+          : []),
         {
           title: t("sidebar.customers"),
           icon: Users,
@@ -170,7 +189,6 @@ const LayoutSidebar = () => {
           const isOpen = openGroups[group.label] ?? false;
           return (
             <SidebarGroup key={group.label}>
-              {/* ── Collapsible Header */}
               <SidebarGroupLabel
                 className="flex items-center justify-between cursor-pointer select-none text-sm font-semibold"
                 onClick={() => toggleGroup(group.label)}
@@ -183,7 +201,6 @@ const LayoutSidebar = () => {
                 )}
               </SidebarGroupLabel>
 
-              {/* ── Collapsible Content */}
               <SidebarGroupContent
                 className={`overflow-hidden transition-all duration-300 ease-in-out ${
                   isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"

@@ -18,9 +18,9 @@ async function nextBillNo() {
   return `INV-${y}-${String(c.seq).padStart(6, '0')}`;
 }
 
-// If you still want to keep your original generator, you can, but counters are safer.
-// async function generateBillNo() { ... }
-
+// -----------------------------------------------------------------------------
+// ✅ Create Sale Bill with correct variant stock decrement (using arrayFilters)
+// -----------------------------------------------------------------------------
 const createSaleBill = async (req, res) => {
   try {
     const { customerId, items = [], paymentMode = 'Cash', discount = 0, tax = 0, notes } = req.body;
@@ -40,23 +40,21 @@ const createSaleBill = async (req, res) => {
         throw new Error('Each item needs inventoryId, variantId, quantity >= 1');
       }
 
-      // Atomic: only decrement if stock >= quantity, and return the matched variant (pre-update)
+      // ✅ Fixed logic — only decrement the matching variant
       const inv = await SalesInventory.findOneAndUpdate(
         {
           _id: inventoryId,
-          'variants._id': variantId,
-          'variants.stock': { $gte: quantity }
+          variants: { $elemMatch: { _id: variantId, stock: { $gte: quantity } } },
         },
-        { $inc: { 'variants.$.stock': -quantity } },
+        { $inc: { 'variants.$[v].stock': -quantity } },
         {
-          new: false, // return doc BEFORE decrement so we snapshot original price/details
-          projection: { name: 1, variants: { $elemMatch: { _id: variantId } } }
+          arrayFilters: [{ 'v._id': variantId }],
+          new: false,
+          projection: { name: 1, variants: { $elemMatch: { _id: variantId } } },
         }
       ).lean();
 
-      if (!inv) {
-        throw new Error('Variant not found or insufficient stock');
-      }
+      if (!inv) throw new Error('Variant not found or insufficient stock');
 
       const variant = inv.variants[0];
       const unitPrice = typeof overridePrice === 'number' ? overridePrice : variant.price;
@@ -78,7 +76,7 @@ const createSaleBill = async (req, res) => {
       subtotal += lineTotal;
     }
 
-    const billNo = await nextBillNo(); // use counter (or your old generateBillNo if you prefer)
+    const billNo = await nextBillNo();
     const totalAmount = subtotal - (discount || 0) + (tax || 0);
 
     const billDoc = await SaleBill.create({
@@ -99,6 +97,10 @@ const createSaleBill = async (req, res) => {
   }
 };
 
+
+// -----------------------------------------------------------------------------
+// Get Bills by Customer
+// -----------------------------------------------------------------------------
 const getBillsByCustomer = async (req, res) => {
   try {
     const customerId = req.query.customerId || req.params.customerId;
@@ -106,37 +108,35 @@ const getBillsByCustomer = async (req, res) => {
       return res.status(400).json({ message: "customerId is required" });
     }
 
-    // Cast only if stored as ObjectId
     const filter = {};
     if (ObjectId.isValid(customerId)) {
       filter.customer = new ObjectId(customerId);
     } else {
-      // If you stored customer as string (rare), fall back to string match
       filter.customer = customerId;
     }
 
     const bills = await SaleBill.find(filter)
       .sort({ createdAt: -1 })
-      .populate("customer")           // optional
+      .populate("customer")
       .lean();
 
-    // Prefer 200 + [] for "none", avoids breaking clients
     return res.json({ data: bills });
   } catch (err) {
     return res.status(500).json({ message: err.message || "Server error" });
   }
 };
 
-
+// -----------------------------------------------------------------------------
+// List All Bills (pagination + search)
+// -----------------------------------------------------------------------------
 const listBills = async (req, res) => {
   try {
-    const page  = parseInt(req.query.page)  || 1;
+    const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const search = (req.query.search || '').trim();
 
     const match = {};
     if (search) {
-      // allow searching by billNo or SKU inside items
       match.$or = [
         { billNo: new RegExp(search, 'i') },
         { 'items.sku': new RegExp(search, 'i') },

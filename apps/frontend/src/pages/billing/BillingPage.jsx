@@ -23,12 +23,12 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
-import { X, CalendarRange } from "lucide-react";
+import { X, CalendarRange, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useSelector } from "react-redux";
 import GenericCartPanel from "./GenericCartPanel";
 
-// ── Constants ──
 const categories = [
   "All",
   "Power Tools",
@@ -39,7 +39,6 @@ const categories = [
   "Plumbing",
 ];
 
-// ── Utility ──
 function computeToDateISO(fromDateStr, days) {
   if (!fromDateStr || !days || days < 1) return "";
   const d = new Date(fromDateStr);
@@ -48,9 +47,12 @@ function computeToDateISO(fromDateStr, days) {
   return d.toISOString().slice(0, 10);
 }
 
-// ── Main Component ──
 export default function BillingPage() {
   const API_BASE = import.meta.env.VITE_API_BASE;
+
+  //
+  const RENTAL_ENABLED = import.meta.env.VITE_RENTAL_TRUE === "true";
+
   const role = useSelector((state) => state.auth.role) || "";
   const userBranch = useSelector((state) => state.auth.branch) || null;
 
@@ -62,11 +64,7 @@ export default function BillingPage() {
   const [saleCart, setSaleCart] = useState([]);
   const [rentalCart, setRentalCart] = useState([]);
 
-  // Filters
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedBrand, setSelectedBrand] = useState("All");
-  const [selectedSize, setSelectedSize] = useState("All");
-  const [selectedBranch, setSelectedBranch] = useState("All");
+  const [searchTerm, setSearchTerm] = useState("");
 
   // ── Fetch inventories ──
   useEffect(() => {
@@ -80,7 +78,7 @@ export default function BillingPage() {
         const res = await fetch(url, { credentials: "include" });
         const json = await res.json();
         setInventories(json?.data || json || []);
-      } catch (err) {
+      } catch {
         toast.error("Failed to fetch inventory");
       } finally {
         setLoading(false);
@@ -89,7 +87,7 @@ export default function BillingPage() {
     fetchInventories();
   }, [mode, API_BASE]);
 
-  // ── Fetch branches (Admin only) ──
+  // ── Fetch branches ──
   useEffect(() => {
     if (role.toLowerCase() === "admin") {
       (async () => {
@@ -97,51 +95,16 @@ export default function BillingPage() {
           const res = await fetch(`${API_BASE}/branch/all`, {
             credentials: "include",
           });
-          if (!res.ok) throw new Error("Could not load branches");
           const arr = await res.json();
           setBranches([{ _id: "All", name: "All" }, ...arr]);
-        } catch (err) {
+        } catch {
           toast.error("Failed to fetch branches");
         }
       })();
-    } else if (userBranch?._id) {
-      // Staff: auto-select their branch
-      setSelectedBranch(userBranch._id);
-    }
+    } else if (userBranch?._id) setBranches([userBranch]);
   }, [role, API_BASE, userBranch]);
 
-  // ── Filter Options ──
-  const toolsForCategory = useMemo(() => {
-    if (selectedCategory === "All") return inventories;
-    return inventories.filter((t) => t.category === selectedCategory);
-  }, [inventories, selectedCategory]);
-
-  const brandOptions = useMemo(() => {
-    const set = new Set();
-    for (const tool of toolsForCategory) {
-      for (const v of tool.variants || []) if (v?.brand) set.add(v.brand);
-    }
-    return ["All", ...Array.from(set)];
-  }, [toolsForCategory]);
-
-  const sizeOptions = useMemo(() => {
-    if (selectedBrand === "All") return ["All"];
-    const set = new Set();
-    for (const tool of toolsForCategory) {
-      for (const v of tool.variants || [])
-        if (v?.brand === selectedBrand && v?.size) set.add(v.size);
-    }
-    return ["All", ...Array.from(set)];
-  }, [toolsForCategory, selectedBrand]);
-
-  const clearFilters = () => {
-    setSelectedCategory("All");
-    setSelectedBrand("All");
-    setSelectedSize("All");
-    if (role.toLowerCase() === "admin") setSelectedBranch("All");
-  };
-
-  // ── Cart Handlers ──
+  // ── Add to cart handlers ──
   const handleAddSale = (tool, variant) => {
     const id = `sale-${tool._id}-${variant._id}`;
     setSaleCart((prev) => {
@@ -158,13 +121,13 @@ export default function BillingPage() {
           variantId: variant._id,
           variant,
           qty: 1,
-          price: variant.price,
+          price: variant.price ?? 0,
         },
       ];
     });
   };
 
-  // Rental Logic
+  // Rental logic
   const [pendingRental, setPendingRental] = useState(null);
   const [rentStart, setRentStart] = useState("");
   const [rentDays, setRentDays] = useState(1);
@@ -202,86 +165,31 @@ export default function BillingPage() {
       },
     ]);
     setOpenRentDlg(false);
-    setPendingRental(null);
   };
 
-  // ── Filtered Tools ──
+  // ── Filtered list with search ──
   const filtered = useMemo(() => {
-   const extractId = (b) => {
-  try {
-    if (!b) return "";
-    if (typeof b === "string") return b.trim();
-    if (b.$oid) return String(b.$oid).trim();
-
-    // 🟢 NEW: handle { id: "..." } for staff user branch
-    if (b.id) return String(b.id).trim();
-
-    if (b._id) {
-      if (typeof b._id === "string") return b._id.trim();
-      if (b._id.$oid) return String(b._id.$oid).trim();
-    }
-
-    if (typeof b.toString === "function") {
-      const id = b.toString();
-      if (id.length === 24 && !id.includes("[object")) return id;
-    }
-
-    return "";
-  } catch {
-    return "";
-  }
-};
-
-
-    const unique = new Map();
-    inventories.forEach((tool) => {
-      const key = `${tool.name}-${extractId(tool.branch)}`;
-      if (!unique.has(key)) unique.set(key, tool);
-    });
-
-    return Array.from(unique.values()).filter((tool) => {
-      const matchCat =
-        selectedCategory === "All" || tool.category === selectedCategory;
-      const matchBrand =
-        selectedBrand === "All" ||
-        (tool.variants || []).some((v) => v.brand === selectedBrand);
-      const matchSize =
-        selectedSize === "All" ||
-        (tool.variants || []).some(
-          (v) =>
-            v.brand === (selectedBrand === "All" ? v.brand : selectedBrand) &&
-            v.size === selectedSize
+    const search = searchTerm.trim().toLowerCase();
+    return inventories.filter((tool) => {
+      const matchesSearch =
+        !search ||
+        tool.name?.toLowerCase().includes(search) ||
+        tool.category?.toLowerCase().includes(search) ||
+        (tool.variants || []).some((v) =>
+          v.sku?.toLowerCase().includes(search)
         );
-
-      const branchId = extractId(tool.branch);
-      const userBranchId = extractId(userBranch);
-      const selectedBranchId = extractId(selectedBranch);
-
-      const matchBranch =
-        role.toLowerCase() === "admin"
-          ? selectedBranchId === "All" || branchId === selectedBranchId
-          : branchId === userBranchId;
-
-      return matchCat && matchBrand && matchSize && matchBranch;
+      return matchesSearch;
     });
-  }, [
-    inventories,
-    selectedCategory,
-    selectedBrand,
-    selectedSize,
-    selectedBranch,
-    role,
-    userBranch,
-  ]);
+  }, [inventories, searchTerm]);
 
   const cartItems = mode === "sale" ? saleCart : rentalCart;
   const setCartItems = mode === "sale" ? setSaleCart : setRentalCart;
 
   // ── UI ──
   return (
-    <div className="flex flex-1 min-w-0 h-full overflow-hidden">
+    <div className="flex flex-1 h-[calc(100vh-70px)] overflow-hidden bg-gray-50">
       {/* Left Cart */}
-      <div className="w-[360px] shrink-0 bg-white border-r p-2">
+      <div className="w-[360px] min-w-[360px] bg-white border-r p-2 flex flex-col">
         <GenericCartPanel
           mode={mode}
           cartItems={cartItems}
@@ -289,9 +197,9 @@ export default function BillingPage() {
         />
       </div>
 
-      {/* Right Filters */}
-      <div className="flex-1 min-w-0 overflow-y-auto p-4">
-        {/* Billing Type */}
+      {/* Right Section */}
+      <div className="flex-1 overflow-y-auto p-4 transition-all duration-300 ease-in-out">
+        {/* Billing Type + Search */}
         <Card className="mb-4">
           <CardContent className="p-4 flex items-center gap-2">
             <span className="text-sm font-medium">Billing Type:</span>
@@ -304,184 +212,153 @@ export default function BillingPage() {
               >
                 Sale
               </button>
-              <button
-                className={`px-3 py-1 text-sm border-l ${
-                  mode === "rental" ? "bg-black text-white" : "bg-white"
-                }`}
-                onClick={() => setMode("rental")}
-              >
-                Rent
-              </button>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Filters */}
-        <Card className="mb-4 shadow-sm">
-          <CardContent className="p-4 space-y-3">
-            {/* Pills */}
-            <div className="flex flex-wrap gap-2 items-center">
-              {selectedCategory !== "All" && (
-                <FilterPill
-                  label="Category"
-                  value={selectedCategory}
-                  onClear={() => setSelectedCategory("All")}
-                  color="green"
-                />
-              )}
-              {selectedBrand !== "All" && (
-                <FilterPill
-                  label="Brand"
-                  value={selectedBrand}
-                  onClear={() => setSelectedBrand("All")}
-                  color="blue"
-                />
-              )}
-              {selectedSize !== "All" && (
-                <FilterPill
-                  label="Size"
-                  value={selectedSize}
-                  onClear={() => setSelectedSize("All")}
-                  color="yellow"
-                />
-              )}
-              {role.toLowerCase() === "admin" && selectedBranch !== "All" && (
-                <FilterPill
-                  label="Branch"
-                  value={
-                    branches.find((b) => b._id === selectedBranch)?.name ||
-                    "Unknown"
-                  }
-                  onClear={() => setSelectedBranch("All")}
-                  color="purple"
-                />
-              )}
-              {(selectedCategory !== "All" ||
-                selectedBrand !== "All" ||
-                selectedSize !== "All" ||
-                (role.toLowerCase() === "admin" &&
-                  selectedBranch !== "All")) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-3 text-xs border"
-                  onClick={clearFilters}
+              {RENTAL_ENABLED && (
+                <button
+                  className={`px-3 py-1 text-sm border-l ${
+                    mode === "rental" ? "bg-black text-white" : "bg-white"
+                  }`}
+                  onClick={() => setMode("rental")}
                 >
-                  Clear All
-                </Button>
+                  Rent
+                </button>
               )}
             </div>
 
-            {/* Dropdown Filters */}
-            <div
-              className={`grid ${
-                role.toLowerCase() === "admin" ? "grid-cols-4" : "grid-cols-3"
-              } gap-4`}
-            >
-              <FilterSelect
-                label="Category"
-                value={selectedCategory}
-                setValue={setSelectedCategory}
-                options={categories}
+            {/* Search Input */}
+            <div className="relative ml-3">
+              <Input
+                placeholder="Search by Name, SKU, or Category…"
+                className="w-72 pr-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <FilterSelect
-                label="Brand"
-                value={selectedBrand}
-                setValue={(v) => {
-                  setSelectedBrand(v);
-                  setSelectedSize("All");
-                }}
-                options={brandOptions}
-              />
-              <FilterSelect
-                label="Size"
-                value={selectedSize}
-                setValue={setSelectedSize}
-                options={sizeOptions}
-              />
-              {role.toLowerCase() === "admin" && (
-                <FilterSelect
-                  label="Branch"
-                  value={selectedBranch}
-                  setValue={setSelectedBranch}
-                  options={branches.map((b) => ({
-                    label: b.name,
-                    value: b._id,
-                  }))}
-                />
-              )}
+              <Search className="absolute right-2 top-2.5 h-4 w-4 text-gray-400" />
+            </div>
+            <div>
+              <Button>
+                QR Scan
+              </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Item Grid */}
-        <div className="flex flex-wrap gap-2">
+        {/* Items Grid */}
+        <div
+          className="
+            grid gap-2 
+            grid-cols-5 
+            sm:grid-cols-2 
+            md:grid-cols-2 
+            lg:grid-cols-2 
+            xl:grid-cols-4
+            2xl:grid-cols-6
+            3xl:grid-cols-6
+            auto-rows-[140px]
+          "
+        >
           {loading ? (
-            Array.from({ length: 6 }).map((_, i) => (
-              <Card
-                key={i}
-                className="min-w-[180px] h-[100px] rounded-xl shadow-sm"
-              >
-                <CardHeader className="p-3 space-y-2">
-                  <div className="w-2/3 h-4 bg-muted rounded" />
-                  <div className="w-full h-3 bg-muted rounded" />
-                </CardHeader>
-              </Card>
-            ))
+            <p>Loading...</p>
           ) : filtered.length === 0 ? (
             <p className="text-sm text-gray-500 italic px-2">No tools found</p>
           ) : (
-            filtered.map((tool) => (
-              <Dialog key={tool._id}>
-                <DialogTrigger asChild>
-                  <Card className="min-w-[180px] h-[100px] rounded-xl shadow-sm cursor-pointer relative">
-                    {(role.toLowerCase() === "admin" ||
-                      role.toLowerCase() === "staff") && (
-                      <span className="absolute top-1 right-1 text-[10px] bg-purple-100 text-purple-700 px-2 py-[1px] rounded-full">
-                        {branches.find(
-                          (b) =>
-                            b._id === String(tool.branch?._id || tool.branch)
-                        )?.name || "—"}
-                      </span>
-                    )}
-                    <CardHeader className="p-3">
-                      <CardTitle className="text-sm font-semibold line-clamp-1">
-                        {tool.name}
-                      </CardTitle>
-                      <CardDescription className="text-xs line-clamp-2">
-                        {tool.description}
-                      </CardDescription>
-                    </CardHeader>
-                  </Card>
-                </DialogTrigger>
+            filtered.map((tool) => {
+              const branchName =
+                branches.find(
+                  (b) => b._id === String(tool.branch?._id || tool.branch)
+                )?.name || "—";
 
-                {/* Variants */}
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>
-                      {mode === "sale"
-                        ? "Select Variant for Sale"
-                        : "Select Variant to Rent"}{" "}
-                      — {tool.name}
-                    </DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-2">
-                    {(tool.variants || []).map((variant) => {
-                      const price =
-                        mode === "sale"
-                          ? (variant.price ?? 0)
-                          : (variant.rentPrice ?? variant.pricePerDay ?? 0);
-                      return (
-                        <div
-                          key={variant._id}
-                          className="flex items-center gap-2"
+              const totalStock = tool.variants?.reduce(
+                (sum, v) => sum + (v.stock || 0),
+                0
+              );
+
+              return (
+                <Dialog key={tool._id}>
+                  <DialogTrigger asChild>
+                    <Card
+                      className="
+                        min-w-[140px] 
+                        h-full
+                        rounded-lg 
+                        shadow-sm 
+                        cursor-pointer 
+                        relative 
+                        hover:shadow-md 
+                        transition-all 
+                        flex 
+                        flex-col 
+                        justify-between 
+                      "
+                    >
+                      {/* 🟣 Branch Indicator */}
+                      {(role.toLowerCase() === "admin" ||
+                        role.toLowerCase() === "staff") && (
+                        <span className="absolute top-1 right-1 text-[10px] bg-purple-100 text-purple-700 px-2 py-[1px] rounded-full">
+                          {branchName}
+                        </span>
+                      )}
+
+                      <CardHeader className="p-3 space-y-1">
+                        <CardTitle className="text-sm font-semibold line-clamp-1">
+                          {tool.name}
+                        </CardTitle>
+                        <CardDescription className="text-xs line-clamp-1">
+                          {tool.category}
+                        </CardDescription>
+
+                        {/* Stock Indicator */}
+                        <p
+                          className={`text-xs font-medium ${
+                            totalStock > 0 ? "text-gray-700" : "text-red-600"
+                          }`}
                         >
-                          {mode === "sale" ? (
+                          {totalStock > 0
+                            ? `${totalStock} item${
+                                totalStock > 1 ? "s" : ""
+                              } left`
+                            : "Out of Stock"}
+                        </p>
+                      </CardHeader>
+                    </Card>
+                  </DialogTrigger>
+
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>
+                        {mode === "sale"
+                          ? "Select Variant for Sale"
+                          : "Select Variant to Rent"}{" "}
+                        — {tool.name}
+                      </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="space-y-2">
+                      {(tool.variants || []).map((variant) => {
+                        const price =
+                          mode === "sale"
+                            ? (variant.price ?? 0)
+                            : (variant.rentPrice ?? variant.pricePerDay ?? 0);
+
+                        return (
+                          <div
+                            key={variant._id}
+                            className="flex flex-col gap-1"
+                          >
                             <DialogClose asChild>
                               <Button
                                 variant="outline"
-                                className="w-full justify-between"
-                                onClick={() => handleAddSale(tool, variant)}
+                                disabled={variant.stock <= 0}
+                                className={`w-full justify-between ${
+                                  variant.stock <= 0
+                                    ? "opacity-60 cursor-not-allowed"
+                                    : ""
+                                }`}
+                                onClick={() =>
+                                  mode === "sale"
+                                    ? handleAddSale(tool, variant)
+                                    : startAddRental(tool, variant)
+                                }
                               >
                                 <span>
                                   {variant.brand} – {variant.size}
@@ -490,26 +367,24 @@ export default function BillingPage() {
                                 <span>₹{price}</span>
                               </Button>
                             </DialogClose>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              className="w-full justify-between"
-                              onClick={() => startAddRental(tool, variant)}
+
+                            <p
+                              className={`text-xs ml-1 ${
+                                variant.stock > 0
+                                  ? "text-gray-500"
+                                  : "text-red-600"
+                              }`}
                             >
-                              <span>
-                                {variant.brand} – {variant.size}
-                                {variant.color && ` – ${variant.color}`} • /day
-                              </span>
-                              <span>₹{price}</span>
-                            </Button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </DialogContent>
-              </Dialog>
-            ))
+                              Stock: {variant.stock ?? 0} left
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              );
+            })
           )}
         </div>
       </div>
@@ -544,54 +419,7 @@ export default function BillingPage() {
   );
 }
 
-/* ── Helper Components ── */
-function FilterPill({ label, value, onClear, color }) {
-  const colorClasses = {
-    green: "bg-green-100 text-green-800 border-green-200",
-    blue: "bg-blue-100 text-blue-800 border-blue-200",
-    yellow: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    purple: "bg-purple-100 text-purple-800 border-purple-200",
-  };
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${colorClasses[color]}`}
-    >
-      <span className="font-medium">{label}:</span>
-      <span className="font-semibold">{value}</span>
-      <button
-        className="ml-1 rounded-full p-0.5 hover:bg-black/10"
-        onClick={onClear}
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
-    </span>
-  );
-}
-
-function FilterSelect({ label, value, setValue, options }) {
-  const optList =
-    options[0]?.label !== undefined
-      ? options
-      : options.map((v) => ({ label: v, value: v }));
-  return (
-    <div className="flex flex-col">
-      <Label className="mb-1 text-sm font-medium">Filter by {label}</Label>
-      <Select value={value} onValueChange={setValue}>
-        <SelectTrigger className="w-full h-10">
-          <SelectValue placeholder={`Select a ${label.toLowerCase()}`} />
-        </SelectTrigger>
-        <SelectContent>
-          {optList.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
-
+/* Helper Inputs */
 function DateInput({ label, value, setValue }) {
   return (
     <div>
