@@ -2,6 +2,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { User } = require("../models/userModel");
 const nodemailer = require("nodemailer");
+const Audit = require("../models/auditModel"); // <-- ADD THIS
 
 const signupUser = async (req, res) => {
   try {
@@ -208,6 +209,8 @@ const getStaffById = async (req, res) => {
   }
 };
 
+
+
 const loginUser = async (req, res) => {
   try {
     const { phone, password } = req.body;
@@ -229,6 +232,27 @@ const loginUser = async (req, res) => {
       secure: false, // Set to true in production with HTTPS
     });
 
+    // 🔥 AUDIT LOGIN (Very important – added here)
+    await Audit.create({
+      collectionName: "User",
+      action: "login",
+      modifiedBy: user._id,
+      branch: user.role === "staff" ? user.branchId : null,
+      
+      before: null, // no previous state
+      after: {
+        userId: user._id,
+        name: user.name,
+        role: user.role,
+      },
+
+      method: req.method,
+      route: req.originalUrl,
+      ip: req.ip,
+      timestamp: new Date(),
+    });
+
+    // 🔥 Your existing response (unchanged)
     res.json({
       message: "Login successful",
       token,
@@ -248,12 +272,47 @@ const loginUser = async (req, res) => {
 
 const logoutUser = async (req, res) => {
   try {
+    // Read token before clearing
+    const token = req.cookies?.token;
+    let userInfo = null;
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, "MYsec");
+        userInfo = await User.findById(decoded.userId).populate("branchId");
+      } catch (err) {
+        // token invalid or expired → skip user
+      }
+    }
+
+    // 👉 AUDIT (only if user exists)
+    if (userInfo) {
+      await Audit.create({
+        collectionName: "User",
+        action: "logout",
+        modifiedBy: userInfo._id,
+        branch: userInfo.role === "staff" ? userInfo.branchId : null,
+        before: null,
+        after: {
+          userId: userInfo._id,
+          name: userInfo.name,
+          role: userInfo.role,
+        },
+        method: req.method,
+        route: req.originalUrl,
+        ip: req.ip,
+      });
+    }
+
+    // Clear token AFTER audit
     res.clearCookie("token");
-    res.send("Logout Sucessfully");
+
+    res.json({ message: "Logout successfully" });
   } catch (err) {
-    res.status(400).send(err.message);
+    res.status(400).json({ message: err.message });
   }
 };
+
 
 const approveUser = async (req, res) => {
   try {

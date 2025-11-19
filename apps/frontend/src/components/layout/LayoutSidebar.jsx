@@ -8,6 +8,7 @@ import {
   Users,
   UserRoundPen,
   Wrench,
+  History,
   ListOrdered,
   DollarSign,
   ChevronDown,
@@ -118,6 +119,12 @@ const LayoutSidebar = () => {
           url: "/layout/users",
         },
         {
+          title:t("sidebar.BarcodeGenerator"),
+          icon: ShoppingCart,
+          url: "/layout/barcodes",
+
+        },
+        {
           title: t("sidebar.Branches"),
           icon: DollarSign,
           url: "/layout/branches",
@@ -127,6 +134,11 @@ const LayoutSidebar = () => {
           icon: ShoppingCart,
           url: "/layout/purchaseOrder",
         },
+         {
+        title: "Audit Logs",
+        icon: History,
+        url: "/layout/audit-logs",
+      },
       ],
     },
   ];

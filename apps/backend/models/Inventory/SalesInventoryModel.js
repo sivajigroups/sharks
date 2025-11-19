@@ -1,9 +1,12 @@
-// models/SalesInventory.js
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
+const { globalAuditPlugin } = require("../../utils/globalAuditPlugin"); // ✅ import plugin
 
+// ───────────────────────────────
+// Variant Subschema
+// ───────────────────────────────
 const variantSchema = new Schema({
-  sku: { type: String, required: true }, // <-- remove unique:true (we'll enforce per-branch)
+  sku: { type: String, required: true },
   brand: { type: String },
   size: { type: String },
   color: { type: String, default: null },
@@ -11,6 +14,9 @@ const variantSchema = new Schema({
   stock: { type: Number, required: true },
 });
 
+// ───────────────────────────────
+// Sales Inventory Schema
+// ───────────────────────────────
 const salesInventorySchema = new Schema(
   {
     name: { type: String, required: true },
@@ -27,14 +33,22 @@ const salesInventorySchema = new Schema(
   { timestamps: true }
 );
 
-/**
- * Enforce uniqueness of SKU **within a branch**.
- * This is a multikey compound unique index over an array field.
- */
+// ───────────────────────────────
+// Enforce unique SKU per branch
+// ───────────────────────────────
 salesInventorySchema.index(
   { branch: 1, "variants.sku": 1 },
   { unique: true, name: "uniq_variant_sku_per_branch" }
 );
 
+// ───────────────────────────────
+// ✅ Attach global audit plugin
+// ───────────────────────────────
+salesInventorySchema.plugin(globalAuditPlugin);
+console.log("🧩 Audit plugin attached → SalesInventory model");
+
+// ───────────────────────────────
+// Export Model
+// ───────────────────────────────
 const SalesInventory = mongoose.model("SalesInventory", salesInventorySchema);
 module.exports = { SalesInventory };

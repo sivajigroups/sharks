@@ -20,7 +20,6 @@ const Branch = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Form fields
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [contactNumber, setContactNumber] = useState("");
@@ -128,12 +127,42 @@ const Branch = () => {
       </h1>
 
       {loading ? (
-        <Card>
+        <Card className="shadow-lg">
           <CardContent className="p-4">
-            <Skeleton className="h-8 w-1/2 mb-4" />
-            <Skeleton className="h-6 w-full mb-2" />
-            <Skeleton className="h-6 w-full mb-2" />
-            <Skeleton className="h-6 w-full mb-2" />
+
+            {/* TABLE SKELETON */}
+            <div className="overflow-x-auto">
+              <table className="w-full table-fixed border">
+                <thead>
+                  <tr className="bg-black">
+                    {columns.map((col) => (
+                      <th key={col.key} className="p-3 text-left text-white text-sm">
+                        <Skeleton className="h-4 w-24" />
+                      </th>
+                    ))}
+                    <th className="p-3 text-right text-white text-sm">
+                      <Skeleton className="h-4 w-16 ml-auto" />
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {Array.from({ length: 6 }).map((_, idx) => (
+                    <tr key={idx} className="border-b">
+                      {columns.map((col) => (
+                        <td key={col.key} className="p-3">
+                          <Skeleton className="h-4 w-full" />
+                        </td>
+                      ))}
+                      <td className="p-3 text-right">
+                        <Skeleton className="h-4 w-20 ml-auto" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
           </CardContent>
         </Card>
       ) : (
@@ -158,6 +187,7 @@ const Branch = () => {
                   <DialogHeader>
                     <DialogTitle>Add New Branch</DialogTitle>
                   </DialogHeader>
+
                   <div className="space-y-3 mt-2">
                     <Input
                       placeholder="Branch Name"
@@ -184,15 +214,13 @@ const Branch = () => {
               </Dialog>
             </div>
 
-            <div className="overflow-x-auto">
-              <ReTable
-                data={filteredBranches}
-                columns={columns}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                showViewButton={false}
-              />
-            </div>
+            <ReTable
+              data={filteredBranches}
+              columns={columns}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              showViewButton={false}
+            />
           </CardContent>
         </Card>
       )}

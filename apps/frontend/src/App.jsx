@@ -24,6 +24,8 @@ import InventoryReport from "./pages/reports/InventoryReport";
 import BillingPage from "./pages/billing/BillingPage";
 import InactiveCustomers from "./pages/reports/InactiveCustomers";
 import RentalOrderList from "./pages/billing/RentalOrderList";
+import PrintBarcodes from "./pages/admin/PrintBarcodes";
+import AuditLogs from "./pages/admin/AuditLogs";
 
 function App() {
   return (
@@ -40,12 +42,13 @@ function App() {
           <Route path="customers" element={<Customers />} />
           <Route path="branches" element={<Branch />} />
           <Route path="billing" element={<BillingPage />} />
-          <Route path="order" element={<OrderList/>} />
-          <Route path="rentalOrderList" element={<RentalOrderList/>}/>
-          <Route path="purchaseOrder" element={<PurchaseEntry/>} />
+          <Route path="order" element={<OrderList />} />
+          <Route path="rentalOrderList" element={<RentalOrderList />} />
+          <Route path="purchaseOrder" element={<PurchaseEntry />} />
           {/* <Route path="rentalOrder" element={<RentalOrdersPage />} /> */}
           {/* <Route path="rentalOrder" element={<OrderManager type="rental" title="Rental Orders" newOrderPath="/layout/rentalOrder/new" />} /> */}
           <Route path="rentalOrder/new" element={<NewOrder />} />
+          <Route path="barcodes" element={<PrintBarcodes />} />
           <Route
             path="salesOrder"
             element={
@@ -67,7 +70,7 @@ function App() {
             }
           />
           <Route path="notification" element={<Notifications />} />
-          <Route path="salesInventoryReport" element={<InventoryReport/>}/>
+          <Route path="salesInventoryReport" element={<InventoryReport />} />
           <Route path="users" element={<StaffPage />} />
           <Route path="attendance" element={<Attendance />} />
           <Route
@@ -88,7 +91,9 @@ function App() {
           />
           <Route path="/layout/staff/:id" element={<StaffDetail />} />
           <Route path="customers/:id" element={<CustomerDetails />} />
-          <Route path="customers/inactive" element={<InactiveCustomers/>} />
+          <Route path="customers/inactive" element={<InactiveCustomers />} />
+
+          <Route path="audit-logs" element={<AuditLogs />} />
         </Route>
       </Routes>
     </Router>

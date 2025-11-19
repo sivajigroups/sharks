@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { globalAuditPlugin } = require("../utils/globalAuditPlugin"); // ← ADD THIS
 
 const customerSchema = new mongoose.Schema(
   {
@@ -27,6 +28,10 @@ const customerSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// ✅ Attach global audit plugin
+customerSchema.plugin(globalAuditPlugin);
+console.log("🧩 Audit plugin attached → Customer model");
 
 const Customer = mongoose.model("Customer", customerSchema);
 module.exports = { Customer };

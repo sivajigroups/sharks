@@ -1,9 +1,19 @@
 import React, { useState } from "react";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose,
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +27,7 @@ import { Input } from "@/components/ui/input";
  * - onView?: (item) => void   // NEW -> control "View" action
  * - onRowClick?: (item) => void // NEW -> row click navigation
  * - viewButtonText?: string
+ * - disableActions?: boolean // 👈 NEW
  */
 
 const ReTable = ({
@@ -28,9 +39,10 @@ const ReTable = ({
   renderEditForm,
   showViewButton = true,
   showEditButton = true,
-  onView,                // NEW
-  onRowClick,            // NEW
+  onView, // NEW
+  onRowClick, // NEW
   viewButtonText = "View",
+  disableActions = false, // 👈 NEW
 }) => {
   const [editItem, setEditItem] = useState(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -63,7 +75,12 @@ const ReTable = ({
 
   const handleEditSubmit = () => {
     const updatedData = { ...formState };
-    if ("street" in formState && "area" in formState && "city" in formState && "pincode" in formState) {
+    if (
+      "street" in formState &&
+      "area" in formState &&
+      "city" in formState &&
+      "pincode" in formState
+    ) {
       updatedData.address = {
         street: formState.street,
         area: formState.area,
@@ -143,50 +160,55 @@ const ReTable = ({
                     </Button>
                   )}
 
-                  {showEditButton && (
-                    <Button
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditButtonClick(item);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                  )}
-
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Delete
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent onClick={(e) => e.stopPropagation()}>
-                      <DialogHeader>
-                        <DialogTitle>Are you sure?</DialogTitle>
-                      </DialogHeader>
-                      <div className="flex justify-end gap-2">
-                        <DialogClose asChild>
-                          <Button variant="outline">Cancel</Button>
-                        </DialogClose>
+                  {/* ✅ Hide Edit/Delete when disableActions = true */}
+                  {!disableActions && (
+                    <>
+                      {showEditButton && (
                         <Button
-                          className="w-[30%]"
                           size="sm"
-                          variant="destructive"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onDelete(item._id);
+                            handleEditButtonClick(item);
                           }}
                         >
-                          Confirm
+                          Edit
                         </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                      )}
+
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Delete
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent onClick={(e) => e.stopPropagation()}>
+                          <DialogHeader>
+                            <DialogTitle>Are you sure?</DialogTitle>
+                          </DialogHeader>
+                          <div className="flex justify-end gap-2">
+                            <DialogClose asChild>
+                              <Button variant="outline">Cancel</Button>
+                            </DialogClose>
+                            <Button
+                              className="w-[30%]"
+                              size="sm"
+                              variant="destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(item._id);
+                              }}
+                            >
+                              Confirm
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </>
+                  )}
                 </TableCell>
               </TableRow>
             ))

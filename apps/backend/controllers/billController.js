@@ -23,41 +23,63 @@ async function nextBillNo() {
 // -----------------------------------------------------------------------------
 const createSaleBill = async (req, res) => {
   try {
-    const { customerId, items = [], paymentMode = 'Cash', discount = 0, tax = 0, notes } = req.body;
+    const {
+      customerId,
+      items = [],
+      paymentMode = "Cash",
+      discount = 0,
+      tax = 0,
+      notes,
+      branch: sentBranch, // ⭐ coming from FE admin selection
+    } = req.body;
 
-    if (!customerId) throw new Error('customerId is required');
-    if (!Array.isArray(items) || items.length === 0) throw new Error('At least one item is required');
+    if (!customerId) throw new Error("customerId is required");
+
+    // ⭐ FIX: STAFF uses req.user.branchId
+    //         ADMIN uses req.body.branch
+    const branchId =
+      sentBranch || req.user.branchId || req.user.branch?._id;
+
+    if (!branchId) {
+      throw new Error("Branch information missing for user");
+    }
+
+    // ⭐ VERY IMPORTANT:
+    // Audit Plugin reads ctx.user.branch
+    // So we must set it manually for admin
+    req.user.branch = branchId;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error("At least one item is required");
+    }
 
     const customer = await Customer.findById(customerId);
-    if (!customer) throw new Error('Customer not found');
+    if (!customer) throw new Error("Customer not found");
 
-    const billItems = [];
+    let billItems = [];
     let subtotal = 0;
 
     for (const raw of items) {
       const { inventoryId, variantId, quantity, overridePrice } = raw;
-      if (!inventoryId || !variantId || !quantity || quantity < 1) {
-        throw new Error('Each item needs inventoryId, variantId, quantity >= 1');
-      }
 
-      // ✅ Fixed logic — only decrement the matching variant
       const inv = await SalesInventory.findOneAndUpdate(
         {
           _id: inventoryId,
+          branch: branchId, // ⭐ stock only from selected branch
           variants: { $elemMatch: { _id: variantId, stock: { $gte: quantity } } },
         },
-        { $inc: { 'variants.$[v].stock': -quantity } },
+        { $inc: { "variants.$[v].stock": -quantity } },
         {
-          arrayFilters: [{ 'v._id': variantId }],
+          arrayFilters: [{ "v._id": variantId }],
           new: false,
           projection: { name: 1, variants: { $elemMatch: { _id: variantId } } },
         }
       ).lean();
 
-      if (!inv) throw new Error('Variant not found or insufficient stock');
+      if (!inv) throw new Error("Variant not found or insufficient stock");
 
       const variant = inv.variants[0];
-      const unitPrice = typeof overridePrice === 'number' ? overridePrice : variant.price;
+      const unitPrice = overridePrice ?? variant.price;
       const lineTotal = unitPrice * quantity;
 
       billItems.push({
@@ -77,11 +99,12 @@ const createSaleBill = async (req, res) => {
     }
 
     const billNo = await nextBillNo();
-    const totalAmount = subtotal - (discount || 0) + (tax || 0);
+    const totalAmount = subtotal - discount + tax;
 
     const billDoc = await SaleBill.create({
       billNo,
       customer: customerId,
+      branch: branchId, // ⭐ HERE branch is saved correctly
       items: billItems,
       subtotal,
       discount,
@@ -91,11 +114,12 @@ const createSaleBill = async (req, res) => {
       notes,
     });
 
-    res.status(201).json({ message: 'Bill created', data: billDoc });
+    res.status(201).json({ message: "Bill created", data: billDoc });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 };
+
 
 
 // -----------------------------------------------------------------------------

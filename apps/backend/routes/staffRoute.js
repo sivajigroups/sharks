@@ -31,8 +31,8 @@ staffRouter.post("/inventory/rental", userAuth, insertRental);
 
 staffRouter.put("/inventory/rental/:id", userAuth, updateRental); // Assuming this is for updating rental
 
-staffRouter.get("/inventory/sales",userAuth,getAllsales);
-staffRouter.get("/inventory/rental", userAuth, getAllRental);
+staffRouter.get("/inventory/sales",getAllsales);
+staffRouter.get("/inventory/rental", getAllRental);
 staffRouter.delete("/inventory/sales/:id",deleteInventory);
 staffRouter.delete("/inventory/rental/:id",deleteRental);
 
@@ -40,7 +40,7 @@ staffRouter.post("/inventory/transfer/rental-to-sales", userAuth, rentalToSales)
 
 
 staffRouter.post("/inventory/attributes",userAuth,insertAttribute);
-staffRouter.get("/inventory/attributes", userAuth, getAttribute);
+staffRouter.get("/inventory/attributes", getAttribute);
 
 staffRouter.post("/customer/details", userAuth, insertCustomer);
 staffRouter.get("/customer/details", userAuth, getAllCustomers);

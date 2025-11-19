@@ -9,13 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogTrigger,
   DialogContent,
@@ -23,21 +16,12 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
-import { X, CalendarRange, Search } from "lucide-react";
+import { CalendarRange, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useSelector } from "react-redux";
 import GenericCartPanel from "./GenericCartPanel";
-
-const categories = [
-  "All",
-  "Power Tools",
-  "Hand Tools",
-  "Safety Gear",
-  "Electrical",
-  "Cleaning",
-  "Plumbing",
-];
+import { Select } from "@/components/ui/select";
 
 function computeToDateISO(fromDateStr, days) {
   if (!fromDateStr || !days || days < 1) return "";
@@ -49,12 +33,12 @@ function computeToDateISO(fromDateStr, days) {
 
 export default function BillingPage() {
   const API_BASE = import.meta.env.VITE_API_BASE;
-
-  //
   const RENTAL_ENABLED = import.meta.env.VITE_RENTAL_TRUE === "true";
 
   const role = useSelector((state) => state.auth.role) || "";
   const userBranch = useSelector((state) => state.auth.branch) || null;
+
+  const [selectedBranch, setSelectedBranch] = useState("All");
 
   const [mode, setMode] = useState("sale");
   const [inventories, setInventories] = useState([]);
@@ -63,7 +47,6 @@ export default function BillingPage() {
 
   const [saleCart, setSaleCart] = useState([]);
   const [rentalCart, setRentalCart] = useState([]);
-
   const [searchTerm, setSearchTerm] = useState("");
 
   // ── Fetch inventories ──
@@ -77,6 +60,15 @@ export default function BillingPage() {
             : `${API_BASE}/inventory/rental`;
         const res = await fetch(url, { credentials: "include" });
         const json = await res.json();
+        const items = json?.data || json || [];
+        console.log(
+          "INVENTORY RAW DATA →",
+          items.map((t) => ({
+            name: t.name,
+            branch: t.branch,
+            branchType: typeof t.branch,
+          }))
+        );
         setInventories(json?.data || json || []);
       } catch {
         toast.error("Failed to fetch inventory");
@@ -167,20 +159,67 @@ export default function BillingPage() {
     setOpenRentDlg(false);
   };
 
-  // ── Filtered list with search ──
-  const filtered = useMemo(() => {
-    const search = searchTerm.trim().toLowerCase();
-    return inventories.filter((tool) => {
-      const matchesSearch =
-        !search ||
-        tool.name?.toLowerCase().includes(search) ||
-        tool.category?.toLowerCase().includes(search) ||
-        (tool.variants || []).some((v) =>
-          v.sku?.toLowerCase().includes(search)
-        );
-      return matchesSearch;
-    });
-  }, [inventories, searchTerm]);
+  // --- Unified Input Handler (Search + Barcode) ---
+  const handleSearchOrScan = (e) => {
+    if (e.key === "Enter" && searchTerm.trim()) {
+      const code = searchTerm.trim().toLowerCase();
+
+      const match = inventories
+        .flatMap((tool) => tool.variants.map((v) => ({ tool, variant: v })))
+        .find(({ variant }) => variant.sku?.toLowerCase() === code);
+
+      if (match) {
+        mode === "sale"
+          ? handleAddSale(match.tool, match.variant)
+          : startAddRental(match.tool, match.variant);
+        toast.success(`${match.tool.name} added to cart`);
+        setSearchTerm(""); // clear after successful scan
+      } else {
+        toast.info("Search mode active");
+      }
+    }
+  };
+const filtered = useMemo(() => {
+  let temp = inventories;
+
+  // Normalize branch id from DB record
+  const getBranchId = (b) =>
+    typeof b === "object" ? b?._id : b;
+
+  // STAFF → Only their branch
+  if (role.toLowerCase() === "staff" && userBranch?.id) {
+    temp = temp.filter(
+      (t) => String(getBranchId(t.branch)) === String(userBranch.id)
+    );
+  }
+
+  // ADMIN → Filter by selected branch (except "All")
+  if (
+    role.toLowerCase() === "admin" &&
+    selectedBranch?.id &&
+    selectedBranch.id !== "All"
+  ) {
+    temp = temp.filter(
+      (t) => String(getBranchId(t.branch)) === String(selectedBranch.id)
+    );
+  }
+
+  // Search filter
+  const search = searchTerm.trim().toLowerCase();
+
+  return temp.filter((tool) => {
+    if (!search) return true;
+
+    return (
+      tool.name?.toLowerCase().includes(search) ||
+      tool.category?.toLowerCase().includes(search) ||
+      (tool.variants || []).some((v) =>
+        v.sku?.toLowerCase().includes(search)
+      )
+    );
+  });
+}, [inventories, searchTerm, role, userBranch, selectedBranch]);
+
 
   const cartItems = mode === "sale" ? saleCart : rentalCart;
   const setCartItems = mode === "sale" ? setSaleCart : setRentalCart;
@@ -189,19 +228,24 @@ export default function BillingPage() {
   return (
     <div className="flex flex-1 h-[calc(100vh-70px)] overflow-hidden bg-gray-50">
       {/* Left Cart */}
+
+      {/* left bill pannel */}
       <div className="w-[360px] min-w-[360px] bg-white border-r p-2 flex flex-col">
         <GenericCartPanel
           mode={mode}
           cartItems={cartItems}
           setCartItems={setCartItems}
+          role={role} // ⭐ add this
+          userBranch={userBranch} // ⭐ add this
+          selectedBranch={selectedBranch} // ⭐ add this
         />
       </div>
 
       {/* Right Section */}
-      <div className="flex-1 overflow-y-auto p-4 transition-all duration-300 ease-in-out">
+      <div className="flex-1 overflow-y-auto p-4 transition-all w-229 duration-300 ease-in-out">
         {/* Billing Type + Search */}
         <Card className="mb-4">
-          <CardContent className="p-4 flex items-center gap-2">
+          <CardContent className="p-4 flex items-center gap-3 flex-wrap">
             <span className="text-sm font-medium">Billing Type:</span>
             <div className="inline-flex rounded-md border">
               <button
@@ -225,20 +269,56 @@ export default function BillingPage() {
               )}
             </div>
 
-            {/* Search Input */}
-            <div className="relative ml-3">
+            {/* ✅ Unified Input Box (handles search + scan) */}
+            <div className="relative">
               <Input
-                placeholder="Search by Name, SKU, or Category…"
-                className="w-72 pr-8"
+                placeholder="Search by Name, SKU, or Scan Barcode…"
+                className="w-96 pr-8"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={handleSearchOrScan}
+                autoFocus
               />
               <Search className="absolute right-2 top-2.5 h-4 w-4 text-gray-400" />
             </div>
             <div>
-              <Button>
-                QR Scan
-              </Button>
+              {role.toLowerCase() === "admin" && (
+                <select
+                  value={selectedBranch?.id || "All"}
+                  onChange={(e) => {
+                    const val = e.target.value;
+
+                    if (val === "All") {
+                      setSelectedBranch({ id: "All", name: "All" });
+                    } else {
+                      const branchObj = branches.find((b) => b._id === val);
+                      setSelectedBranch({
+                        id: branchObj._id,
+                        name: branchObj.name,
+                      });
+                    }
+                  }}
+                  className="border px-2 py-1 rounded"
+                >
+                  <option value="All">All</option>
+
+                  {branches.map((b) => (
+                    <option key={b._id} value={b._id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {console.log("ROLE CHECK:", role)}
+              {console.log("USER BRANCH CHECK:", selectedBranch)}
+
+              {role.toLowerCase() === "staff" && (
+                <span className="text-sm px-2 py-1 bg-gray-100 rounded">
+                  {userBranch?.name}
+                </span>
+              )}
+              {/* {console.log("USER BRANCH CHECK:", userBranch)} */}
             </div>
           </CardContent>
         </Card>
@@ -247,16 +327,21 @@ export default function BillingPage() {
         <div
           className="
             grid gap-2 
-            grid-cols-5 
             sm:grid-cols-2 
             md:grid-cols-2 
-            lg:grid-cols-2 
+            lg:grid-cols-3 
             xl:grid-cols-4
             2xl:grid-cols-6
-            3xl:grid-cols-6
             auto-rows-[140px]
           "
         >
+          {console.log(
+            "FINAL FILTERED LIST:",
+            filtered.map((t) => ({
+              name: t.name,
+              branch: t.branch,
+            }))
+          )}
           {loading ? (
             <p>Loading...</p>
           ) : filtered.length === 0 ? (
@@ -278,7 +363,6 @@ export default function BillingPage() {
                   <DialogTrigger asChild>
                     <Card
                       className="
-                        min-w-[140px] 
                         h-full
                         rounded-lg 
                         shadow-sm 
@@ -291,7 +375,6 @@ export default function BillingPage() {
                         justify-between 
                       "
                     >
-                      {/* 🟣 Branch Indicator */}
                       {(role.toLowerCase() === "admin" ||
                         role.toLowerCase() === "staff") && (
                         <span className="absolute top-1 right-1 text-[10px] bg-purple-100 text-purple-700 px-2 py-[1px] rounded-full">
@@ -306,8 +389,6 @@ export default function BillingPage() {
                         <CardDescription className="text-xs line-clamp-1">
                           {tool.category}
                         </CardDescription>
-
-                        {/* Stock Indicator */}
                         <p
                           className={`text-xs font-medium ${
                             totalStock > 0 ? "text-gray-700" : "text-red-600"

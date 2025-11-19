@@ -22,6 +22,10 @@ import {
 import ReTable from "@/components/shared/ReTable";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+
+dayjs.extend(relativeTime);
 
 // Keep branch-to-branch transfer
 import TransferSkuDialog from "../components/TransferSkuDialog";
@@ -54,7 +58,17 @@ export default function InventoryManager({ type = "sales", title }) {
     { key: "name", label: t("inventory.itemName") || "Item" },
     { key: "category", label: t("inventory.category") || "Category" },
     { key: "branch", label: t("inventory.branch") || "Branch" },
-    { key: "updatedAt", label: t("inventory.lastUpdated") || "Last Updated" },
+    { key: "stockSummary", label: "Total Stock" }, // 👈 new column
+    {
+      key: "updatedAt",
+      label: t("inventory.lastUpdated") || "Last Updated",
+      render: (row) =>
+        row.updatedAt
+          ? `${dayjs(row.updatedAt).format("DD/MM/YYYY")} (${dayjs(
+              row.updatedAt
+            ).fromNow()})`
+          : "—",
+    },
   ];
 
   // State
@@ -116,7 +130,19 @@ export default function InventoryManager({ type = "sales", title }) {
       } else if (!item.branch) {
         branchLabel = "-";
       }
-      return { ...item, branch: branchLabel };
+
+      return {
+        ...item,
+        branch: branchLabel,
+        updatedAt: item.updatedAt
+          ? `${dayjs(item.updatedAt).format("DD/MM/YYYY")} (${dayjs(
+              item.updatedAt
+            ).fromNow()})`
+          : "—",
+        stockSummary:
+          item.stockSummary ??
+          (item.variants || []).reduce((sum, v) => sum + (v.stock || 0), 0),
+      };
     });
 
   const itemOptions = useMemo(() => {
@@ -381,16 +407,43 @@ export default function InventoryManager({ type = "sales", title }) {
       toast.error(t(`inventory.${kind}AddError`) || `Failed to add ${kind}`);
     }
   };
-
-  // Branch filter for table
   const branchFilteredRaw = useMemo(() => {
-    if (selectedBranchId === "ALL") return rawInventories;
+    // 🔹 CASE 1: "All Branches" selected → merge all
+    if (selectedBranchId === "ALL") {
+      const mergedMap = {};
+      for (const it of rawInventories) {
+        const key = it.name?.trim().toLowerCase();
+        if (!key) continue;
+        if (!mergedMap[key]) {
+          mergedMap[key] = { ...it, totalStock: 0, branches: new Set() };
+        }
+        const ref = mergedMap[key];
+        const branchStock = (it.variants || []).reduce(
+          (sum, v) => sum + (v.stock || 0),
+          0
+        );
+        ref.totalStock += branchStock;
+        ref.branches.add(
+          it.branch?.name ||
+            it.branch?.branchName ||
+            branchNameById[it.branch] ||
+            "—"
+        );
+      }
+      return Object.values(mergedMap).map((v) => ({
+        ...v,
+        branch: Array.from(v.branches).join(", "),
+        stockSummary: v.totalStock,
+      }));
+    }
+
+    // 🔹 CASE 2: Specific branch selected → filter only that branch’s items
     return (rawInventories || []).filter((it) => {
       const bId =
         it?.branch?._id || it?.branch?.id || it?.branch || it?.branchId || "";
       return String(bId) === String(selectedBranchId);
     });
-  }, [rawInventories, selectedBranchId]);
+  }, [rawInventories, selectedBranchId, branchNameById]);
 
   const tableData = useMemo(
     () => normalizeList(branchFilteredRaw, branchNameById),
@@ -413,8 +466,11 @@ export default function InventoryManager({ type = "sales", title }) {
   // Render
   return (
     <div className="flex flex-col flex-1 p-4 gap-4 overflow-auto">
-      <h1 className="text-2xl font-bold">
+      <h1 className="text-2xl font-bold flex items-center justify-between">
         {title || t("inventory.title") || "Inventory"}
+        <span className="text-sm font-medium text-gray-500">
+          {filtered.length} item{filtered.length !== 1 && "s"} found
+        </span>
       </h1>
 
       {/* Toolbar */}
@@ -798,6 +854,7 @@ export default function InventoryManager({ type = "sales", title }) {
               onDelete={handleDelete}
               onEditClick={openForm}
               showViewButton={false}
+              disableActions={selectedBranchId === "ALL"} // 👈 this hides edit/delete
             />
           )}
         </CardContent>

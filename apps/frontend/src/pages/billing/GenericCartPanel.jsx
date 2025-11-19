@@ -25,7 +25,14 @@ function computeToDateISO(fromDateStr, days) {
   return d.toISOString().slice(0, 10);
 }
 
-export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
+export default function GenericCartPanel({
+  mode,
+  cartItems,
+  setCartItems,
+  role, // ⭐ new
+  userBranch, // ⭐ new
+  selectedBranch, // ⭐ new
+}) {
   const API = import.meta.env.VITE_API_BASE;
 
   // ── Customer dialog state
@@ -61,8 +68,7 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
       );
     }
     return cartItems.reduce(
-      (acc, it) =>
-        acc + (it.pricePerDay || 0) * (it.days || 0) * (it.qty || 0),
+      (acc, it) => acc + (it.pricePerDay || 0) * (it.days || 0) * (it.qty || 0),
       0
     );
   }, [mode, cartItems]);
@@ -171,6 +177,13 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
           paymentMode,
           discount: 0,
           tax,
+
+          // ⭐ FIX — SEND ONLY BRANCH ID, NOT OBJECT
+          branch:
+            role.toLowerCase() === "admin"
+              ? selectedBranch?.id // <-- only ID
+              : userBranch?.id, // <-- only ID
+
           items: cartItems.map((i) => ({
             inventoryId: i.inventoryId,
             variantId: i.variantId,
@@ -382,9 +395,7 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
                         }}
                         className="w-14 border rounded px-1 py-0.5"
                       />
-                      <span>
-                        day{(item.days || 1) > 1 ? "s" : ""}
-                      </span>
+                      <span>day{(item.days || 1) > 1 ? "s" : ""}</span>
                     </div>
                   </div>
                 )}
@@ -484,9 +495,7 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
                         {c.address &&
                           `${c.address.street}, ${c.address.area}, ${c.address.city} - ${c.address.pincode}`}
                       </div>
-                      <div className="text-xs text-gray-500">
-                        📞 {c.phone}
-                      </div>
+                      <div className="text-xs text-gray-500">📞 {c.phone}</div>
                     </div>
                   </Button>
                 </DialogClose>
@@ -614,8 +623,8 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
           {saving
             ? "Processing..."
             : mode === "sale"
-            ? "Payment (Sale)"
-            : "Payment (Rental)"}
+              ? "Payment (Sale)"
+              : "Payment (Rental)"}
         </Button>
       </div>
     </div>
@@ -625,7 +634,6 @@ export default function GenericCartPanel({ mode, cartItems, setCartItems }) {
 /* ------------------------------------------------------------------
    ✅ PDF BILL GENERATOR FUNCTION
 ------------------------------------------------------------------ */
-
 
 export function generateBillPDF({
   billNo,
@@ -651,7 +659,9 @@ export function generateBillPDF({
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text("Power Tools • Rentals • Services", centerX, 24, { align: "center" });
+  doc.text("Power Tools • Rentals • Services", centerX, 24, {
+    align: "center",
+  });
   // doc.text(
   //   "Madurai, Tamil Nadu • Ph: +91 98765 43210 • Email: info@sivaijpowertools.com",
   //   centerX,
@@ -700,7 +710,9 @@ export function generateBillPDF({
 ${customer.address?.street || ""}, ${customer.address?.area || ""}
 ${customer.address?.city || ""} - ${customer.address?.pincode || ""}
 Ph: ${customer.phone || ""}${customer.email ? ` | Email: ${customer.email}` : ""}`;
-  doc.text(customerText, marginLeft + 3, customerY + 5, { maxWidth: pageWidth - 50 });
+  doc.text(customerText, marginLeft + 3, customerY + 5, {
+    maxWidth: pageWidth - 50,
+  });
 
   // --- ITEMS TABLE ---
   const tableData = items.map((it, i) => [
@@ -751,7 +763,9 @@ Ph: ${customer.phone || ""}${customer.email ? ` | Email: ${customer.email}` : ""
 
   if (modeTitle.includes("Rental") && rentalDeposit) {
     doc.text("Deposit:", totalsX, y);
-    doc.text(`₹${Number(rentalDeposit).toFixed(2)}`, marginRight, y, { align: "right" });
+    doc.text(`₹${Number(rentalDeposit).toFixed(2)}`, marginRight, y, {
+      align: "right",
+    });
     y += 6;
   }
 
@@ -776,9 +790,14 @@ Ph: ${customer.phone || ""}${customer.email ? ` | Email: ${customer.email}` : ""
   });
   y += 6;
   doc.setFont("helvetica", "normal");
-  doc.text("We appreciate your trust. For queries, contact us anytime.", centerX, y, {
-    align: "center",
-  });
+  doc.text(
+    "We appreciate your trust. For queries, contact us anytime.",
+    centerX,
+    y,
+    {
+      align: "center",
+    }
+  );
   y += 6;
   doc.setFontSize(7);
   doc.setTextColor(100);

@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
-const branchSchema =new mongoose.Schema(
+const { globalAuditPlugin } = require("../utils/globalAuditPlugin");  // ← IMPORTANT
+
+const branchSchema = new mongoose.Schema(
   {
     name: {
       type: String,
@@ -12,13 +14,10 @@ const branchSchema =new mongoose.Schema(
   { timestamps: true }
 );
 
+// ✅ Attach global audit plugin
+branchSchema.plugin(globalAuditPlugin);
+console.log("🧩 Audit plugin attached → Branch model");
+
 const Branch = mongoose.model("Branch", branchSchema);
 
-module.exports = {
-  Branch,
-};
-
-
-//rental Model
-//Attendance Model
-//status for check in and checkout
+module.exports = { Branch };

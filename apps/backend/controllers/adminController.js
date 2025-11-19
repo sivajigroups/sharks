@@ -1,5 +1,6 @@
 const { Branch } = require("../models/branchModel");
 const { User } = require("../models/userModel");
+const Audit = require("../models/auditModel");
 const Purchase = require("../models/purchaseModel");
 
 const addingBranch = async (req, res) => {
@@ -257,6 +258,27 @@ const deletePurchase = async (req, res) => {
   }
 };
 
+const getAuditLogs = async (req, res) => {
+  try {
+    const logs = await Audit.find({})
+      .populate("modifiedBy", "name")
+      .populate("branch", "name")
+      .sort({ timestamp: -1 });
+
+    res.json({
+      success: true,
+      count: logs.length,
+      data: logs,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching audit logs",
+      error: err.message,
+    });
+  }
+};
+
 module.exports = {
   addingBranch,
   getAllBranches,
@@ -272,4 +294,5 @@ module.exports = {
   getPurchaseById,
   updatePurchase,
   deletePurchase,
+  getAuditLogs
 };

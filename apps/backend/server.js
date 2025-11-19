@@ -1,7 +1,12 @@
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
+const mongoose = require("mongoose");
 require("dotenv").config();
+
+require("./models/auditModel");
+
+const { startRequestContext } = require("./utils/auditContext");
 
 const dbConnect = require("./config/dbConnect");
 const userRouter = require("./routes/userRoute");
@@ -11,9 +16,15 @@ const adminRouter = require("./routes/adminRoute");
 const billRouter = require("./routes/historyRoute");
 const transferRouter = require("./routes/transfer");
 const rentalPurchaseRouter = require("./routes/rentalPurchaseRoutes");
+const {userAuth} = require("./middleware/auth");
 
 const app = express();
+
 app.use(cookieParser());
+app.use(express.json());
+
+app.use(startRequestContext);
+// ✅ Setup CORS FIRST — this must come before anything else that reads the request
 // const allowedOrigins = [
 //   "https://sharks.sivajigroups.com",
 //   "http://localhost:5173",
@@ -23,7 +34,7 @@ app.use(cookieParser());
 //   cors({
 //     origin: function (origin, callback) {
 //       if (!origin || allowedOrigins.includes(origin)) {
-//         callback(null, origin); // return the origin instead of 'true'
+//         callback(null, origin);
 //       } else {
 //         callback(new Error("Not allowed by CORS"));
 //       }
@@ -32,14 +43,12 @@ app.use(cookieParser());
 //   })
 // );
 
-
-app.use(express.json());
 app.use("/api", userRouter);
 app.use("/api", staffRouter);
 app.use("/api", saleRouter);
 app.use("/api", adminRouter);
 app.use("/api", rentalPurchaseRouter);
-app.use("/api",billRouter);
+app.use("/api", billRouter);
 app.use("/api", transferRouter);
 
 dbConnect()

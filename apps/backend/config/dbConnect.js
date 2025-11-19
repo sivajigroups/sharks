@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+// const { globalAuditPlugin } = require("../utils/globalAuditPlugin"); // ✅ add this line
 
 const MONGO_URI = `mongodb://onstepadmin:%40Agent000000@3.111.58.3:27017/onstepdb?authSource=admin`;
 
@@ -8,8 +9,12 @@ const dbConnect = async () => {
       throw new Error("MongoDB connection URI is not defined.");
     }
 
-    mongoose.set("strictQuery", true); // optional: silence deprecation warnings
-    mongoose.set("debug", true);       // optional: enable query debug logs
+    // // ✅ Enable audit plugin globally (before connecting)
+    // mongoose.plugin(globalAuditPlugin);
+
+    // Optional: helpful settings
+    mongoose.set("strictQuery", true);
+    mongoose.set("debug", true);
 
     console.log("🔌 Connecting to MongoDB...");
     await mongoose.connect(MONGO_URI, {
@@ -20,7 +25,7 @@ const dbConnect = async () => {
     console.log("✅ MongoDB connected successfully");
   } catch (error) {
     console.error("❌ MongoDB connection failed:", error.message);
-    process.exit(1); // Exit the app if DB connection fails
+    process.exit(1);
   }
 };
 

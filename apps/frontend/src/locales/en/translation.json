@@ -16,6 +16,7 @@
     "administration": "Administration",
     "profile": "Profile",
     "reports": "Reports",
+    "BarcodeGenerator": "Barcode Generator",
     "salesReport": "Sales Report",
     "inventoryReport": "Inventory Report",
     "customerAnalytics": "Customer Analytics",
