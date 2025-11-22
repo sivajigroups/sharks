@@ -1,7 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { User } = require("../models/userModel");
-const nodemailer = require("nodemailer");
+
 const Audit = require("../models/auditModel"); // <-- ADD THIS
 
 const signupUser = async (req, res) => {
@@ -42,58 +42,7 @@ const signupUser = async (req, res) => {
       data: newUser,
     });
 
-    // ✅ Send email asynchronously after response
-    if (role === "staff" || role === "admin") {
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.GMAIL_USER,
-          pass: process.env.GMAIL_PASS,
-        },
-      });
-
-      const approveLink = `http://localhost:4000/api/approve/${newUser._id}`;
-      const rejectLink = `http://localhost:4000/api/reject/${newUser._id}`;
-
-      transporter
-        .sendMail({
-          from: `"Tool Rental App" <${process.env.GMAIL_USER}>`,
-          to: process.env.GMAIL_USER,
-          subject: `🛠️ New ${role} Signup - Approval Needed`,
-          html: `
-          <div style="font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px;">
-            <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-              <div style="padding: 20px; border-bottom: 1px solid #eee;">
-                <h2 style="margin: 0; color: #333;">🔔 New ${roleLabel} Registration</h2>
-              </div>
-              <div style="padding: 20px;">
-                <p style="font-size: 16px; color: #333;">
-                 A new ${roleLabel.toLowerCase()} has signed up...
-                </p>
-                <ul style="list-style: none; padding-left: 0; font-size: 15px;">
-                  <li><strong>Name:</strong> ${name}</li>
-                  <li><strong>Email:</strong> ${email}</li>
-                </ul>
-                <p style="margin-top: 20px; font-size: 16px;">Please choose an action:</p>
-                <div style="margin-top: 15px;">
-                  <a href="${approveLink}" style="text-decoration: none; padding: 10px 20px; background: #28a745; color: #fff; border-radius: 5px; margin-right: 10px;">✅ Approve</a>
-                  <a href="${rejectLink}" style="text-decoration: none; padding: 10px 20px; background: #dc3545; color: #fff; border-radius: 5px;">❌ Reject</a>
-                </div>
-              </div>
-              <div style="padding: 15px 20px; background: #f9f9f9; text-align: center; font-size: 13px; color: #999;">
-                Tool Rental App • Internal Admin Notification
-              </div>
-            </div>
-          </div>
-        `,
-        })
-        .then(() => {
-          console.log("✅ Approval email sent to admin.");
-        })
-        .catch((err) => {
-          console.error("❌ Email send failed:", err.message);
-        });
-    }
+    // Email notification removed as per requirement
   } catch (err) {
     res.status(400).send(err.message);
   }
@@ -226,10 +175,24 @@ const loginUser = async (req, res) => {
       throw new Error("Invalid credentials");
     }
 
-    const token = await user.getJWT();
+    // Calculate time until midnight
+    const now = new Date();
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 0); // Next midnight
+    const timeUntilMidnight = midnight.getTime() - now.getTime(); // Milliseconds
+    
+    // Convert to seconds for JWT (which uses seconds by default if number) or string format
+    // We'll pass milliseconds to cookie, and let JWT handle it (JWT accepts "10h", "2d" or seconds)
+    // For JWT, it's safer to pass a string like "10000" (ms) or just seconds. 
+    // Let's pass seconds to JWT to be safe, or use the ms value if supported. 
+    // Actually, jwt.sign expiresIn with number is interpreted as seconds.
+    const expiresInSeconds = Math.floor(timeUntilMidnight / 1000);
+
+    const token = await user.getJWT(expiresInSeconds); 
     res.cookie("token", token, {
       httpOnly: true,
       secure: false, // Set to true in production with HTTPS
+      maxAge: timeUntilMidnight, // Cookie uses milliseconds
     });
 
     // 🔥 AUDIT LOGIN (Very important – added here)
@@ -278,7 +241,7 @@ const logoutUser = async (req, res) => {
 
     if (token) {
       try {
-        const decoded = jwt.verify(token, "MYsec");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         userInfo = await User.findById(decoded.userId).populate("branchId");
       } catch (err) {
         // token invalid or expired → skip user

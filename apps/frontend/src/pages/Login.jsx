@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { login } from "@/redux/authSlice";
 
 export default function AuthForm() {
@@ -23,6 +23,13 @@ export default function AuthForm() {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { isLoggedIn } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      navigate("/layout/dashboard");
+    }
+  }, [isLoggedIn, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -34,7 +41,7 @@ export default function AuthForm() {
     }
 
     try {
-      console.log("API base:", import.meta.env.VITE_API_BASE);
+
 
       const response = await fetch(`${import.meta.env.VITE_API_BASE}/login`, {
         method: "POST",
@@ -47,7 +54,7 @@ export default function AuthForm() {
 
       const userData = await response.json();
       const { phone: serverPhone, role, branch } = userData.user;
-console.log("Sending login payload:", { phone, password });
+
 
       dispatch(
         login({

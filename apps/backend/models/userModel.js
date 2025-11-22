@@ -53,11 +53,11 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-userSchema.methods.getJWT = async function () {
+userSchema.methods.getJWT = async function (expiresIn = "7d") {
   const user = this;
   const payload = { userId: user.id, email: user.email };
-  const secretKey = "MYsec";
-  const token = jwt.sign(payload, secretKey);
+  const secretKey = process.env.JWT_SECRET;
+  const token = jwt.sign(payload, secretKey, { expiresIn });
 
   return token;
 };

@@ -10,7 +10,7 @@ const userAuth = async (req, res, next) => {
     }
 
     // must match getJWT()
-    const decoded = jwt.verify(token, "MYsec");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const { userId } = decoded;
 
     // Populate branchId (correct field)
