@@ -56,7 +56,7 @@ const userSchema = new mongoose.Schema(
 userSchema.methods.getJWT = async function (expiresIn = "7d") {
   const user = this;
   const payload = { userId: user.id, email: user.email };
-  const secretKey = process.env.JWT_SECRET;
+  const secretKey = "7f8a9b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5a6b7c8d9";
   const token = jwt.sign(payload, secretKey, { expiresIn });
 
   return token;
