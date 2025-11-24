@@ -4,6 +4,16 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 require("dotenv").config();
 
+if (!process.env.JWT_SECRET) {
+  console.log("JWT_SECRET not found in .env, attempting to load .env.production");
+  require("dotenv").config({ path: ".env.production" });
+}
+
+if (!process.env.JWT_SECRET) {
+  console.error("FATAL ERROR: JWT_SECRET is not defined.");
+  process.exit(1);
+}
+
 require("./models/auditModel");
 
 const { startRequestContext } = require("./utils/auditContext");
