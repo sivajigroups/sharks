@@ -11,7 +11,7 @@ adminRouter.get("/branch/:id",getBranchById);
 adminRouter.delete("/branch/:id",deleteBranch);
 adminRouter.put("/branch/:id",updateBranch);
 
-adminRouter.get("/staff/details",userAuth,getAllStaff);
+adminRouter.get("/staff/details",getAllStaff);
 adminRouter.put("/staff/details/:id",updateStaff);
 adminRouter.get("/staff/details/:id",userAuth ,getStaffById);
 adminRouter.delete("/staff/details/:id",userAuth,deleteStaff);

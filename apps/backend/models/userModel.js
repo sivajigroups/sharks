@@ -53,14 +53,16 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-userSchema.methods.getJWT = async function (expiresIn = "7d") {
+userSchema.methods.getJWT = async function (expiresIn) {
   const user = this;
   const payload = { userId: user.id, email: user.email };
   const secretKey = "7f8a9b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5a6b7c8d9";
+
   const token = jwt.sign(payload, secretKey, { expiresIn });
 
   return token;
 };
+
 userSchema.methods.validatePassword = async function (passwordby) {
   const user = this;
   const hashPass = user.password;

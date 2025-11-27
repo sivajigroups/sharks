@@ -5,31 +5,35 @@ import { Label } from "@/components/ui/label";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { login } from "@/redux/authSlice";
+import { login, logout } from "@/redux/authSlice";
+import api from "@/api/axios"; // ✅ your axios instance with interceptor
+
+// ✅ GLOBAL TIMER (module scope)
+let logoutTimer = null;
 
 export default function AuthForm() {
-
-
-  
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-
-
-
-
-
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { isLoggedIn } = useSelector((state) => state.auth);
+  const { logintoken } = useSelector((state) => state.auth);
 
+  // ✅ If already logged in, redirect to dashboard
   useEffect(() => {
-    if (isLoggedIn) {
+    if (logintoken !== null) {
       navigate("/layout/dashboard");
     }
-  }, [isLoggedIn, navigate]);
+  }, [logintoken, navigate]);
+
+  // ✅ Clear timer if component ever unmounts (safety)
+  useEffect(() => {
+    return () => {
+      if (logoutTimer) clearTimeout(logoutTimer);
+    };
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -41,32 +45,42 @@ export default function AuthForm() {
     }
 
     try {
-
-
-      const response = await fetch(`${import.meta.env.VITE_API_BASE}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ phone, password }),
+      // ✅ use axios instance instead of fetch
+      const { data: userData } = await api.post("/login", {
+        phone,
+        password,
       });
 
-      if (!response.ok) throw new Error(await response.text());
-
-      const userData = await response.json();
       const { phone: serverPhone, role, branch } = userData.user;
 
-
+      // 1) Save to Redux
       dispatch(
         login({
           phone: serverPhone,
           role,
           branch: branch ? { id: branch._id, name: branch.name } : null,
+          token: userData.token,
+          expiresIn: userData.expiresIn,
         })
       );
 
+      // 2) Clear previous logout timer
+      if (logoutTimer) clearTimeout(logoutTimer);
+
+      // 3) Auto-logout when token expires
+      const expirySeconds = userData.expiresIn || 100;
+
+      logoutTimer = setTimeout(() => {
+        console.log("⏳ Auto Logout → Token Expired");
+        dispatch(logout());
+        navigate("/login");
+      }, expirySeconds * 1000);
+
+      // 4) Go to dashboard
       navigate("/layout/dashboard");
     } catch (err) {
-      setError(err.message || "Login failed.");
+      console.error(err);
+      setError(err.response?.data || err.message || "Login failed.");
     }
   };
 

@@ -7,7 +7,7 @@ import authReducer from './authSlice';
 const persistConfig = {
   key: 'auth',
   storage,
-  whitelist: ['user', 'role', 'branch', 'isLoggedIn'],
+  whitelist: ['user', 'role', 'branch', 'isLoggedIn', 'loginDate','logintoken', 'expiresAt'], // ⭐ PERSIST loginDate & expiresAt
 };
 
 const persistedAuthReducer = persistReducer(persistConfig, authReducer);

@@ -26,17 +26,21 @@ import InactiveCustomers from "./pages/reports/InactiveCustomers";
 import RentalOrderList from "./pages/billing/RentalOrderList";
 import PrintBarcodes from "./pages/admin/PrintBarcodes";
 import AuditLogs from "./pages/admin/AuditLogs";
+import AuthInitializer from "./components/auth/AuthInitializer";
+import ProtectedRoute from "./components/auth/ProtectedRoute"; // ⭐ IMPORT
 
 function App() {
   return (
     <Router>
+      <AuthInitializer />
       <Routes>
         {/* Public Route */}
         <Route path="/" element={<Login />} />
 
         {/* Protected Routes with Layout */}
-        <Route path="/layout" element={<Layout />}>
-          <Route path="dashboard" element={<Dashboard />} />
+        <Route element={<ProtectedRoute />}> {/* ⭐ WRAP HERE */}
+          <Route path="/layout" element={<Layout />}>
+            <Route path="dashboard" element={<Dashboard />} />
           <Route path="report" element={<Report />} />
           {/* <Route path="salesInfo" element={<SalesInventory />} /> */}
           <Route path="customers" element={<Customers />} />
@@ -95,6 +99,7 @@ function App() {
 
           <Route path="audit-logs" element={<AuditLogs />} />
         </Route>
+      </Route> {/* ⭐ CLOSE ProtectedRoute */}
       </Routes>
     </Router>
   );

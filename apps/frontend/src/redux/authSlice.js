@@ -1,29 +1,37 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice } from "@reduxjs/toolkit";
+import { getNextMidnightTimestamp } from "../utils/dateUtils";
 
 const initialState = {
-  user: null,       // stores email
-  role: null,   
-  branch:null,    // stores 'admin' or 'staff'
+  user: null,
+  role: null,
+  branch: null,
   isLoggedIn: false,
+  loginDate: null,
+  logintoken: null,
+  expiresAt: null, // ⭐ ADD THIS
 };
 
 const authSlice = createSlice({
-  name: 'auth',
+  name: "auth",
   initialState,
   reducers: {
     login: (state, action) => {
-      // Expecting payload like: { email: "admin@gmail.com", role: "admin" }
-    //  state.user = action.payload.email;
-      state.user = action.payload.phone; // Changed to phone
+      state.user = action.payload.phone;
       state.role = action.payload.role;
-      state.branch=action.payload.branch;
+      state.branch = action.payload.branch;
       state.isLoggedIn = true;
+      state.loginDate = new Date().toDateString();
+      state.logintoken = action.payload.token || null;
+      state.expiresAt = getNextMidnightTimestamp(); // ⭐ SET EXPIRY
     },
     logout: (state) => {
       state.user = null;
       state.role = null;
-      state.branch=null;
+      state.branch = null;
       state.isLoggedIn = false;
+      state.loginDate = null;
+      state.logintoken = null;
+      state.expiresAt = null; // ⭐ CLEAR EXPIRY
     },
   },
 });

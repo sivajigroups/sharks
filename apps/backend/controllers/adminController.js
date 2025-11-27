@@ -140,6 +140,8 @@ const getAllStaff = async (req, res) => {
       .json({ message: "Error fetching staff", error: error.message });
   }
 };
+
+
 const getStaffById = async (req, res) => {
   try {
     const staff = await User.findById(req.params.id).populate("branchId");

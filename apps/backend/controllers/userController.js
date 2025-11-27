@@ -159,11 +159,11 @@ const getStaffById = async (req, res) => {
 };
 
 
-
 const loginUser = async (req, res) => {
   try {
     const { phone, password } = req.body;
 
+    // console.log("Login request body:", req.body);
     const user = await User.findOne({ phone: phone }).populate("branchId");
     if (!user || !user.approved) {
       throw new Error("User not found");
@@ -175,50 +175,44 @@ const loginUser = async (req, res) => {
       throw new Error("Invalid credentials");
     }
 
-    // Calculate time until midnight
+    // ⭐ PRODUCTION MODE — TOKEN EXPIRES AT MIDNIGHT
     const now = new Date();
-    const midnight = new Date();
-    midnight.setHours(24, 0, 0, 0); // Next midnight
-    const timeUntilMidnight = midnight.getTime() - now.getTime(); // Milliseconds
+    const midnight = new Date(now);
+    midnight.setHours(24, 0, 0, 0);
+    const expiresInSeconds = Math.floor((midnight.getTime() - now.getTime()) / 1000);
     
-    // Convert to seconds for JWT (which uses seconds by default if number) or string format
-    // We'll pass milliseconds to cookie, and let JWT handle it (JWT accepts "10h", "2d" or seconds)
-    // For JWT, it's safer to pass a string like "10000" (ms) or just seconds. 
-    // Let's pass seconds to JWT to be safe, or use the ms value if supported. 
-    // Actually, jwt.sign expiresIn with number is interpreted as seconds.
-    const expiresInSeconds = Math.floor(timeUntilMidnight / 1000);
+    const timeUntilExpiry = expiresInSeconds * 1000; // convert to ms
 
-    const token = await user.getJWT(expiresInSeconds); 
+    const token = await user.getJWT(expiresInSeconds);
+
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false, // Set to true in production with HTTPS
-      maxAge: timeUntilMidnight, // Cookie uses milliseconds
+      secure: false,
+      maxAge: timeUntilExpiry,
     });
 
-    // 🔥 AUDIT LOGIN (Very important – added here)
+    // 🔥 AUDIT LOGIN
     await Audit.create({
       collectionName: "User",
       action: "login",
       modifiedBy: user._id,
       branch: user.role === "staff" ? user.branchId : null,
-      
-      before: null, // no previous state
+      before: null,
       after: {
         userId: user._id,
         name: user.name,
         role: user.role,
       },
-
       method: req.method,
       route: req.originalUrl,
       ip: req.ip,
       timestamp: new Date(),
     });
 
-    // 🔥 Your existing response (unchanged)
     res.json({
       message: "Login successful",
       token,
+       expiresIn: expiresInSeconds,   // ⭐ Add this
       user: {
         id: user._id,
         name: user.name,
@@ -228,23 +222,30 @@ const loginUser = async (req, res) => {
         branch: user.role === "staff" ? user.branchId : null,
       },
     });
+
   } catch (err) {
     res.status(400).send(err.message);
   }
 };
 
+
+
 const logoutUser = async (req, res) => {
   try {
     // Read token before clearing
     const token = req.cookies?.token;
+
+    
     let userInfo = null;
 
     if (token) {
       try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, "7f8a9b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5a6b7c8d9");
         userInfo = await User.findById(decoded.userId).populate("branchId");
+        // console.log("Logout user info:", userInfo);
       } catch (err) {
         // token invalid or expired → skip user
+        // console.error("Error decoding token during logout:", err.message);
       }
     }
 
@@ -266,6 +267,7 @@ const logoutUser = async (req, res) => {
         ip: req.ip,
       });
     }
+    // console.log("Audit log created for logout.");
 
     // Clear token AFTER audit
     res.clearCookie("token");

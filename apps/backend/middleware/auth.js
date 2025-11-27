@@ -9,8 +9,11 @@ const userAuth = async (req, res, next) => {
       return res.status(401).json({ message: "Authentication token missing" });
     }
 
+    // ⭐ HARDCODED SECRET (must match getJWT signing key)
+    const SECRET_KEY = "7f8a9b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5a6b7c8d9";
+
     // must match getJWT()
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, SECRET_KEY);
     const { userId } = decoded;
 
     // Populate branchId (correct field)
@@ -21,16 +24,14 @@ const userAuth = async (req, res, next) => {
 
     req.user = user;
 
-    // FIX: use branchId instead of branch
-   setCurrentUser(
-  {
-    _id: user._id,
-    name: user.name,
-    branch: user.branchId ? user.branchId._id : null,
-  },
-  req   // pass request object too
-);
-
+    setCurrentUser(
+      {
+        _id: user._id,
+        name: user.name,
+        branch: user.branchId ? user.branchId._id : null,
+      },
+      req
+    );
 
     next();
   } catch (err) {
