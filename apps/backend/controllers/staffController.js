@@ -567,11 +567,11 @@ const insertCustomer = async (req, res) => {
     const { name, phone, address, alternatePhone, idProofType, idProofNumber } =
       req.body;
 
-    if (!name || !phone || !address || !idProofType || !idProofNumber) {
-      return res.status(400).json({
-        message: "Please fill all the fields",
-      });
-    }
+    // if (!name || !phone || !address || !idProofType || !idProofNumber) {
+    //   return res.status(400).json({
+    //     message: "Please fill all the fields",
+    //   });
+    // }
 
     const existingUser = await Customer.findOne({ phone });
     if (existingUser) {
@@ -589,7 +589,7 @@ const insertCustomer = async (req, res) => {
 
     await customerSave.save();
 
-    res.json("Customer Added Successfully");
+    res.json({ message: "Customer Added Successfully", customer: customerSave });
   } catch (error) {
     res.status(400).json({
       message: "Error in adding Customer",
@@ -602,7 +602,7 @@ const getAllCustomers = async (req, res) => {
   try {
     const search = req.query.search || "";
     const page = parseInt(req.query.page) || 1;
-    const limit = 8; // fixed to return only 8 customers per page
+    const limit = parseInt(req.query.limit) || 10;
 
     const query = {
       $or: [
@@ -666,9 +666,9 @@ const editCustomer = async (req, res) => {
     const { name, phone, address, alternatePhone, idProofType, idProofNumber } =
       req.body;
 
-    if (!name || !phone || !address || !idProofType || !idProofNumber) {
+    if (!name || !phone) {
       return res.status(400).json({
-        message: "Please fill all the fields",
+        message: "Name and Phone are required",
       });
     }
 
@@ -677,12 +677,20 @@ const editCustomer = async (req, res) => {
       return res.status(404).json({ message: "Customer not found" });
     }
 
+    // Check if phone number is being changed and if it's already taken by another user
+    if (phone !== customer.phone) {
+      const existingUser = await Customer.findOne({ phone });
+      if (existingUser) {
+        return res.status(409).json({ message: "Phone number already registered to another customer." });
+      }
+    }
+
     customer.name = name;
     customer.phone = phone;
-    customer.address = address;
-    customer.alternatePhone = alternatePhone;
-    customer.idProofType = idProofType;
-    customer.idProofNumber = idProofNumber;
+    if (address) customer.address = address;
+    if (alternatePhone) customer.alternatePhone = alternatePhone;
+    if (idProofType) customer.idProofType = idProofType;
+    if (idProofNumber) customer.idProofNumber = idProofNumber;
 
     await customer.save();
 
