@@ -28,6 +28,8 @@ import PrintBarcodes from "./pages/admin/PrintBarcodes";
 import AuditLogs from "./pages/admin/AuditLogs";
 import AuthInitializer from "./components/auth/AuthInitializer";
 import ProtectedRoute from "./components/auth/ProtectedRoute"; // ⭐ IMPORT
+import BillDetailPage from "./pages/billing/BillDetailPage";
+import Ad from "./pages/Ad";
 
 function App() {
   return (
@@ -36,70 +38,76 @@ function App() {
       <Routes>
         {/* Public Route */}
         <Route path="/" element={<Login />} />
-
         {/* Protected Routes with Layout */}
-        <Route element={<ProtectedRoute />}> {/* ⭐ WRAP HERE */}
+        <Route element={<ProtectedRoute />}>
+          {" "}
+          {/* ⭐ WRAP HERE */}
           <Route path="/layout" element={<Layout />}>
+            <Route path="ad" element={<Ad />} />
             <Route path="dashboard" element={<Dashboard />} />
-          <Route path="report" element={<Report />} />
-          {/* <Route path="salesInfo" element={<SalesInventory />} /> */}
-          <Route path="customers" element={<Customers />} />
-          <Route path="branches" element={<Branch />} />
-          <Route path="billing" element={<BillingPage />} />
-          <Route path="order" element={<OrderList />} />
-          <Route path="rentalOrderList" element={<RentalOrderList />} />
-          <Route path="purchaseOrder" element={<PurchaseEntry />} />
-          {/* <Route path="rentalOrder" element={<RentalOrdersPage />} /> */}
-          {/* <Route path="rentalOrder" element={<OrderManager type="rental" title="Rental Orders" newOrderPath="/layout/rentalOrder/new" />} /> */}
-          <Route path="rentalOrder/new" element={<NewOrder />} />
-          <Route path="barcodes" element={<PrintBarcodes />} />
-          <Route
-            path="salesOrder"
-            element={
-              <OrderManager
-                type="sales"
-                title="Sales Orders"
-                newOrderPath="/layout/rentalOrder/new"
-              />
-            }
-          />
-          <Route
-            path="serviceOrder"
-            element={
-              <OrderManager
-                type="service"
-                title="Rental Orders"
-                newOrderPath="/layout/rentalOrder/new"
-              />
-            }
-          />
-          <Route path="notification" element={<Notifications />} />
-          <Route path="salesInventoryReport" element={<InventoryReport />} />
-          <Route path="users" element={<StaffPage />} />
-          <Route path="attendance" element={<Attendance />} />
-          <Route
-            path="/layout/salesInfo"
-            element={<InventoryManager type="sales" title="Sales Inventory" />}
-          />
-          <Route
-            path="/layout/rentalInfo"
-            element={
-              <InventoryManager type="rental" title="Rental Inventory" />
-            }
-          />
-          <Route
-            path="/layout/serviceInfo"
-            element={
-              <InventoryManager type="service" title="Service Inventory" />
-            }
-          />
-          <Route path="/layout/staff/:id" element={<StaffDetail />} />
-          <Route path="customers/:id" element={<CustomerDetails />} />
-          <Route path="customers/inactive" element={<InactiveCustomers />} />
+            <Route path="report" element={<Report />} />
+            {/* <Route path="salesInfo" element={<SalesInventory />} /> */}
+            <Route path="customers" element={<Customers />} />
+            <Route path="branches" element={<Branch />} />
+            <Route path="billing" element={<BillingPage />} />
+            <Route path="order" element={<OrderList />} />
+            <Route path="rentalOrderList" element={<RentalOrderList />} />
+            <Route path="purchaseOrder" element={<PurchaseEntry />} />
+            {/* <Route path="rentalOrder" element={<RentalOrdersPage />} /> */}
+            {/* <Route path="rentalOrder" element={<OrderManager type="rental" title="Rental Orders" newOrderPath="/layout/rentalOrder/new" />} /> */}
+            <Route path="rentalOrder/new" element={<NewOrder />} />
+            <Route path="barcodes" element={<PrintBarcodes />} />
+            <Route
+              path="salesOrder"
+              element={
+                <OrderManager
+                  type="sales"
+                  title="Sales Orders"
+                  newOrderPath="/layout/rentalOrder/new"
+                />
+              }
+            />
+            <Route
+              path="serviceOrder"
+              element={
+                <OrderManager
+                  type="service"
+                  title="Rental Orders"
+                  newOrderPath="/layout/rentalOrder/new"
+                />
+              }
+            />
+            <Route path="notification" element={<Notifications />} />
+            <Route path="salesInventoryReport" element={<InventoryReport />} />
+            <Route path="users" element={<StaffPage />} />
+            <Route path="attendance" element={<Attendance />} />
+            <Route
+              path="/layout/salesInfo"
+              element={
+                <InventoryManager type="sales" title="Sales Inventory" />
+              }
+            />
+            <Route
+              path="/layout/rentalInfo"
+              element={
+                <InventoryManager type="rental" title="Rental Inventory" />
+              }
+            />
+            <Route
+              path="/layout/serviceInfo"
+              element={
+                <InventoryManager type="service" title="Service Inventory" />
+              }
+            />
+            <Route path="/layout/staff/:id" element={<StaffDetail />} />
+            <Route path="customers/:id" element={<CustomerDetails />} />
+            <Route path="customers/inactive" element={<InactiveCustomers />} />
+            <Route path="billing/:billId" element={<BillDetailPage />} />
 
-          <Route path="audit-logs" element={<AuditLogs />} />
-        </Route>
-      </Route> {/* ⭐ CLOSE ProtectedRoute */}
+            <Route path="audit-logs" element={<AuditLogs />} />
+          </Route>
+        </Route>{" "}
+        {/* ⭐ CLOSE ProtectedRoute */}
       </Routes>
     </Router>
   );

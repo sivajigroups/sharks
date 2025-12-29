@@ -13,6 +13,13 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+import {
   ArrowLeft,
   MapPin,
   Pencil,
@@ -43,6 +50,8 @@ export default function CustomerDetails() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const [bills, setBills] = useState([]);
   const [billsLoading, setBillsLoading] = useState(false);
@@ -177,6 +186,28 @@ export default function CustomerDetails() {
     });
   };
 
+  const handleDelete = async () => {
+    if (!id) return;
+
+    // const ok = window.confirm(
+    //   "Are you sure you want to delete this customer? This action cannot be undone."
+    // );
+
+    // if (!ok) return;
+
+    try {
+      await fetch(`${API}/customer/details/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      toast.success("Customer deleted successfully");
+      navigate("/layout/customers"); // go back to list
+    } catch (err) {
+      toast.error(err.message || "Failed to delete customer");
+    }
+  };
+
   const validate = (f) => {
     const e = {};
     if (!f.name?.trim()) e.name = "Name is required";
@@ -185,8 +216,8 @@ export default function CustomerDetails() {
       e.phone = "Invalid phone";
     if (f.alternatePhone && !/^[0-9+\-\s]{7,15}$/.test(f.alternatePhone))
       e.alternatePhone = "Invalid phone";
-    if (f.address?.pincode && !/^\d{6}$/.test(f.address.pincode))
-      e["address.pincode"] = "Pincode must be 6 digits";
+    // if (f.address?.pincode && !/^\d{6}$/.test(f.address.pincode))
+    //   e["address.pincode"] = "Pincode must be 6 digits";
     if (f.idProofType && !f.idProofNumber)
       e.idProofNumber = "ID number required for selected ID proof";
     return e;
@@ -331,6 +362,13 @@ export default function CustomerDetails() {
         </Button>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="destructive"
+            onClick={() => setConfirmDeleteOpen(true)}
+          >
+            Delete
+          </Button>
+
           {!isEditing ? (
             <Button onClick={startEdit}>
               <Pencil className="h-4 w-4 mr-2" /> Edit
@@ -355,6 +393,38 @@ export default function CustomerDetails() {
           )}
         </div>
       </div>
+      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Customer</DialogTitle>
+          </DialogHeader>
+
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete this customer?
+            <br />
+            This action cannot be undone.
+          </p>
+
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDeleteOpen(false)}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setConfirmDeleteOpen(false);
+                handleDelete();
+              }}
+            >
+              Confirm Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Tabs defaultValue="details" className="w-full">
         <TabsList>
@@ -475,7 +545,7 @@ export default function CustomerDetails() {
                     onChange={(v) => onChange("address.area", v)}
                     className="min-w-[200px] flex-1"
                   />
-                  <Detail
+                  {/* <Detail
                     label="City"
                     editing={isEditing}
                     value={form?.address?.city ?? ""}
@@ -489,7 +559,7 @@ export default function CustomerDetails() {
                     onChange={(v) => onChange("address.pincode", v)}
                     error={errors?.["address.pincode"]}
                     className="min-w-[160px] flex-1"
-                  />
+                  /> */}
                 </div>
               </div>
             </CardContent>

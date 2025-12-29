@@ -195,9 +195,6 @@ const updateSales = async (req, res) => {
   }
 };
 
-
-
-
 const updateRental = async (req, res) => {
   try {
     const { id } = req.params;
@@ -207,7 +204,7 @@ const updateRental = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const processed = variants.map(v => {
+    const processed = variants.map((v) => {
       if (v.pricePerDay == null || v.stock == null) {
         throw new Error("Each variant needs pricePerDay and stock");
       }
@@ -235,12 +232,15 @@ const updateRental = async (req, res) => {
     res.json({ message: "Updated", data: updated });
   } catch (err) {
     if (err?.code === 11000) {
-      return res.status(409).json({ message: "Duplicate SKU in this branch", error: err.message });
+      return res
+        .status(409)
+        .json({ message: "Duplicate SKU in this branch", error: err.message });
     }
-    res.status(400).json({ message: "Error updating rental", error: err.message });
+    res
+      .status(400)
+      .json({ message: "Error updating rental", error: err.message });
   }
 };
-
 
 // ─── DELETE RENTAL INVENTORY ────────────────────────────────
 const deleteRental = async (req, res) => {
@@ -266,8 +266,6 @@ const deleteRental = async (req, res) => {
   }
 };
 
-
-
 //const Attribute = require("../models/Attribute");
 
 const insertAttribute = async (req, res) => {
@@ -275,11 +273,9 @@ const insertAttribute = async (req, res) => {
     const { brand = [], size = [], color = [] } = req.body;
 
     if (!brand.length && !size.length && !color.length) {
-      return res
-        .status(400)
-        .json({
-          message: "At least one of brand, size, or color must be provided",
-        });
+      return res.status(400).json({
+        message: "At least one of brand, size, or color must be provided",
+      });
     }
 
     const updateOps = {};
@@ -306,7 +302,7 @@ const insertAttribute = async (req, res) => {
   }
 };
 
-const getAttribute= async(req,res)=>{
+const getAttribute = async (req, res) => {
   try {
     const attributes = await Attribute.findOne({});
     if (!attributes) {
@@ -322,12 +318,10 @@ const getAttribute= async(req,res)=>{
       error: error.message,
     });
   }
-}
+};
 // Rental Inventory Handlers
 // controllers/rentalInventoryController.js
 // controllers/rentalInventoryController.js
-
-
 
 // ── helpers
 const norm = (s, fallback = "") =>
@@ -348,11 +342,16 @@ const makeBaseSku = ({ name, brand, size, color, includeColor = true }) => {
 const insertRental = async (req, res) => {
   try {
     const { name, description, category, branchId, variants } = req.body || {};
-    if (!name || !branchId || !Array.isArray(variants) || variants.length === 0) {
+    if (
+      !name ||
+      !branchId ||
+      !Array.isArray(variants) ||
+      variants.length === 0
+    ) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const processed = variants.map(v => {
+    const processed = variants.map((v) => {
       if (v.pricePerDay == null || v.stock == null) {
         throw new Error("Each variant needs pricePerDay and stock");
       }
@@ -381,12 +380,15 @@ const insertRental = async (req, res) => {
     return res.status(201).json({ message: "Added", data: doc });
   } catch (err) {
     if (err?.code === 11000) {
-      return res.status(409).json({ message: "Duplicate SKU in this branch", error: err.message });
+      return res
+        .status(409)
+        .json({ message: "Duplicate SKU in this branch", error: err.message });
     }
-    return res.status(400).json({ message: "Error adding rental", error: err.message });
+    return res
+      .status(400)
+      .json({ message: "Error adding rental", error: err.message });
   }
 };
-
 
 const getAllsales = async (req, res) => {
   try {
@@ -408,12 +410,12 @@ const getAllRental = async (req, res) => {
   try {
     const {
       branch,
-      q,                // free text search
+      q, // free text search
       sku,
       brand,
       size,
       color,
-      lowStock,         // number, e.g., 5
+      lowStock, // number, e.g., 5
       page = 1,
       limit = 20,
       sort = "createdAt:desc", // e.g., "name:asc" or "updatedAt:desc"
@@ -449,10 +451,22 @@ const getAllRental = async (req, res) => {
 
     // Build variant-level filter for $filter
     const vConds = [];
-    if (sku)   vConds.push({ $regexMatch: { input: "$$v.sku",   regex: sku,   options: "i" } });
-    if (brand) vConds.push({ $regexMatch: { input: "$$v.brand", regex: brand, options: "i" } });
-    if (size)  vConds.push({ $regexMatch: { input: "$$v.size",  regex: size,  options: "i" } });
-    if (color) vConds.push({ $regexMatch: { input: "$$v.color", regex: color, options: "i" } });
+    if (sku)
+      vConds.push({
+        $regexMatch: { input: "$$v.sku", regex: sku, options: "i" },
+      });
+    if (brand)
+      vConds.push({
+        $regexMatch: { input: "$$v.brand", regex: brand, options: "i" },
+      });
+    if (size)
+      vConds.push({
+        $regexMatch: { input: "$$v.size", regex: size, options: "i" },
+      });
+    if (color)
+      vConds.push({
+        $regexMatch: { input: "$$v.color", regex: color, options: "i" },
+      });
     if (lowStock !== undefined) {
       const n = Number(lowStock);
       if (!Number.isNaN(n)) vConds.push({ $lt: ["$$v.stock", n] });
@@ -462,20 +476,24 @@ const getAllRental = async (req, res) => {
       { $match: match },
       // project a filtered variants array when any variant filters are present
       ...(vConds.length
-        ? [{
-            $addFields: {
-              variants: {
-                $filter: {
-                  input: "$variants",
-                  as: "v",
-                  cond: { $and: vConds },
+        ? [
+            {
+              $addFields: {
+                variants: {
+                  $filter: {
+                    input: "$variants",
+                    as: "v",
+                    cond: { $and: vConds },
+                  },
                 },
               },
             },
-          }]
+          ]
         : []),
       // optional: remove items that end up with zero variants after filtering
-      ...(vConds.length ? [{ $match: { "variants.0": { $exists: true } } }] : []),
+      ...(vConds.length
+        ? [{ $match: { "variants.0": { $exists: true } } }]
+        : []),
       // join branch (lightweight fields)
       {
         $lookup: {
@@ -589,7 +607,10 @@ const insertCustomer = async (req, res) => {
 
     await customerSave.save();
 
-    res.json({ message: "Customer Added Successfully", customer: customerSave });
+    res.json({
+      message: "Customer Added Successfully",
+      customer: customerSave,
+    });
   } catch (error) {
     res.status(400).json({
       message: "Error in adding Customer",
@@ -681,7 +702,9 @@ const editCustomer = async (req, res) => {
     if (phone !== customer.phone) {
       const existingUser = await Customer.findOne({ phone });
       if (existingUser) {
-        return res.status(409).json({ message: "Phone number already registered to another customer." });
+        return res.status(409).json({
+          message: "Phone number already registered to another customer.",
+        });
       }
     }
 
@@ -811,6 +834,229 @@ const calculateAttendance = async (req, res) => {
   }
 };
 
+const mongoose = require("mongoose");
+
+/**
+ * POST /api/inventory/transfer/sales-to-rental
+ * body: {
+ *   salesItemId: string,
+ *   fromBranchId: string,
+ *   toBranchId: string,     // can be same as from
+ *   salesSku: string,
+ *   quantity: number,
+ *   pricePerDay?: number    // required only if creating a new rental variant
+ * }
+ */
+const salesToRental = async (req, res) => {
+  // console.log("--> salesToRental called with body:", req.body);
+  // Removed transaction for standalone MongoDB support
+  try {
+    const {
+      salesItemId,
+      fromBranchId,
+      toBranchId,
+      salesSku,
+      quantity,
+      pricePerDay,
+    } = req.body || {};
+
+    // Basic validation
+    const missing = [];
+    if (!salesItemId) missing.push("salesItemId");
+    if (!fromBranchId) missing.push("fromBranchId");
+    if (!toBranchId) missing.push("toBranchId");
+    if (!salesSku) missing.push("salesSku");
+    if (!quantity) missing.push("quantity");
+
+    if (missing.length > 0) {
+      return res
+        .status(400)
+        .json({ message: `[E1] Missing fields: ${missing.join(", ")}` });
+    }
+
+    const qty = Number(quantity);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      return res
+        .status(400)
+        .json({ message: `[E2] Quantity must be > 0. Received: ${quantity}` });
+    }
+
+    // 1) Find sales item & variant (in the from-branch)
+    const salesDoc = await SalesInventory.findOne({
+      _id: salesItemId,
+      branch: fromBranchId,
+    });
+
+    if (!salesDoc) {
+      return res.status(404).json({ message: "[E3] Sales item not found" });
+    }
+
+    const sIdx = (salesDoc.variants || []).findIndex((v) => v.sku === salesSku);
+    if (sIdx === -1) {
+      return res
+        .status(404)
+        .json({ message: `[E3] Sales SKU not found: ${salesSku}` });
+    }
+
+    const sVar = salesDoc.variants[sIdx];
+    if (Number(sVar.stock) < qty) {
+      return res
+        .status(400)
+        .json({
+          message: `[E4] Not enough stock in sales. Have: ${sVar.stock}, Need: ${qty}`,
+        });
+    }
+
+    // 2) Decrement sales stock
+    salesDoc.variants[sIdx].stock = Number(sVar.stock) - qty;
+
+    const name = salesDoc.name;
+    const brand = sVar.brand || "GENERIC";
+    const size = sVar.size || "STD";
+    const color = sVar.color ?? null;
+
+    // 3) Upsert into RentalInventory (to-branch)
+    let rentalDoc = await RentalInventory.findOne({ name, branch: toBranchId });
+
+    if (!rentalDoc) {
+      // creating a new Rental item requires a pricePerDay on the variant
+      if (pricePerDay == null) {
+        return res
+          .status(400)
+          .json({
+            message: "[E5] pricePerDay is required for new rental item",
+          });
+      }
+
+      // Mint a SKU unique within this branch for the new document
+      // Use helper to ensure consistency (include color)
+      let sku;
+      try {
+        // Check if makeBaseSku is available, otherwise fallback
+        if (typeof makeBaseSku === "function") {
+          sku = makeBaseSku({ name, brand, size, color });
+        } else {
+          // Fallback implementation if makeBaseSku is not in scope
+          const norm = (s, fallback = "") =>
+            (s ?? fallback)
+              .toString()
+              .normalize("NFKD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^A-Za-z0-9]+/g, "")
+              .toUpperCase();
+          const parts = [norm(name), norm(brand, "GENERIC"), norm(size, "STD")];
+          if (color) parts.push(norm(color));
+          sku = parts.join("-");
+        }
+      } catch (e) {
+        throw new Error(`SKU generation failed: ${e.message}`);
+      }
+
+      rentalDoc = new RentalInventory({
+        name,
+        description: salesDoc.description,
+        category: salesDoc.category,
+        branch: toBranchId,
+        variants: [
+          {
+            sku,
+            brand: brand || undefined,
+            size: size || undefined,
+            color,
+            pricePerDay: Number(pricePerDay),
+            stock: qty,
+          },
+        ],
+      });
+    } else {
+      // Try to find a matching variant by attributes in existing rental item
+      const rIdx = (rentalDoc.variants || []).findIndex(
+        (v) =>
+          (v.brand || "") === (brand || "") &&
+          (v.size || "") === (size || "") &&
+          (v.color ?? null) === (color ?? null)
+      );
+
+      if (rIdx > -1) {
+        // Variant exists: increment stock; update price if provided
+        rentalDoc.variants[rIdx].stock =
+          Number(rentalDoc.variants[rIdx].stock || 0) + qty;
+        if (pricePerDay != null) {
+          rentalDoc.variants[rIdx].pricePerDay = Number(pricePerDay);
+        }
+      } else {
+        // Need to add a new rental variant -> requires pricePerDay
+        if (pricePerDay == null) {
+          return res
+            .status(400)
+            .json({
+              message: "[E5] pricePerDay is required for new rental variant",
+            });
+        }
+
+        // Mint a unique SKU within this rental branch for the new variant
+        let base;
+        if (typeof makeBaseSku === "function") {
+          base = makeBaseSku({ name, brand, size, color });
+        } else {
+          const norm = (s, fallback = "") =>
+            (s ?? fallback)
+              .toString()
+              .normalize("NFKD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^A-Za-z0-9]+/g, "")
+              .toUpperCase();
+          const parts = [norm(name), norm(brand, "GENERIC"), norm(size, "STD")];
+          if (color) parts.push(norm(color));
+          base = parts.join("-");
+        }
+
+        const used = new Set((rentalDoc.variants || []).map((v) => v.sku));
+        let sku = base;
+        let i = 2;
+        while (used.has(sku)) {
+          sku = `${base}-${i}`;
+          i += 1;
+        }
+
+        rentalDoc.variants.push({
+          sku,
+          brand: brand || undefined,
+          size: size || undefined,
+          color,
+          pricePerDay: Number(pricePerDay),
+          stock: qty,
+        });
+      }
+    }
+
+    // 4) Save WITHOUT transaction
+    await salesDoc.save();
+    try {
+      await rentalDoc.save();
+    } catch (saveErr) {
+      // If rental save fails, we should ideally rollback salesDoc (increment stock back)
+      // But simpler is to throw and let user see the error
+      throw saveErr;
+    }
+
+    return res.status(200).json({
+      message: `Transferred ${qty} ${name} from sales → rental`,
+      data: {
+        sales: {
+          id: salesDoc._id,
+          variant: salesSku,
+          newStock: salesDoc.variants[sIdx].stock,
+        },
+        rental: { id: rentalDoc._id, branch: toBranchId },
+      },
+    });
+  } catch (err) {
+    console.error("SalesToRental Logic Error:", err);
+    return res.status(400).json({ message: `Transfer Failed: ${err.message}` });
+  }
+};
+
 /**
  * POST /api/transfers/rental-to-sales
  * body: {
@@ -836,7 +1082,13 @@ const rentalToSales = async (req, res) => {
     } = req.body || {};
 
     // Basic validation
-    if (!rentalItemId || !fromBranchId || !toBranchId || !rentalSku || !quantity) {
+    if (
+      !rentalItemId ||
+      !fromBranchId ||
+      !toBranchId ||
+      !rentalSku ||
+      !quantity
+    ) {
       return res.status(400).json({ message: "Missing required fields" });
     }
     const qty = Number(quantity);
@@ -845,15 +1097,18 @@ const rentalToSales = async (req, res) => {
     }
 
     // 1) Find rental item & variant (in the from-branch)
-    const rentalDoc = await RentalInventory.findOne(
-      { _id: rentalItemId, branch: fromBranchId }
-    ).session(session);
+    const rentalDoc = await RentalInventory.findOne({
+      _id: rentalItemId,
+      branch: fromBranchId,
+    }).session(session);
 
     if (!rentalDoc) {
       return res.status(404).json({ message: "Rental item not found" });
     }
 
-    const rIdx = (rentalDoc.variants || []).findIndex(v => v.sku === rentalSku);
+    const rIdx = (rentalDoc.variants || []).findIndex(
+      (v) => v.sku === rentalSku
+    );
     if (rIdx === -1) {
       return res.status(404).json({ message: "Rental SKU not found" });
     }
@@ -866,27 +1121,32 @@ const rentalToSales = async (req, res) => {
     // 2) Decrement rental stock
     rentalDoc.variants[rIdx].stock = Number(rVar.stock) - qty;
 
-    const name  = rentalDoc.name;
+    const name = rentalDoc.name;
     const brand = rVar.brand || "GENERIC";
-    const size  = rVar.size  || "STD";
+    const size = rVar.size || "STD";
     const color = rVar.color ?? null;
 
     // 3) Upsert into SalesInventory (to-branch)
-    let salesDoc = await SalesInventory.findOne(
-      { name, branch: toBranchId }
-    ).session(session);
+    let salesDoc = await SalesInventory.findOne({
+      name,
+      branch: toBranchId,
+    }).session(session);
 
     if (!salesDoc) {
       // creating a new Sales item requires a price on the variant
       if (salePrice == null) {
-        return res.status(400).json({ message: "salePrice is required to create a new sales variant" });
+        return res.status(400).json({
+          message: "salePrice is required to create a new sales variant",
+        });
       }
 
       // Mint a SKU unique within this branch for the new document
       // Base: NAME-BRAND-SIZE (normalize inline)
       const base = `${String(name)}-${String(brand)}-${String(size)}`
-        .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^A-Za-z0-9-]+/g, "").toUpperCase();
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^A-Za-z0-9-]+/g, "")
+        .toUpperCase();
 
       // For a new doc, used set is empty
       let sku = base;
@@ -900,41 +1160,49 @@ const rentalToSales = async (req, res) => {
         description: rentalDoc.description,
         category: rentalDoc.category,
         branch: toBranchId,
-        variants: [{
-          sku,
-          brand: brand || undefined,
-          size:  size  || undefined,
-          color,
-          price: Number(salePrice),
-          stock: qty,
-        }],
+        variants: [
+          {
+            sku,
+            brand: brand || undefined,
+            size: size || undefined,
+            color,
+            price: Number(salePrice),
+            stock: qty,
+          },
+        ],
       });
     } else {
       // Try to find a matching variant by attributes in existing sales item
-      const sIdx = (salesDoc.variants || []).findIndex(v =>
-        (v.brand || "") === (brand || "") &&
-        (v.size  || "") === (size  || "") &&
-        (v.color ?? null) === (color ?? null)
+      const sIdx = (salesDoc.variants || []).findIndex(
+        (v) =>
+          (v.brand || "") === (brand || "") &&
+          (v.size || "") === (size || "") &&
+          (v.color ?? null) === (color ?? null)
       );
 
       if (sIdx > -1) {
         // Variant exists: increment stock; update price if provided
-        salesDoc.variants[sIdx].stock = Number(salesDoc.variants[sIdx].stock || 0) + qty;
+        salesDoc.variants[sIdx].stock =
+          Number(salesDoc.variants[sIdx].stock || 0) + qty;
         if (salePrice != null) {
           salesDoc.variants[sIdx].price = Number(salePrice);
         }
       } else {
         // Need to add a new sales variant -> requires price
         if (salePrice == null) {
-          return res.status(400).json({ message: "salePrice is required to create a new sales variant" });
+          return res.status(400).json({
+            message: "salePrice is required to create a new sales variant",
+          });
         }
 
         // Mint a unique SKU within this sales branch for the new variant
         const base = `${String(name)}-${String(brand)}-${String(size)}`
-          .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^A-Za-z0-9-]+/g, "").toUpperCase();
+          .normalize("NFKD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^A-Za-z0-9-]+/g, "")
+          .toUpperCase();
 
-        const used = new Set((salesDoc.variants || []).map(v => v.sku));
+        const used = new Set((salesDoc.variants || []).map((v) => v.sku));
         let sku = base;
         let i = 2;
         while (used.has(sku)) {
@@ -945,7 +1213,7 @@ const rentalToSales = async (req, res) => {
         salesDoc.variants.push({
           sku,
           brand: brand || undefined,
-          size:  size  || undefined,
+          size: size || undefined,
           color,
           price: Number(salePrice),
           stock: qty,
@@ -963,14 +1231,20 @@ const rentalToSales = async (req, res) => {
     return res.status(200).json({
       message: `Transferred ${qty} ${name} from rental → sales`,
       data: {
-        rental: { id: rentalDoc._id, variant: rentalSku, newStock: rentalDoc.variants[rIdx].stock },
-        sales:  { id: salesDoc._id, branch: toBranchId },
+        rental: {
+          id: rentalDoc._id,
+          variant: rentalSku,
+          newStock: rentalDoc.variants[rIdx].stock,
+        },
+        sales: { id: salesDoc._id, branch: toBranchId },
       },
     });
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
-    return res.status(400).json({ message: "Transfer failed", error: err.message });
+    return res
+      .status(400)
+      .json({ message: "Transfer failed", error: err.message });
   }
 };
 
@@ -994,5 +1268,6 @@ module.exports = {
   insertCheckin,
   insertCheckout,
   calculateAttendance,
-  rentalToSales
+  salesToRental,
+  rentalToSales,
 };

@@ -17,7 +17,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+
 import { Skeleton } from "@/components/ui/skeleton";
+
+// import BillDetailDrawer from "./BillDetailDrawer"; // ✅ adjust path if needed
 
 // ---------- ONE-TIME FORMATTERS ----------
 const INR = new Intl.NumberFormat("en-IN", {
@@ -41,6 +45,7 @@ const keyOf = (q, page, limit) => `${q}::${page}::${limit}`;
 
 export default function OrderList() {
   const API = import.meta.env.VITE_API_BASE;
+  const navigate = useNavigate();
 
   // ---------- STATE ----------
   const [rows, setRows] = useState([]); // current page rows
@@ -53,11 +58,14 @@ export default function OrderList() {
   const [limit, setLimit] = useState(PAGE_SIZE_DEFAULT);
   const [total, setTotal] = useState(0);
 
-  // Whether server returns a reliable total; whether there’s another page
   const [hasPagination, setHasPagination] = useState(false);
   const [hasMore, setHasMore] = useState(false);
 
   const [isPending, startTransition] = useTransition();
+
+  // ✅ NEW: Drawer state
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedBillId, setSelectedBillId] = useState("");
 
   // Abort stale requests
   const abortRef = useRef(null);
@@ -71,7 +79,6 @@ export default function OrderList() {
     return () => clearTimeout(id);
   }, [q]);
 
-  // Reset to first page on query/limit changes
   useEffect(() => {
     setPage(1);
   }, [debouncedQ, limit]);
@@ -87,7 +94,6 @@ export default function OrderList() {
   ) => {
     const cacheKey = keyOf(qArg, pageArg, limitArg);
 
-    // Serve fast from cache if available
     if (useCache) {
       const cached = readFromCache(cacheKey);
       if (cached) {
@@ -107,7 +113,6 @@ export default function OrderList() {
       }
     }
 
-    // cancel any previous request
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -119,7 +124,6 @@ export default function OrderList() {
       const url = new URL(`${API}/bills`);
       url.searchParams.set("page", String(pageArg));
       url.searchParams.set("limit", String(limitArg));
-      // Add common alternates so whatever the backend expects will work
       url.searchParams.set("offset", String((pageArg - 1) * limitArg));
       url.searchParams.set("per_page", String(limitArg));
       if (qArg) url.searchParams.set("q", qArg);
@@ -152,11 +156,10 @@ export default function OrderList() {
           hasPagination: true,
         });
       } else {
-        // Server is already paging but didn't give total — use response as-is (no double-slice)
         setRows(list);
-        setTotal(list.length); // visible count only
+        setTotal(list.length);
         setHasPagination(false);
-        setHasMore(list.length === limitArg); // full page => likely next page exists
+        setHasMore(list.length === limitArg);
         writeToCache(cacheKey, {
           rows: list,
           total: list.length,
@@ -172,7 +175,6 @@ export default function OrderList() {
     }
   };
 
-  // Initial + whenever deps change
   useEffect(() => {
     fetchBillingOrders(
       { pageArg: page, limitArg: limit, qArg: debouncedQ },
@@ -216,7 +218,6 @@ export default function OrderList() {
               hasPagination: true,
             });
           } else {
-            // Cache as-is (no slicing)
             writeToCache(cacheKey, {
               rows: list,
               total: list.length,
@@ -224,7 +225,7 @@ export default function OrderList() {
             });
           }
         } catch {
-          /* ignore prefetch errors */
+          /* ignore */
         }
       }
     };
@@ -269,9 +270,24 @@ export default function OrderList() {
   const startIdx = (page - 1) * limit + 1;
   const endIdx = startIdx + rows.length - 1;
 
+  // ✅ NEW: row click handler
+  const openBill = (billId) => {
+    if (!billId) return;
+    setSelectedBillId(billId);
+    setDetailOpen(true);
+  };
+
   // ---------- RENDER ----------
   return (
     <div className="m-3 p-4 bg-white rounded-lg shadow-md">
+      {/* Drawer */}
+      {/* <BillDetailDrawer
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        billId={selectedBillId}
+        API={API}
+      /> */}
+
       {/* Top bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2 w-full">
@@ -303,17 +319,39 @@ export default function OrderList() {
           >
             {loading ? "Refreshing…" : "Refresh"}
           </Button>
-          {/* layout spacers (as in your code) */}
-          <Button variant="outline" className="invisible">Refresh</Button>
-          <Button variant="outline" className="invisible">Refresh</Button>
-          <Button variant="outline" className="invisible">Refresh</Button>
-          <Button variant="outline" className="invisible">Refresh</Button>
-          <Button variant="outline" className="invisible">Refresh</Button>
-          <Button variant="outline" className="invisible">Refresh</Button>
-          <Button variant="outline" className="invisible">Refresh</Button>
-          <Button variant="outline" className="invisible">Refresh</Button>
-          <Button variant="outline" className="invisible">Refresh</Button>
-          <Button variant="outline" className="invisible">Refresh</Button>
+
+          {/* (keeping your spacers) */}
+          <Button variant="outline" className="invisible">
+            Refresh
+          </Button>
+          <Button variant="outline" className="invisible">
+            Refresh
+          </Button>
+          <Button variant="outline" className="invisible">
+            Refresh
+          </Button>
+          <Button variant="outline" className="invisible">
+            Refresh
+          </Button>
+          <Button variant="outline" className="invisible">
+            Refresh
+          </Button>
+          <Button variant="outline" className="invisible">
+            Refresh
+          </Button>
+          <Button variant="outline" className="invisible">
+            Refresh
+          </Button>
+          <Button variant="outline" className="invisible">
+            Refresh
+          </Button>
+          <Button variant="outline" className="invisible">
+            Refresh
+          </Button>
+          <Button variant="outline" className="invisible">
+            Refresh
+          </Button>
+
           <div className="relative mx-1">
             <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">
               {q !== debouncedQ ? "…" : ""}
@@ -353,21 +391,42 @@ export default function OrderList() {
             {loading &&
               Array.from({ length: Math.min(limit, 10) }).map((_, i) => (
                 <TableRow key={`sk-${i}`}>
-                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                  <TableCell className="text-right"><Skeleton className="h-4 w-8 ml-auto" /></TableCell>
-                  <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
-                  <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
-                  <TableCell className="text-right"><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-28" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-40" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-28" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="h-4 w-8 ml-auto" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="h-4 w-16 ml-auto" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="h-4 w-16 ml-auto" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="h-4 w-20 ml-auto" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-32" />
+                  </TableCell>
                 </TableRow>
               ))}
 
             {!loading && formatted.length === 0 && !err && (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center text-gray-500">
+                <TableCell
+                  colSpan={9}
+                  className="h-24 text-center text-gray-500"
+                >
                   No orders found.
                 </TableCell>
               </TableRow>
@@ -375,12 +434,20 @@ export default function OrderList() {
 
             {!loading &&
               formatted.map((b) => (
-                <TableRow key={b.id}>
+                <TableRow
+                  key={b.id}
+                  onClick={() => navigate(`../billing/${b.id}`)}
+                  className="cursor-pointer hover:bg-muted/60"
+                >
                   <TableCell className="font-mono pe-5">{b.billNo}</TableCell>
                   <TableCell className="pe-5">{b.customer}</TableCell>
                   <TableCell className="pe-5">{b.phone}</TableCell>
-                  <TableCell className="text-right pe-5">{b.itemsCount}</TableCell>
-                  <TableCell className="text-right pe-5">{b.subtotal}</TableCell>
+                  <TableCell className="text-right pe-5">
+                    {b.itemsCount}
+                  </TableCell>
+                  <TableCell className="text-right pe-5">
+                    {b.subtotal}
+                  </TableCell>
                   <TableCell className="text-right pe-5">{b.tax}</TableCell>
                   <TableCell className="text-right font-semibold pe-5">
                     {b.totalAmount}
@@ -412,8 +479,7 @@ export default function OrderList() {
           ) : rows.length ? (
             <>
               Showing <span className="font-medium">{startIdx}</span>–
-              <span className="font-medium">{endIdx}</span>{" "}
-              (total unknown)
+              <span className="font-medium">{endIdx}</span> (total unknown)
             </>
           ) : (
             "—"

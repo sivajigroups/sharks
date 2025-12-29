@@ -56,8 +56,8 @@ export default function Customers() {
   const customerColumns = [
     { key: "name", label: t("customers.name") },
     { key: "phone", label: t("customers.phone") },
-    { key: "idProofType", label: t("customers.idProof") },
-    { key: "idProofNumber", label: t("customers.idProofNumber") },
+    { key: "address.street", label: t("customers.street") },
+    { key: "address.area", label: t("customers.area") },
   ];
 
   const fetchCustomers = async (query = "", pageNum = 1) => {
@@ -69,6 +69,7 @@ export default function Customers() {
       );
       if (!response.ok) throw new Error(t("customers.error"));
       const json = await response.json();
+      // console.log("Fetched customers:", json);
       setCustomers(json.data || []);
       setTotalPages(json.totalPages || 1);
       setError("");
@@ -138,7 +139,8 @@ export default function Customers() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
 
-      const newCustomerId = data.customer?._id || data.customer?.id || data.data?._id;
+      const newCustomerId =
+        data.customer?._id || data.customer?.id || data.data?._id;
 
       setOpen(false);
       // Refresh current page
@@ -152,15 +154,8 @@ export default function Customers() {
               size="sm"
               className="w-full bg-white text-black hover:bg-gray-100 border border-gray-200"
               onClick={() => {
-                const currentName = name;
-                const currentPhone = phone;
-
-                setEditingId(newCustomerId);
-                setName(currentName);
-                setPhone(currentPhone);
-                setFullDetailsOpen(true);
-                setOpen(true);
                 toast.dismiss();
+                navigate(`/layout/customers/${newCustomerId}`);
               }}
             >
               Add Details
@@ -171,9 +166,8 @@ export default function Customers() {
       } else {
         toast.success(t("customers.addCustomer") + " succeeded");
       }
-      
-      resetForm();
 
+      resetForm();
     } catch (err) {
       toast.error(err.message);
     }
@@ -203,7 +197,7 @@ export default function Customers() {
       );
       const result = await response.json();
       if (!response.ok) throw new Error(result.message);
-      
+
       toast.success("Customer details updated successfully");
       setOpen(false);
       resetForm();
@@ -258,10 +252,12 @@ export default function Customers() {
         />
         <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
-            <Button onClick={() => {
-              resetForm();
-              setOpen(true);
-            }}>
+            <Button
+              onClick={() => {
+                resetForm();
+                setOpen(true);
+              }}
+            >
               <Plus className="mr-2 h-4 w-4" />
               {t("customers.addCustomer")}
             </Button>
@@ -269,13 +265,12 @@ export default function Customers() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {editingId ? "Add Customer Details" : t("customers.addCustomerTitle")}
+                {editingId
+                  ? "Add Customer Details"
+                  : t("customers.addCustomerTitle")}
               </DialogTitle>
             </DialogHeader>
-            <form
-              className="space-y-3 mt-2"
-              onSubmit={handleFormSubmit}
-            >
+            <form className="space-y-3 mt-2" onSubmit={handleFormSubmit}>
               <Input
                 placeholder={t("customers.name")}
                 value={name}
@@ -285,10 +280,18 @@ export default function Customers() {
               <Input
                 placeholder={t("customers.phone")}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                inputMode="numeric"
+                pattern="\d{10}"
+                maxLength={10}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, "");
+                  if (value.length <= 10) {
+                    setPhone(value);
+                  }
+                }}
                 required
               />
-              
+
               {fullDetailsOpen && (
                 <>
                   <Input
@@ -348,7 +351,7 @@ export default function Customers() {
                   />
                 </>
               )}
-              
+
               <Button type="submit" className="mt-2 w-full">
                 {editingId ? "Update Details" : t("customers.save")}
               </Button>
@@ -356,7 +359,7 @@ export default function Customers() {
           </DialogContent>
         </Dialog>
       </div>
-      
+
       <div className="w-full flex flex-col gap-4 flex-1">
         <Card className="w-full">
           <CardContent className="p-4 overflow-auto w-full">
@@ -396,11 +399,13 @@ export default function Customers() {
                 <ReTable
                   data={filtered}
                   columns={customerColumns}
-                  onDelete={handleDelete}
-                  showEditButton={false}
+                  showViewButton={true}
+                  viewButtonText="View Details"
+                  disableActions={true}
+                  onView={(row) => navigate(`/layout/customers/${row._id}`)}
                   onRowClick={(row) => navigate(`/layout/customers/${row._id}`)}
                 />
-                
+
                 {/* Pagination Controls */}
                 <div className="flex items-center justify-end space-x-2 py-4">
                   <Button

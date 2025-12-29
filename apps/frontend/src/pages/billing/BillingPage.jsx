@@ -179,47 +179,44 @@ export default function BillingPage() {
       }
     }
   };
-const filtered = useMemo(() => {
-  let temp = inventories;
+  const filtered = useMemo(() => {
+    let temp = inventories;
 
-  // Normalize branch id from DB record
-  const getBranchId = (b) =>
-    typeof b === "object" ? b?._id : b;
+    // Normalize branch id from DB record
+    const getBranchId = (b) => (typeof b === "object" ? b?._id : b);
 
-  // STAFF → Only their branch
-  if (role.toLowerCase() === "staff" && userBranch?.id) {
-    temp = temp.filter(
-      (t) => String(getBranchId(t.branch)) === String(userBranch.id)
-    );
-  }
+    // STAFF → Only their branch
+    if (role.toLowerCase() === "staff" && (userBranch?.id || userBranch?._id)) {
+      const uBranchId = userBranch.id || userBranch._id;
+      temp = temp.filter(
+        (t) => String(getBranchId(t.branch)) === String(uBranchId)
+      );
+    }
 
-  // ADMIN → Filter by selected branch (except "All")
-  if (
-    role.toLowerCase() === "admin" &&
-    selectedBranch?.id &&
-    selectedBranch.id !== "All"
-  ) {
-    temp = temp.filter(
-      (t) => String(getBranchId(t.branch)) === String(selectedBranch.id)
-    );
-  }
+    // ADMIN → Filter by selected branch (except "All")
+    if (
+      role.toLowerCase() === "admin" &&
+      selectedBranch?.id &&
+      selectedBranch.id !== "All"
+    ) {
+      temp = temp.filter(
+        (t) => String(getBranchId(t.branch)) === String(selectedBranch.id)
+      );
+    }
 
-  // Search filter
-  const search = searchTerm.trim().toLowerCase();
+    // Search filter
+    const search = searchTerm.trim().toLowerCase();
 
-  return temp.filter((tool) => {
-    if (!search) return true;
+    return temp.filter((tool) => {
+      if (!search) return true;
 
-    return (
-      tool.name?.toLowerCase().includes(search) ||
-      tool.category?.toLowerCase().includes(search) ||
-      (tool.variants || []).some((v) =>
-        v.sku?.toLowerCase().includes(search)
-      )
-    );
-  });
-}, [inventories, searchTerm, role, userBranch, selectedBranch]);
-
+      return (
+        tool.name?.toLowerCase().includes(search) ||
+        tool.category?.toLowerCase().includes(search) ||
+        (tool.variants || []).some((v) => v.sku?.toLowerCase().includes(search))
+      );
+    });
+  }, [inventories, searchTerm, role, userBranch, selectedBranch]);
 
   const cartItems = mode === "sale" ? saleCart : rentalCart;
   const setCartItems = mode === "sale" ? setSaleCart : setRentalCart;

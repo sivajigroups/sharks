@@ -30,7 +30,8 @@ const signupUser = async (req, res) => {
       email,
       password: hashPassword,
       role,
-      branchId: role === "staff" ? branchId : null,
+      role,
+      branchIds: role === "staff" && branchId ? [branchId] : [], // Temporary compat if only branchId sent
       approved: role === "staff" || role === "admin" ? false : true,
     });
 
@@ -90,47 +91,68 @@ const signupUserByAdmin = async (req, res) => {
 };
 const createUserByAdmin = async (req, res) => {
   try {
-    const { name, email, role, password, branchId, phone, staffid } = req.body;
+    const {
+      name,
+      email,
+      role,
+      password,
+      branchIds, // ✅ ARRAY
+      phone,
+      staffid,
+    } = req.body;
 
-    if ((!name || !email || !password || !role, !phone, !staffid)) {
-      return res.status(400).json({ message: "All fields are required." });
+    // ✅ Proper validation (FIXED)
+    if (!name || !email || !password || !role || !phone) {
+      return res.status(400).json({
+        message: "Name, email, password, role and phone are required.",
+      });
     }
 
-    if (role === "staff" && !branchId) {
-      return res
-        .status(400)
-        .json({ message: "Branch ID is required for staff." });
+    // ✅ Staff-specific validation
+    if (role === "staff") {
+      if (!staffid) {
+        return res.status(400).json({ message: "Staff ID is required." });
+      }
+
+      if (!Array.isArray(branchIds) || branchIds.length === 0) {
+        return res.status(400).json({
+          message: "At least one branch is required for staff.",
+        });
+      }
     }
 
+    // ✅ Phone uniqueness
     const existingUser = await User.findOne({ phone });
     if (existingUser) {
-      return res.status(409).json({ message: "phone already registered." });
+      return res.status(409).json({ message: "Phone already registered." });
     }
 
+    // ✅ Hash password
     const hashPassword = await bcrypt.hash(password, 10);
 
+    // ✅ Create user
     const newUser = new User({
       name,
       email,
       password: hashPassword,
       role,
-      branchId: role === "staff" ? branchId : null,
-      approved: true,
       phone,
-      staffid,
+      staffid: role === "staff" ? staffid : null,
+      branchIds: role === "staff" ? branchIds : [],
+      approved: true,
     });
 
     await newUser.save();
 
-    res.json({
+    res.status(201).json({
       message: "User created successfully.",
       data: newUser,
     });
   } catch (err) {
-    res.status(400).send(err.message);
+    console.error("Create user error:", err);
+    res.status(500).json({ message: err.message });
   }
 };
-
 
 const deleteStaffByAdmin = async (req, res) => {
   try {
@@ -145,7 +167,6 @@ const deleteStaffByAdmin = async (req, res) => {
   }
 };
 
-
 const getStaffById = async (req, res) => {
   try {
     const staff = await User.findById(req.params.id).populate("branchId");
@@ -158,13 +179,12 @@ const getStaffById = async (req, res) => {
   }
 };
 
-
 const loginUser = async (req, res) => {
   try {
     const { phone, password } = req.body;
 
     // console.log("Login request body:", req.body);
-    const user = await User.findOne({ phone: phone }).populate("branchId");
+    const user = await User.findOne({ phone: phone }).populate("branchIds");
     if (!user || !user.approved) {
       throw new Error("User not found");
     }
@@ -179,8 +199,10 @@ const loginUser = async (req, res) => {
     const now = new Date();
     const midnight = new Date(now);
     midnight.setHours(24, 0, 0, 0);
-    const expiresInSeconds = Math.floor((midnight.getTime() - now.getTime()) / 1000);
-    
+    const expiresInSeconds = Math.floor(
+      (midnight.getTime() - now.getTime()) / 1000
+    );
+
     const timeUntilExpiry = expiresInSeconds * 1000; // convert to ms
 
     const token = await user.getJWT(expiresInSeconds);
@@ -192,16 +214,27 @@ const loginUser = async (req, res) => {
     });
 
     // 🔥 AUDIT LOGIN
+    const branchToLog =
+      user.branchIds && user.branchIds.length === 1
+        ? user.branchIds[0]._id
+        : null;
+
+    const availableBranches = (user.branchIds || []).map((b) => ({
+      id: b._id,
+      name: b.name,
+    }));
+
     await Audit.create({
       collectionName: "User",
       action: "login",
       modifiedBy: user._id,
-      branch: user.role === "staff" ? user.branchId : null,
+      branch: branchToLog,
       before: null,
       after: {
         userId: user._id,
         name: user.name,
         role: user.role,
+        availableBranches,
       },
       method: req.method,
       route: req.originalUrl,
@@ -212,36 +245,37 @@ const loginUser = async (req, res) => {
     res.json({
       message: "Login successful",
       token,
-       expiresIn: expiresInSeconds,   // ⭐ Add this
+      expiresIn: expiresInSeconds, // ⭐ Add this
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
         phone: user.phone,
         role: user.role,
-        branch: user.role === "staff" ? user.branchId : null,
+        role: user.role,
+        branches: user.role === "staff" ? user.branchIds : [],
       },
     });
-
   } catch (err) {
     res.status(400).send(err.message);
   }
 };
 
-
-
 const logoutUser = async (req, res) => {
   try {
     // Read token before clearing
     const token = req.cookies?.token;
+    const { branchId } = req.body; // ⭐ Read active branch from frontend
 
-    
     let userInfo = null;
 
     if (token) {
       try {
-        const decoded = jwt.verify(token, "7f8a9b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5a6b7c8d9");
-        userInfo = await User.findById(decoded.userId).populate("branchId");
+        const decoded = jwt.verify(
+          token,
+          "7f8a9b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5a6b7c8d9"
+        );
+        userInfo = await User.findById(decoded.userId).populate("branchIds");
         // console.log("Logout user info:", userInfo);
       } catch (err) {
         // token invalid or expired → skip user
@@ -251,11 +285,21 @@ const logoutUser = async (req, res) => {
 
     // 👉 AUDIT (only if user exists)
     if (userInfo) {
+      // Priority: 1. ID sent from frontend (active branch). 2. Single branch if applicable. 3. Null.
+      let branchToLog = branchId || null;
+      if (
+        !branchToLog &&
+        userInfo.branchIds &&
+        userInfo.branchIds.length === 1
+      ) {
+        branchToLog = userInfo.branchIds[0]._id;
+      }
+
       await Audit.create({
         collectionName: "User",
         action: "logout",
         modifiedBy: userInfo._id,
-        branch: userInfo.role === "staff" ? userInfo.branchId : null,
+        branch: branchToLog,
         before: null,
         after: {
           userId: userInfo._id,
@@ -277,7 +321,6 @@ const logoutUser = async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 };
-
 
 const approveUser = async (req, res) => {
   try {

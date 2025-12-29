@@ -8,7 +8,8 @@ const initialState = {
   isLoggedIn: false,
   loginDate: null,
   logintoken: null,
-  expiresAt: null, // ⭐ ADD THIS
+  expiresAt: null,
+  branches: [], // ⭐ Store all available branches
 };
 
 const authSlice = createSlice({
@@ -22,7 +23,13 @@ const authSlice = createSlice({
       state.isLoggedIn = true;
       state.loginDate = new Date().toDateString();
       state.logintoken = action.payload.token || null;
-      state.expiresAt = getNextMidnightTimestamp(); // ⭐ SET EXPIRY
+      state.branches = action.payload.branches || []; // Store branches
+      // If active branch passed, set it, else leave null (to be set by selection)
+      state.branch = action.payload.branch || null;
+      state.expiresAt = getNextMidnightTimestamp();
+    },
+    setActiveBranch: (state, action) => {
+      state.branch = action.payload; // Payload should be { id, name } or similar
     },
     logout: (state) => {
       state.user = null;
@@ -31,10 +38,11 @@ const authSlice = createSlice({
       state.isLoggedIn = false;
       state.loginDate = null;
       state.logintoken = null;
-      state.expiresAt = null; // ⭐ CLEAR EXPIRY
+      state.expiresAt = null;
+      state.branches = [];
     },
   },
 });
 
-export const { login, logout } = authSlice.actions;
+export const { login, logout, setActiveBranch } = authSlice.actions;
 export default authSlice.reducer;

@@ -5,8 +5,14 @@ import { Label } from "@/components/ui/label";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { login, logout } from "@/redux/authSlice";
+import { login, logout, setActiveBranch } from "@/redux/authSlice";
 import api from "@/api/axios"; // ✅ your axios instance with interceptor
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // ✅ GLOBAL TIMER (module scope)
 let logoutTimer = null;
@@ -16,6 +22,8 @@ export default function AuthForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [showBranchModal, setShowBranchModal] = useState(false);
+  const [pendingLoginData, setPendingLoginData] = useState(null);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -24,7 +32,7 @@ export default function AuthForm() {
   // ✅ If already logged in, redirect to dashboard
   useEffect(() => {
     if (logintoken !== null) {
-      navigate("/layout/dashboard");
+      navigate("/layout/ad");
     }
   }, [logintoken, navigate]);
 
@@ -34,6 +42,26 @@ export default function AuthForm() {
       if (logoutTimer) clearTimeout(logoutTimer);
     };
   }, []);
+
+  const finalizeLogin = (payload) => {
+    // 1) Save to Redux
+    dispatch(login(payload));
+
+    // 2) Clear previous logout timer
+    if (logoutTimer) clearTimeout(logoutTimer);
+
+    // 3) Auto-logout when token expires
+    const expirySeconds = payload.expiresIn || 100;
+
+    logoutTimer = setTimeout(() => {
+      console.log("⏳ Auto Logout → Token Expired");
+      dispatch(logout());
+      navigate("/login");
+    }, expirySeconds * 1000);
+
+    // 4) Go to dashboard
+    navigate("/layout/dashboard");
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -52,32 +80,28 @@ export default function AuthForm() {
       });
 
       const { phone: serverPhone, role, branch } = userData.user;
+      const branches = userData.user.branches || (branch ? [branch] : []);
 
-      // 1) Save to Redux
-      dispatch(
-        login({
-          phone: serverPhone,
-          role,
-          branch: branch ? { id: branch._id, name: branch.name } : null,
-          token: userData.token,
-          expiresIn: userData.expiresIn,
-        })
-      );
+      const basePayload = {
+        phone: serverPhone,
+        role,
+        branches,
+        token: userData.token,
+        expiresIn: userData.expiresIn,
+      };
 
-      // 2) Clear previous logout timer
-      if (logoutTimer) clearTimeout(logoutTimer);
+      // 4) Check for multiple branches
+      if (role === "staff" && branches.length > 1) {
+        setPendingLoginData(basePayload);
+        setShowBranchModal(true);
+        return; // Stop navigation, wait for selection
+      }
 
-      // 3) Auto-logout when token expires
-      const expirySeconds = userData.expiresIn || 100;
-
-      logoutTimer = setTimeout(() => {
-        console.log("⏳ Auto Logout → Token Expired");
-        dispatch(logout());
-        navigate("/login");
-      }, expirySeconds * 1000);
-
-      // 4) Go to dashboard
-      navigate("/layout/dashboard");
+      // Single branch or not staff
+      finalizeLogin({
+        ...basePayload,
+        branch: branches.length === 1 ? branches[0] : null,
+      });
     } catch (err) {
       console.error(err);
       setError(err.response?.data || err.message || "Login failed.");
@@ -138,6 +162,37 @@ export default function AuthForm() {
           </Button>
         </form>
       </div>
+
+      {/* Branch Selection Dialog */}
+      <Dialog open={showBranchModal} onOpenChange={setShowBranchModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Branch</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {(pendingLoginData?.branches || []).map((b) => (
+              <Button
+                key={b._id || b.id}
+                variant="outline"
+                className="justify-start text-left h-auto py-3 px-4"
+                onClick={() => {
+                  finalizeLogin({
+                    ...pendingLoginData,
+                    branch: b,
+                  });
+                }}
+              >
+                <div className="flex flex-col items-start bg-black text-white w-full rounded p-2">
+                  <span className="font-semibold">{b.name}</span>
+                  {b.location && (
+                    <span className="text-xs text-gray-400">{b.location}</span>
+                  )}
+                </div>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

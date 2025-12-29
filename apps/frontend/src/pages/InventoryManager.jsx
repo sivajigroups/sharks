@@ -27,10 +27,8 @@ import relativeTime from "dayjs/plugin/relativeTime";
 
 dayjs.extend(relativeTime);
 
-// Keep branch-to-branch transfer
-import TransferSkuDialog from "../components/TransferSkuDialog";
-// Simple sales ↔ rental transfer
-import TransferToOtherTypeDialog from "../components/TransferToOtherTypeDialog";
+// Unified transfer dialog (handles branch transfers, conversions, theft, scrap)
+import UnifiedTransferDialog from "../components/UnifiedTransferDialog";
 
 const categories = [
   "Power Tools",
@@ -62,11 +60,9 @@ export default function InventoryManager({ type = "sales", title }) {
     {
       key: "updatedAt",
       label: t("inventory.lastUpdated") || "Last Updated",
-      render: (row) =>
-        row.updatedAt
-          ? `${dayjs(row.updatedAt).format("DD/MM/YYYY")} (${dayjs(
-              row.updatedAt
-            ).fromNow()})`
+      render: (val) =>
+        val
+          ? `${dayjs(val).format("DD/MM/YYYY")} (${dayjs(val).fromNow()})`
           : "—",
     },
   ];
@@ -104,9 +100,8 @@ export default function InventoryManager({ type = "sales", title }) {
   const [openColorDialog, setOpenColorDialog] = useState(false);
   const [newAttr, setNewAttr] = useState("");
 
-  // Transfer dialogs
-  const [transferOpen, setTransferOpen] = useState(false); // branch↔branch
-  const [crossOpen, setCrossOpen] = useState(false); // sales↔rental
+  // Unified transfer dialog
+  const [unifiedTransferOpen, setUnifiedTransferOpen] = useState(false);
 
   // Branch id -> name
   const branchNameById = useMemo(() => {
@@ -134,11 +129,7 @@ export default function InventoryManager({ type = "sales", title }) {
       return {
         ...item,
         branch: branchLabel,
-        updatedAt: item.updatedAt
-          ? `${dayjs(item.updatedAt).format("DD/MM/YYYY")} (${dayjs(
-              item.updatedAt
-            ).fromNow()})`
-          : "—",
+        updatedAt: item.updatedAt,
         stockSummary:
           item.stockSummary ??
           (item.variants || []).reduce((sum, v) => sum + (v.stock || 0), 0),
@@ -418,6 +409,16 @@ export default function InventoryManager({ type = "sales", title }) {
           mergedMap[key] = { ...it, totalStock: 0, branches: new Set() };
         }
         const ref = mergedMap[key];
+
+        // Track latest update
+        if (it.updatedAt) {
+          const current = ref.updatedAt ? new Date(ref.updatedAt).getTime() : 0;
+          const incoming = new Date(it.updatedAt).getTime();
+          if (incoming > current) {
+            ref.updatedAt = it.updatedAt;
+          }
+        }
+
         const branchStock = (it.variants || []).reduce(
           (sum, v) => sum + (v.stock || 0),
           0
@@ -504,12 +505,9 @@ export default function InventoryManager({ type = "sales", title }) {
         />
 
         {/* Actions */}
-        <Button variant="outline" onClick={() => setTransferOpen(true)}>
+        <Button variant="outline" onClick={() => setUnifiedTransferOpen(true)}>
           <Repeat className="mr-2 h-4 w-4" />
-          {t("inventory.transferStock") || "Transfer Stock"}
-        </Button>
-        <Button variant="outline" onClick={() => setCrossOpen(true)}>
-          {isRental ? "Move to Sales" : "Move to Rental"}
+          {t("inventory.manageTransfers") || "Manage Transfers"}
         </Button>
         <Button onClick={() => openForm()}>
           <Plus className="mr-2" />
@@ -778,14 +776,20 @@ export default function InventoryManager({ type = "sales", title }) {
         </DialogContent>
       </Dialog>
 
-      {/* Branch-to-Branch Transfer (same model) */}
-      <TransferSkuDialog
-        open={transferOpen}
-        onOpenChange={setTransferOpen}
+      {/* Unified Transfer Dialog (branch transfers, conversions, theft, scrap) */}
+      <UnifiedTransferDialog
+        open={unifiedTransferOpen}
+        onOpenChange={(v) => {
+          setUnifiedTransferOpen(v);
+          if (!v) fetchInventories();
+        }}
         branches={branches}
         inventories={rawInventories}
+        type={type} // "rental" or "sales" (current page)
+        API_BASE={API_BASE}
         t={t}
         onSubmit={async (payload) => {
+          // Handle branch/theft/scrap transfers
           const res = await fetch(BRANCH_TRANSFER_API, {
             method: "POST",
             credentials: "include",
@@ -798,21 +802,11 @@ export default function InventoryManager({ type = "sales", title }) {
               json?.error || t("inventory.transferError") || "Transfer failed"
             );
           }
+          toast.success(
+            t("inventory.transferSuccess") || "Transfer completed successfully"
+          );
           await fetchInventories();
         }}
-      />
-
-      {/* Simple Sales ↔ Rental Transfer (same-branch) */}
-      <TransferToOtherTypeDialog
-        open={crossOpen}
-        onOpenChange={(v) => {
-          setCrossOpen(v);
-          if (!v) fetchInventories();
-        }}
-        type={type} // "rental" or "sales" (current page)
-        inventories={rawInventories} // items of current page
-        API_BASE={API_BASE}
-        t={t}
       />
 
       {/* Inventory Table */}

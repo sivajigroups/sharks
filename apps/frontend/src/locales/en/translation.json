@@ -76,6 +76,7 @@
     "deleteError": "Error deleting inventory",
 
     "transferStock": "Transfer Stock",
+    "manageTransfers": "Manage Transfers",
     "transfer": "Transfer",
     "item": "Item",
     "reason": "Reason",

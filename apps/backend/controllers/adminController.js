@@ -132,7 +132,7 @@ const updateBranch = async (req, res) => {
 
 const getAllStaff = async (req, res) => {
   try {
-    const staffs = await User.find({ role: "staff" }).populate("branchId");
+    const staffs = await User.find({ role: "staff" }).populate("branchIds");
     res.json(staffs);
   } catch (error) {
     res
@@ -141,10 +141,9 @@ const getAllStaff = async (req, res) => {
   }
 };
 
-
 const getStaffById = async (req, res) => {
   try {
-    const staff = await User.findById(req.params.id).populate("branchId");
+    const staff = await User.findById(req.params.id).populate("branchIds");
     if (!staff || staff.role !== "staff") {
       return res.status(404).json({ message: "Staff not found" });
     }
@@ -161,7 +160,7 @@ const updateStaff = async (req, res) => {
 
     const updated = await User.findByIdAndUpdate(staffId, updateFields, {
       new: true,
-    }).populate("branchId");
+    }).populate("branchIds");
 
     if (!updated) {
       return res.status(404).json({ message: "Staff not found" });
@@ -296,5 +295,5 @@ module.exports = {
   getPurchaseById,
   updatePurchase,
   deletePurchase,
-  getAuditLogs
+  getAuditLogs,
 };

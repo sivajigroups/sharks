@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
-const bcrypt=require("bcrypt");
-const jwt=require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -31,21 +31,23 @@ const userSchema = new mongoose.Schema(
       enum: ["admin", "staff"],
       required: true,
     },
-    branchId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Branch",
-      required: function () {
-        return this.role === "staff";
+    branchIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Branch",
       },
-    },
+    ],
+    // Keep branchId for backward compatibility momentarily or migration,
+    // but effectively we are moving to branchIds.
+    // For now we will just replace it as per plan to force migration/usage of new field.
+
     approved: {
       type: Boolean,
       default: false,
       required: true,
     },
-    staffid:
-    {
-      type:String,
+    staffid: {
+      type: String,
       required: function () {
         return this.role === "staff";
       },
@@ -56,7 +58,8 @@ const userSchema = new mongoose.Schema(
 userSchema.methods.getJWT = async function (expiresIn) {
   const user = this;
   const payload = { userId: user.id, email: user.email };
-  const secretKey = "7f8a9b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5a6b7c8d9";
+  const secretKey =
+    "7f8a9b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5a6b7c8d9";
 
   const token = jwt.sign(payload, secretKey, { expiresIn });
 

@@ -7,11 +7,12 @@ const customerSchema = new mongoose.Schema(
     phone: { type: String, required: true },
     alternatePhone: { type: String },
     address: {
-      street: String,
-      area: String,
-      city: String,
-      pincode: String,
+      street: { type: String, default: "--" },
+      area: { type: String, default: "--" },
+      city: { type: String, default: "--" },
+      pincode: { type: String, default: "--" },
     },
+
     idProofType: {
       type: String,
       enum: ["Aadhaar", "PAN", "Voter ID", "Driving License"],

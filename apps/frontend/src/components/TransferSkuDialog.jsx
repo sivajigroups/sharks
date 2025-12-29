@@ -38,6 +38,10 @@ export default function TransferSkuDialog({
   const [toBranch, setToBranch] = useState("");
   const [qty, setQty] = useState("");
   const [reason, setReason] = useState("");
+  const [showItemList, setShowItemList] = useState(false);
+  const [transferMode, setTransferMode] = useState("branch");
+// "branch" | "sales_to_rental" | "rental_to_sales"
+
 
   // NEW: transfer type
   const [type, setType] = useState("branch"); // 'branch' | 'theft' | 'scrap'
@@ -94,22 +98,24 @@ export default function TransferSkuDialog({
     return out.sort((a, b) =>
       `${a.brand}-${a.size}-${a.color}`
         .toLowerCase()
-        .localeCompare(
-          `${b.brand}-${b.size}-${b.color}`.toLowerCase()
-        )
+        .localeCompare(`${b.brand}-${b.size}-${b.color}`.toLowerCase())
     );
   }, [itemId, itemsById]);
 
   const brandsForItem = useMemo(() => {
     const uniq = new Set(variantsForItem.map((v) => v.brand));
-    return Array.from(uniq).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    return Array.from(uniq)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
   }, [variantsForItem]);
 
   const sizesForBrand = useMemo(() => {
     const uniq = new Set(
       variantsForItem.filter((v) => v.brand === brand).map((v) => v.size)
     );
-    return Array.from(uniq).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    return Array.from(uniq)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
   }, [variantsForItem, brand]);
 
   const colorsForBrandSize = useMemo(() => {
@@ -118,7 +124,9 @@ export default function TransferSkuDialog({
         .filter((v) => v.brand === brand && v.size === size)
         .map((v) => v.color)
     );
-    return Array.from(uniq).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    return Array.from(uniq)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
   }, [variantsForItem, brand, size]);
 
   // ✅ Exact-variant stock per branch
@@ -189,7 +197,16 @@ export default function TransferSkuDialog({
         if (alt) setToBranch(normId(alt._id));
       }
     }
-  }, [brand, size, color, itemId, branches, stockByBranch, availableFrom, type]);
+  }, [
+    brand,
+    size,
+    color,
+    itemId,
+    branches,
+    stockByBranch,
+    availableFrom,
+    type,
+  ]);
 
   // Submit
   const handleSubmit = async (e) => {
@@ -197,9 +214,7 @@ export default function TransferSkuDialog({
     const q = Number(qty);
 
     if (!itemId || !brand || !size || !color)
-      return toast.error(
-        t("inventory.selectItem") || "Select Item & Variant"
-      );
+      return toast.error(t("inventory.selectItem") || "Select Item & Variant");
     if (!fromBranch)
       return toast.error(t("inventory.selectBranch") || "Select Branch");
 
@@ -214,8 +229,7 @@ export default function TransferSkuDialog({
       // theft/scrap requires reason
       if (!reason?.trim())
         return toast.error(
-          t("inventory.reasonRequired") ||
-            "Reason is required for theft/scrap"
+          t("inventory.reasonRequired") || "Reason is required for theft/scrap"
         );
     }
 
@@ -281,71 +295,70 @@ export default function TransferSkuDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Transfer Type */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="md:col-span-1">
+            <div className="md:col-span-1 relative">
               <label className="block text-xs mb-1">
-                {t("inventory.transferType") || "Transfer Type"}
+                {t("inventory.search") || "Search & select item"}
               </label>
-              <select
-                className="w-full p-2 border rounded"
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                required
-              >
-                <option value="branch">
-                  {t("inventory.type.branch") || "Branch"}
-                </option>
-                <option value="theft">
-                  {t("inventory.type.theft") || "Theft"}
-                </option>
-                <option value="scrap">
-                  {t("inventory.type.scrap") || "Scrap"}
-                </option>
-              </select>
-              {!isBranch && (
-                <p className="text-[11px] opacity-70 mt-1">
-                  {t("inventory.typeInfo") ||
-                    "No destination branch; stock will be reduced from the source branch."}
-                </p>
+
+              <div className="relative">
+                <Input
+                  placeholder={t("inventory.search") || "Type item name"}
+                  value={
+                    itemId
+                      ? itemOptions.find((it) => it.id === itemId)?.name || ""
+                      : search
+                  }
+                  onFocus={() => setShowItemList(true)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setItemId("");
+                    setShowItemList(true);
+                  }}
+                />
+
+                {/* ❌ Clear button */}
+                {(itemId || search) && (
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black"
+                    onClick={() => {
+                      setSearch("");
+                      setItemId("");
+                      setShowItemList(false);
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* 🔽 Dropdown list */}
+              {showItemList && (
+                <div className="absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-md border bg-background shadow">
+                  {itemOptions.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      No items found
+                    </div>
+                  ) : (
+                    itemOptions.map((it) => (
+                      <div
+                        key={it.id}
+                        className="px-3 py-2 text-sm cursor-pointer hover:bg-muted"
+                        onClick={() => {
+                          setItemId(it.id);
+                          setSearch("");
+                          setShowItemList(false);
+                        }}
+                      >
+                        {it.name}
+                      </div>
+                    ))
+                  )}
+                </div>
               )}
             </div>
-
-            {/* Item search */}
-            <div className="md:col-span-1">
-              <label className="block text-xs mb-1">
-                {t("inventory.search") || "Search inventory..."}
-              </label>
-              <Input
-                placeholder={t("inventory.search") || "Search inventory..."}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-
-            {/* Item select */}
-            <div className="md:col-span-1">
-              <label className="block text-xs mb-1">
-                {t("inventory.selectItem") || "Select item"}
-              </label>
-              <select
-                className="w-full p-2 border rounded"
-                value={itemId}
-                onChange={(e) => setItemId(e.target.value)}
-                required
-              >
-                <option value="">
-                  {t("inventory.selectItem") || "Select item"}
-                </option>
-                {itemOptions.map((it) => (
-                  <option key={it.id} value={it.id}>
-                    {it.name}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
-
           {/* Variant pickers */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
@@ -438,9 +451,38 @@ export default function TransferSkuDialog({
               </div>
             </div>
           )}
+          <div className="md:col-span-1">
+            <label className="block text-xs mb-1">
+              {t("inventory.transferType") || "Transfer Type"}
+            </label>
+            <select
+              className="w-full p-2 border rounded"
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              required
+            >
+              <option value="branch">
+                {t("inventory.type.branch") || "Branch"}
+              </option>
+              <option value="theft">
+                {t("inventory.type.theft") || "Theft"}
+              </option>
+              <option value="scrap">
+                {t("inventory.type.scrap") || "Scrap"}
+              </option>
+            </select>
+            {!isBranch && (
+              <p className="text-[11px] opacity-70 mt-1">
+                {t("inventory.typeInfo") ||
+                  "No destination branch; stock will be reduced from the source branch."}
+              </p>
+            )}
+          </div>
 
           {/* Branches + qty */}
-          <div className={`grid grid-cols-1 ${isBranch ? "md:grid-cols-2" : "md:grid-cols-1"} gap-3`}>
+          <div
+            className={`grid grid-cols-1 ${isBranch ? "md:grid-cols-2" : "md:grid-cols-1"} gap-3`}
+          >
             <div>
               <label className="block text-xs mb-1">
                 {t("inventory.fromBranch") || "From Branch"}
@@ -462,7 +504,7 @@ export default function TransferSkuDialog({
                 ))}
               </select>
               <p className="text-[11px] opacity-70 mt-1">
-                {(t("inventory.available") || "Available")}: {availableFrom}
+                {t("inventory.available") || "Available"}: {availableFrom}
               </p>
             </div>
 

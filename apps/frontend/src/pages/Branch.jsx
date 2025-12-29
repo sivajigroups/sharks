@@ -16,6 +16,8 @@ import {
 import { toast } from "sonner";
 
 const Branch = () => {
+  const API_BASE = import.meta.env.VITE_API_BASE;
+
   const [branchData, setBranchData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -24,18 +26,22 @@ const Branch = () => {
   const [location, setLocation] = useState("");
   const [contactNumber, setContactNumber] = useState("");
 
+  // FETCH ALL BRANCHES
   const fetchBranch = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:4000/api/branch/all", {
+      const response = await fetch(`${API_BASE}/branch/all`, {
         method: "GET",
         credentials: "include",
       });
+
       if (!response.ok) throw new Error("Failed to fetch branches");
+
       const data = await response.json();
       setBranchData(data);
     } catch (error) {
-      console.error("Error fetching branches:", error);
+      console.error(error);
+      toast.error("Failed to load branches");
     } finally {
       setLoading(false);
     }
@@ -45,6 +51,7 @@ const Branch = () => {
     fetchBranch();
   }, []);
 
+  // ADD BRANCH
   const handleInsert = async () => {
     if (!name || !location || !contactNumber) {
       toast.error("Please fill all fields.");
@@ -52,7 +59,7 @@ const Branch = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:4000/api/branch/add", {
+      const res = await fetch(`${API_BASE}/branch/add`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -60,21 +67,22 @@ const Branch = () => {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to add branch");
+      if (!res.ok) throw new Error(data.message);
 
-      toast.success("Branch added successfully!");
+      toast.success("Branch added successfully");
       setName("");
       setLocation("");
       setContactNumber("");
       fetchBranch();
     } catch (error) {
-      toast.error("Error adding branch: " + error.message);
+      toast.error(error.message || "Error adding branch");
     }
   };
 
+  // EDIT BRANCH
   const handleEdit = async (id, updatedItem) => {
     try {
-      const res = await fetch(`http://localhost:4000/api/branch/${id}`, {
+      const res = await fetch(`${API_BASE}/branch/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -82,29 +90,30 @@ const Branch = () => {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to update branch");
+      if (!res.ok) throw new Error(data.message);
 
-      toast.success("Branch updated successfully!");
+      toast.success("Branch updated successfully");
       fetchBranch();
     } catch (error) {
-      toast.error("Error updating branch: " + error.message);
+      toast.error(error.message || "Error updating branch");
     }
   };
 
+  // DELETE BRANCH
   const handleDelete = async (id) => {
     try {
-      const res = await fetch(`http://localhost:4000/api/branch/${id}`, {
+      const res = await fetch(`${API_BASE}/branch/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to delete branch");
+      if (!res.ok) throw new Error(data.message);
 
-      toast.success("Branch deleted successfully!");
+      toast.success("Branch deleted successfully");
       fetchBranch();
     } catch (error) {
-      toast.error("Error deleting branch: " + error.message);
+      toast.error(error.message || "Error deleting branch");
     }
   };
 
@@ -129,61 +138,55 @@ const Branch = () => {
       {loading ? (
         <Card className="shadow-lg">
           <CardContent className="p-4">
-
-            {/* TABLE SKELETON */}
-            <div className="overflow-x-auto">
-              <table className="w-full table-fixed border">
-                <thead>
-                  <tr className="bg-black">
-                    {columns.map((col) => (
-                      <th key={col.key} className="p-3 text-left text-white text-sm">
-                        <Skeleton className="h-4 w-24" />
-                      </th>
-                    ))}
-                    <th className="p-3 text-right text-white text-sm">
-                      <Skeleton className="h-4 w-16 ml-auto" />
+            <table className="w-full table-fixed border">
+              <thead>
+                <tr className="bg-black">
+                  {columns.map((col) => (
+                    <th key={col.key} className="p-3">
+                      <Skeleton className="h-4 w-24" />
                     </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {Array.from({ length: 6 }).map((_, idx) => (
-                    <tr key={idx} className="border-b">
-                      {columns.map((col) => (
-                        <td key={col.key} className="p-3">
-                          <Skeleton className="h-4 w-full" />
-                        </td>
-                      ))}
-                      <td className="p-3 text-right">
-                        <Skeleton className="h-4 w-20 ml-auto" />
-                      </td>
-                    </tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
-
+                  <th className="p-3">
+                    <Skeleton className="h-4 w-16 ml-auto" />
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: 6 }).map((_, idx) => (
+                  <tr key={idx} className="border-b">
+                    {columns.map((col) => (
+                      <td key={col.key} className="p-3">
+                        <Skeleton className="h-4 w-full" />
+                      </td>
+                    ))}
+                    <td className="p-3">
+                      <Skeleton className="h-4 w-20 ml-auto" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </CardContent>
         </Card>
       ) : (
         <Card className="shadow-lg">
           <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+            <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4">
               <Input
-                type="text"
                 placeholder="Search branches..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="sm:w-1/2 w-full"
+                className="sm:w-1/2"
               />
 
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button className="flex items-center gap-2">
+                  <Button className="flex gap-2">
                     <Plus className="h-4 w-4" /> Add Branch
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[400px] max-h-[90vh] overflow-visible">
+
+                <DialogContent className="sm:max-w-[400px]">
                   <DialogHeader>
                     <DialogTitle>Add New Branch</DialogTitle>
                   </DialogHeader>
@@ -205,7 +208,7 @@ const Branch = () => {
                       onChange={(e) => setContactNumber(e.target.value)}
                     />
                     <DialogClose asChild>
-                      <Button className="mt-2 w-full" onClick={handleInsert}>
+                      <Button className="w-full" onClick={handleInsert}>
                         Save Branch
                       </Button>
                     </DialogClose>

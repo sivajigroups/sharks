@@ -26,10 +26,12 @@ const LayoutTopbar = () => {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_BASE}/logout`,
-        { method: "POST", credentials: "include" }
-      );
+      const res = await fetch(`${import.meta.env.VITE_API_BASE}/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ branchId: branch?.id || branch?._id || null }),
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("Logout failed");
       dispatch(logout());
       navigate("/");
@@ -55,7 +57,10 @@ const LayoutTopbar = () => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center space-x-2 p-2">
+                <Button
+                  variant="ghost"
+                  className="flex items-center space-x-2 p-2"
+                >
                   <Languages className="w-4 h-4" />
                   {/* <span>{i18n.language === "en" ? "தமிழ்" : "English"}</span> */}
                 </Button>

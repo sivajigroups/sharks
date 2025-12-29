@@ -41,7 +41,9 @@ export default function StaffPage() {
   const [phone, setPhone] = useState("");
   const [staffid, setStaffId] = useState("");
   const [password, setPassword] = useState("");
-  const [branchId, setBranchId] = useState("");
+  const [branchIds, setBranchIds] = useState([]);
+  const [selectedBranch, setSelectedBranch] = useState("");
+
   const role = "staff";
 
   // Columns config
@@ -50,7 +52,11 @@ export default function StaffPage() {
     { key: "email", label: "Email" },
     { key: "phone", label: "Phone" },
     { key: "role", label: "Role" },
-    { key: "branchId.name", label: "Branch" },
+    {
+      key: "branchIds",
+      label: "Branches",
+      render: (val) => val?.map((b) => b.name).join(", "),
+    },
     { key: "staffid", label: "Staff ID" },
   ];
 
@@ -104,8 +110,9 @@ export default function StaffPage() {
     setName("");
     setEmail("");
     setPhone("");
+    setPhone("");
     setPassword("");
-    setBranchId("");
+    setBranchIds([]);
     setStaffId(getNextStaffId());
     setOpen(true);
   };
@@ -117,15 +124,22 @@ export default function StaffPage() {
     setEmail(staff.email);
     setPhone(staff.phone);
     setPassword("");
-    setBranchId(staff.branchId?._id || staff.branchId);
+    // Handle both old single branchId and new branchIds array
+    const existingIds = staff.branchIds?.map((b) => b._id || b) || [];
+    if (existingIds.length === 0 && staff.branchId) {
+      existingIds.push(staff.branchId._id || staff.branchId);
+    }
+    setBranchIds(existingIds);
     setStaffId(staff.staffid);
     setOpen(true);
   };
 
   //–– Create / Update ––//
   const handleInsert = async () => {
-    if (!name || !email || !phone || !branchId) {
-      return toast.error("Please fill all required fields.");
+    if (!name || !email || !phone || branchIds.length === 0) {
+      return toast.error(
+        "Please fill all required fields and select at least one branch."
+      );
     }
     try {
       const res = await fetch(`${API}/create/staff`, {
@@ -139,7 +153,7 @@ export default function StaffPage() {
           staffid,
           password,
           role,
-          branchId,
+          branchIds,
         }),
       });
       const text = await res.text();
@@ -154,11 +168,13 @@ export default function StaffPage() {
   };
 
   const handleUpdate = async () => {
-    if (!name || !email || !phone || !branchId) {
-      return toast.error("Please fill all required fields.");
+    if (!name || !email || !phone || branchIds.length === 0) {
+      return toast.error(
+        "Please fill all required fields and select at least one branch."
+      );
     }
     try {
-      const payload = { name, email, phone, branchId };
+      const payload = { name, email, phone, branchIds };
       if (password) payload.password = password;
       const res = await fetch(`${API}/staff/details/${editStaffId}`, {
         method: "PUT",
@@ -216,7 +232,7 @@ export default function StaffPage() {
           <DialogTrigger asChild>
             <Button onClick={openAddDialog}>
               <Plus className="mr-2 h-4 w-4" />
-              {isEditMode ? "Edit Staff" : "Add Staff"}
+              Add Staff
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -225,11 +241,16 @@ export default function StaffPage() {
                 {isEditMode ? "Edit Staff" : "Add New Staff"}
               </DialogTitle>
             </DialogHeader>
-
             <form
               className="space-y-3 mt-2"
               onSubmit={(e) => {
                 e.preventDefault();
+
+                if (branchIds.length === 0) {
+                  alert("Please add at least one branch");
+                  return;
+                }
+
                 isEditMode ? handleUpdate() : handleInsert();
               }}
             >
@@ -239,12 +260,14 @@ export default function StaffPage() {
                 onChange={(e) => setName(e.target.value)}
                 required
               />
+
               <Input
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
+
               <Input
                 placeholder="Phone"
                 value={phone}
@@ -262,22 +285,69 @@ export default function StaffPage() {
                 {...(!isEditMode ? { required: true } : {})}
               />
 
-              <label className="block font-medium text-sm">Branch</label>
-              <select
-                className="w-full p-2 border rounded"
-                value={branchId}
-                onChange={(e) => setBranchId(e.target.value)}
-                required
-              >
-                <option value="">— Select a branch —</option>
-                {branches.map((b) => (
-                  <option key={b._id} value={b._id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+              {/* ================= BRANCH SELECT ================= */}
+              <label className="block font-medium text-sm mt-2">Branches</label>
 
-              <Button type="submit" className="mt-2 w-full">
+              <div className="flex gap-2">
+                <select
+                  className="flex-1 p-2 border rounded"
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                >
+                  <option value="">— Select a branch —</option>
+                  {branches
+                    .filter((b) => !branchIds.includes(b._id))
+                    .map((b) => (
+                      <option key={b._id} value={b._id}>
+                        {b.name}
+                      </option>
+                    ))}
+                </select>
+
+                <button
+                  type="button"
+                  className="px-3 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+                  disabled={!selectedBranch}
+                  onClick={() => {
+                    setBranchIds((prev) => [...prev, selectedBranch]);
+                    setSelectedBranch("");
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+
+              {/* ================= SELECTED BRANCH CHIPS ================= */}
+              {branchIds.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {branchIds.map((id) => {
+                    const branch = branches.find((b) => b._id === id);
+                    return (
+                      <span
+                        key={id}
+                        className="flex items-center gap-2 px-3 py-1 bg-gray-100 border rounded-full text-sm"
+                      >
+                        {branch?.name || "Unknown"}
+
+                        <button
+                          type="button"
+                          className="text-red-500 font-bold"
+                          onClick={() =>
+                            setBranchIds((prev) =>
+                              prev.filter((bId) => bId !== id)
+                            )
+                          }
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ================= SUBMIT ================= */}
+              <Button type="submit" className="mt-3 w-full">
                 {isEditMode ? "Update Staff" : "Save Staff"}
               </Button>
             </form>

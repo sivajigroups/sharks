@@ -128,6 +128,18 @@ const ReTable = ({
                 onClick={onRowClick ? () => onRowClick(item) : undefined}
               >
                 {columns.map((col) => {
+                  // ✅ Check for custom render function first
+                  if (col.render) {
+                    const rawValue = col.key.includes(".")
+                      ? col.key.split(".").reduce((o, k) => o?.[k], item)
+                      : item[col.key];
+                    return (
+                      <TableCell key={col.key} className="text-left">
+                        {col.render(rawValue, item)}
+                      </TableCell>
+                    );
+                  }
+
                   let value = col.key.includes(".")
                     ? col.key.split(".").reduce((o, k) => o?.[k], item)
                     : item[col.key];
@@ -232,19 +244,17 @@ const ReTable = ({
             <DialogTitle>Edit Record</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 mt-2">
-            {renderEditForm ? (
-              renderEditForm(formState, handleChange)
-            ) : (
-              columns.map((col) => (
-                <Input
-                  key={col.key}
-                  name={col.key}
-                  placeholder={col.label}
-                  value={formState[col.key] || ""}
-                  onChange={handleChange}
-                />
-              ))
-            )}
+            {renderEditForm
+              ? renderEditForm(formState, handleChange)
+              : columns.map((col) => (
+                  <Input
+                    key={col.key}
+                    name={col.key}
+                    placeholder={col.label}
+                    value={formState[col.key] || ""}
+                    onChange={handleChange}
+                  />
+                ))}
             <DialogClose asChild>
               <Button className="mt-2 w-full" onClick={handleEditSubmit}>
                 Save Changes

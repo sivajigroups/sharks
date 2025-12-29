@@ -93,9 +93,7 @@ export default function AuditLogs() {
           : true
       )
       .filter((l) =>
-        filterAction === "ALL"
-          ? true
-          : (l.action || "UNKNOWN") === filterAction
+        filterAction === "ALL" ? true : (l.action || "UNKNOWN") === filterAction
       )
       .filter((l) =>
         filterUser === "ALL" ? true : l.modifiedBy?._id === filterUser
@@ -114,7 +112,6 @@ export default function AuditLogs() {
 
   return (
     <div className="flex flex-col flex-1 p-4 gap-4 overflow-auto w-full">
-
       {/* TITLE */}
       <h1 className="text-2xl font-bold flex items-center justify-between">
         Audit Logs
@@ -125,7 +122,6 @@ export default function AuditLogs() {
 
       {/* FILTER BAR */}
       <div className="flex flex-wrap gap-3 items-center bg-white p-4 border rounded-md shadow-sm">
-
         {/* Search */}
         <input
           className="p-2 border rounded min-w-[240px]"
@@ -191,7 +187,7 @@ export default function AuditLogs() {
       {/* TABLE */}
       <Card className="w-full">
         <CardContent className="p-0 overflow-auto">
-          <Table className=" w-full table-fixed">
+          <Table className="w-full table-fixed">
             <TableHeader>
               <TableRow className="bg-black">
                 <TableHead className="text-white">Action</TableHead>
@@ -226,7 +222,12 @@ export default function AuditLogs() {
                     </TableCell>
                     <TableCell>{log.collectionName || "N/A"}</TableCell>
                     <TableCell>{log.modifiedBy?.name || "System"}</TableCell>
-                    <TableCell>{log.branch?.name || "Admin"}</TableCell>
+                    <TableCell>
+                      {log.branch?.name ||
+                        (log.after?.availableBranches?.length > 0
+                          ? "Multi-Branch"
+                          : "-")}
+                    </TableCell>
                     <TableCell>
                       {dayjs(log.timestamp).format("DD/MM/YYYY hh:mm A")}
                     </TableCell>
@@ -281,13 +282,25 @@ export default function AuditLogs() {
 
           {viewData && (
             <div className="space-y-5 p-2">
-
               {/* Details */}
               <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded">
-                <p><b>Action:</b> {(viewData.action || "UNKNOWN").toUpperCase()}</p>
-                <p><b>User:</b> {viewData.modifiedBy?.name || "System"}</p>
-                <p><b>Branch:</b> {viewData.branch?.name || "-"}</p>
-                <p><b>Time:</b> {dayjs(viewData.timestamp).format("DD/MM/YYYY hh:mm A")}</p>
+                <p>
+                  <b>Action:</b> {(viewData.action || "UNKNOWN").toUpperCase()}
+                </p>
+                <p>
+                  <b>User:</b> {viewData.modifiedBy?.name || "System"}
+                </p>
+                <p>
+                  <b>Branch:</b>{" "}
+                  {viewData.branch?.name ||
+                    (viewData.after?.availableBranches?.length > 0
+                      ? "Multi-Branch"
+                      : "-")}
+                </p>
+                <p>
+                  <b>Time:</b>{" "}
+                  {dayjs(viewData.timestamp).format("DD/MM/YYYY hh:mm A")}
+                </p>
               </div>
 
               {/* Before */}
@@ -305,7 +318,6 @@ export default function AuditLogs() {
                   {JSON.stringify(viewData.after, null, 2)}
                 </pre>
               </div>
-
             </div>
           )}
         </DialogContent>

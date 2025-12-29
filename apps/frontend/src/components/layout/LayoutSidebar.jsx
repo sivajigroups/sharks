@@ -147,7 +147,7 @@ const LayoutSidebar = () => {
   const staffSidebar = [
     ...baseSidebar,
     {
-      label: t("sidebar.billing"),
+      label: t("sidebar.Billing"),
       items: [
         {
           title: t("sidebar.sales"),
