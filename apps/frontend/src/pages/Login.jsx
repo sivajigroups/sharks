@@ -71,6 +71,10 @@ export default function AuthForm() {
       setError("Please enter phone and password.");
       return;
     }
+    if (phone.length !== 10) {
+      setError("Phone number must be exactly 10 digits.");
+      return;
+    }
 
     try {
       // ✅ use axios instance instead of fetch
@@ -128,9 +132,13 @@ export default function AuthForm() {
             <div className="relative">
               <Mail className="absolute left-3 top-3 text-gray-500" size={20} />
               <Input
-                type="number"
+                type="text"
+                placeholder="Phone Number"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  if (val.length <= 10) setPhone(val);
+                }}
                 className="pl-10 bg-white text-black"
                 required
               />

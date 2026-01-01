@@ -122,6 +122,15 @@ export default function GenericCartPanel({
       return;
     }
 
+    if (phone.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits");
+      return;
+    }
+    if (alternatePhone && alternatePhone.length !== 10) {
+      toast.error("Alternate phone must be exactly 10 digits");
+      return;
+    }
+
     try {
       setSaving(true);
       const body = {
@@ -181,8 +190,8 @@ export default function GenericCartPanel({
           // ⭐ FIX — SEND ONLY BRANCH ID, NOT OBJECT
           branch:
             role.toLowerCase() === "admin"
-              ? selectedBranch?.id // <-- only ID
-              : userBranch?.id, // <-- only ID
+              ? selectedBranch?.id || selectedBranch?._id
+              : userBranch?.id || userBranch?._id,
 
           items: cartItems.map((i) => ({
             inventoryId: i.inventoryId,
@@ -526,13 +535,19 @@ export default function GenericCartPanel({
               <Input
                 placeholder="Phone"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  if (val.length <= 10) setPhone(val);
+                }}
                 required
               />
               <Input
                 placeholder="Alt Phone"
                 value={alternatePhone}
-                onChange={(e) => setAlternatePhone(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  if (val.length <= 10) setAlternatePhone(val);
+                }}
               />
               <Input
                 placeholder="Street"

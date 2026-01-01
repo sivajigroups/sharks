@@ -7,14 +7,13 @@ import { toast } from "sonner";
 import { Mail, Phone, User, Building2, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-
 const StaffDetail = () => {
   const { id } = useParams();
   const [staff, setStaff] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [branches, setBranches] = useState([]);
   const [form, setForm] = useState({});
-const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const fetchStaff = async () => {
     const res = await fetch(`http://localhost:4000/api/staff/details/${id}`, {
@@ -49,6 +48,14 @@ const navigate = useNavigate();
   };
 
   const handleUpdate = async () => {
+    if (!form.phone?.trim()) {
+      toast.error("Phone is required");
+      return;
+    }
+    if (form.phone.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits");
+      return;
+    }
     const res = await fetch(`http://localhost:4000/api/staff/details/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -62,7 +69,7 @@ const navigate = useNavigate();
     }
 
     toast.success("Staff updated");
-     navigate("/layout/users");
+    navigate("/layout/users");
     setEditMode(false);
     fetchStaff();
   };
@@ -77,7 +84,6 @@ const navigate = useNavigate();
 
       <Card className="shadow-lg">
         <CardContent className="p-6 space-y-5">
-
           {/* Name */}
           <div className="flex items-center gap-3">
             <User className="text-gray-600" />
@@ -111,7 +117,11 @@ const navigate = useNavigate();
               name="phone"
               disabled={!editMode}
               value={form.phone}
-              onChange={handleChange}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, "");
+                if (val.length <= 10)
+                  handleChange({ target: { name: "phone", value: val } });
+              }}
               className="bg-white"
               placeholder="Phone"
             />
@@ -160,9 +170,13 @@ const navigate = useNavigate();
               </>
             ) : (
               <>
-              <Button variant="primary" onClick={() => navigate("/layout/users")}>
-                Back to Staff List</Button>
-              <Button onClick={() => setEditMode(true)}>Edit</Button>
+                <Button
+                  variant="primary"
+                  onClick={() => navigate("/layout/users")}
+                >
+                  Back to Staff List
+                </Button>
+                <Button onClick={() => setEditMode(true)}>Edit</Button>
               </>
             )}
           </div>

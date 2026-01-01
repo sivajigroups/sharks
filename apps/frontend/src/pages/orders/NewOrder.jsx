@@ -33,9 +33,12 @@ const NewOrder = () => {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const res = await fetch("http://localhost:4000/api/customer/details", {
-          credentials: "include",
-        });
+        const res = await fetch(
+          `${import.meta.env.VITE_API_BASE}/customer/details`,
+          {
+            credentials: "include",
+          }
+        );
         const data = await res.json();
         setCustomers(Array.isArray(data) ? data : []);
       } catch (err) {
@@ -49,14 +52,17 @@ const NewOrder = () => {
   useEffect(() => {
     const fetchTools = async () => {
       try {
-        const res = await fetch("http://localhost:4000/api/inventory", {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE}/inventory`, {
           credentials: "include",
         });
         const data = await res.json();
         if (Array.isArray(data.data)) {
           setTools(data.data);
         } else {
-          console.error("Inventory API did not return a valid data array:", data);
+          console.error(
+            "Inventory API did not return a valid data array:",
+            data
+          );
           setTools([]);
         }
       } catch (err) {
@@ -77,6 +83,10 @@ const NewOrder = () => {
       toast.error("Please select both customer and tool.");
       return;
     }
+    if (!quantity || quantity <= 0) {
+      toast.error("Quantity must be a positive number.");
+      return;
+    }
 
     const body = {
       customerId,
@@ -94,7 +104,7 @@ const NewOrder = () => {
       },
     };
 
-    const res = await fetch("http://localhost:4000/api/transaction", {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE}/transaction`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -185,11 +195,19 @@ const NewOrder = () => {
         {/* Rental Period */}
         <div className="col-span-1">
           <Label className="py-3">Start Date</Label>
-          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
         </div>
         <div className="col-span-1">
           <Label className="py-3">End Date</Label>
-          <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
         </div>
 
         {/* Quantity */}

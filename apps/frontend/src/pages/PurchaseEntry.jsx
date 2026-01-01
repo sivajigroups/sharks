@@ -37,10 +37,14 @@ export default function PurchaseManager() {
   // header fields
   const [vendorName, setVendorName] = useState("");
   const [billNumber, setBillNumber] = useState("");
-  const [billDate, setBillDate] = useState(new Date().toISOString().slice(0, 10));
+  const [billDate, setBillDate] = useState(
+    new Date().toISOString().slice(0, 10)
+  );
 
   // items
-  const [items, setItems] = useState([{ description: "", quantity: 1, rate: 0 }]);
+  const [items, setItems] = useState([
+    { description: "", quantity: 1, rate: 0 },
+  ]);
 
   // focus last item row
   const lastRowRef = useRef(null);
@@ -54,10 +58,15 @@ export default function PurchaseManager() {
   const fetchPurchases = async () => {
     try {
       setLoadingList(true);
-      const res = await fetch(`${API_BASE}/purchases`, { credentials: "include" });
+      const res = await fetch(`${API_BASE}/purchases`, {
+        credentials: "include",
+      });
       const json = await res.json();
-      if (json?.success === false) throw new Error(json.error || "Failed to fetch");
-      setPurchases(Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : []);
+      if (json?.success === false)
+        throw new Error(json.error || "Failed to fetch");
+      setPurchases(
+        Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : []
+      );
     } catch (e) {
       console.error(e);
       toast.error("Failed to load purchases");
@@ -118,7 +127,11 @@ export default function PurchaseManager() {
     setItems((prev) =>
       prev.map((r, idx) =>
         idx === i
-          ? { ...r, [key]: key === "description" ? val : Math.max(0, Number(val || 0)) }
+          ? {
+              ...r,
+              [key]:
+                key === "description" ? val : Math.max(0, Number(val || 0)),
+            }
           : r
       )
     );
@@ -126,7 +139,9 @@ export default function PurchaseManager() {
   const addRow = () =>
     setItems((prev) => [...prev, { description: "", quantity: 1, rate: 0 }]);
   const removeRow = (i) =>
-    setItems((prev) => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev));
+    setItems((prev) =>
+      prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev
+    );
 
   const rows = useMemo(
     () =>
@@ -152,6 +167,12 @@ export default function PurchaseManager() {
       }));
     if (!filteredItems.length) return toast.error("Add at least one item");
 
+    for (const item of filteredItems) {
+      if (item.quantity <= 0)
+        return toast.error("Quantity must be greater than 0");
+      if (item.rate < 0) return toast.error("Rate cannot be negative");
+    }
+
     const payload = {
       vendorName: vendorName.trim(),
       billNumber: billNumber.trim(),
@@ -161,7 +182,9 @@ export default function PurchaseManager() {
 
     try {
       setSaving(true);
-      const url = editId ? `${API_BASE}/purchases/${editId}` : `${API_BASE}/purchases`;
+      const url = editId
+        ? `${API_BASE}/purchases/${editId}`
+        : `${API_BASE}/purchases`;
       const method = editId ? "PUT" : "POST";
       const res = await fetch(url, {
         method,
@@ -188,7 +211,10 @@ export default function PurchaseManager() {
   // ───────────────────────────────
   const nfAmt = useMemo(
     () =>
-      new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      new Intl.NumberFormat("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
     []
   );
 
@@ -200,7 +226,9 @@ export default function PurchaseManager() {
         sl: i + 1,
         vendorName: p.vendorName || "—",
         billNumber: p.billNumber || "—",
-        billDateTxt: p.billDate ? new Date(p.billDate).toLocaleDateString("en-IN") : "—",
+        billDateTxt: p.billDate
+          ? new Date(p.billDate).toLocaleDateString("en-IN")
+          : "—",
         qtyTxt: Number(p.totalQuantity || 0),
         subTotalTxt: `₹ ${nfAmt.format(Number(p.subTotal || 0))}`,
         // originals for edit:
@@ -267,9 +295,7 @@ export default function PurchaseManager() {
         const qty = Number(r.quantity || 0);
         // r.amountTxt is formatted; recompute from rateTxt? better to compute again:
         const amount = (() => {
-          const rate = Number(
-            (r.rateTxt || "").replace(/[^\d.-]/g, "")
-          );
+          const rate = Number((r.rateTxt || "").replace(/[^\d.-]/g, ""));
           return qty * (isNaN(rate) ? 0 : rate);
         })();
         return { qty: acc.qty + qty, amount: acc.amount + amount };
@@ -296,7 +322,11 @@ export default function PurchaseManager() {
           className="min-w-[300px] flex-1"
         />
         <div className="flex gap-2">
-          <Button onClick={fetchPurchases} variant="outline" disabled={loadingList}>
+          <Button
+            onClick={fetchPurchases}
+            variant="outline"
+            disabled={loadingList}
+          >
             {loadingList ? "Refreshing..." : "Refresh"}
           </Button>
           <Button onClick={openAdd}>
@@ -329,7 +359,7 @@ export default function PurchaseManager() {
                 data={itemSearchRows}
                 columns={itemColumns}
                 showViewButton={false}
-                showEditButton={false}   // no edit/delete in search mode
+                showEditButton={false} // no edit/delete in search mode
               />
             </>
           ) : (
@@ -348,7 +378,9 @@ export default function PurchaseManager() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="!w-[90vw] !max-w-[1100px] max-h-[95vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editId ? "Edit Purchase Bill" : "Add Purchase Bill"}</DialogTitle>
+            <DialogTitle>
+              {editId ? "Edit Purchase Bill" : "Add Purchase Bill"}
+            </DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSave} className="space-y-4 mt-2">
@@ -380,9 +412,15 @@ export default function PurchaseManager() {
                     <TableHead className="text-white">#</TableHead>
                     <TableHead className="text-white">Item Name</TableHead>
                     <TableHead className="text-white text-right">Qty</TableHead>
-                    <TableHead className="text-white text-right">Rate (₹)</TableHead>
-                    <TableHead className="text-white text-right">Amount (₹)</TableHead>
-                    <TableHead className="text-white text-center">Action</TableHead>
+                    <TableHead className="text-white text-right">
+                      Rate (₹)
+                    </TableHead>
+                    <TableHead className="text-white text-right">
+                      Amount (₹)
+                    </TableHead>
+                    <TableHead className="text-white text-center">
+                      Action
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -463,7 +501,9 @@ export default function PurchaseManager() {
                     <TableCell colSpan={2}>Totals</TableCell>
                     <TableCell className="text-right">{totalQty}</TableCell>
                     <TableCell className="text-right">Sub Total</TableCell>
-                    <TableCell className="text-right">₹ {subTotal.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">
+                      ₹ {subTotal.toFixed(2)}
+                    </TableCell>
                     <TableCell />
                   </TableRow>
                 </TableBody>

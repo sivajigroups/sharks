@@ -282,14 +282,24 @@ export default function InventoryManager({ type = "sales", title }) {
 
     for (let idx = 0; idx < variants.length; idx++) {
       const v = variants[idx];
-      if (v.price === "" || Number.isNaN(Number(v.price))) {
+      if (
+        v.price === "" ||
+        Number.isNaN(Number(v.price)) ||
+        Number(v.price) < 0
+      ) {
         toast.error(
-          `Variant ${idx + 1}: ${isRental ? "Price per Day" : "Price"} is required`
+          `Variant ${idx + 1}: ${isRental ? "Price per Day" : "Price"} must be a valid positive number`
         );
         return;
       }
-      if (v.stock === "" || Number.isNaN(Number(v.stock))) {
-        toast.error(`Variant ${idx + 1}: Stock is required`);
+      if (
+        v.stock === "" ||
+        Number.isNaN(Number(v.stock)) ||
+        Number(v.stock) < 0
+      ) {
+        toast.error(
+          `Variant ${idx + 1}: Stock must be a valid non-negative number`
+        );
         return;
       }
     }

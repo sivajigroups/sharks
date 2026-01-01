@@ -122,6 +122,10 @@ export default function Customers() {
       toast.error(t("customers.error"));
       return;
     }
+    if (phone.length !== 10) {
+      toast.error("Phone number must be 10 digits.");
+      return;
+    }
     const body = {
       name,
       phone,
@@ -175,6 +179,15 @@ export default function Customers() {
 
   const handleUpdate = async () => {
     if (!editingId) return;
+
+    if (phone.length !== 10) {
+      toast.error("Phone number must be 10 digits.");
+      return;
+    }
+    if (alternatePhone && alternatePhone.length !== 10) {
+      toast.error("Alternate Phone number must be 10 digits.");
+      return;
+    }
 
     const body = {
       name,
@@ -297,7 +310,10 @@ export default function Customers() {
                   <Input
                     placeholder={t("customers.altPhone")}
                     value={alternatePhone}
-                    onChange={(e) => setAlternatePhone(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "");
+                      if (val.length <= 10) setAlternatePhone(val);
+                    }}
                   />
 
                   <Input

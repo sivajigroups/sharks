@@ -73,7 +73,7 @@ const ReTable = ({
     setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleEditSubmit = () => {
+  const handleEditSubmit = async () => {
     const updatedData = { ...formState };
     if (
       "street" in formState &&
@@ -92,7 +92,13 @@ const ReTable = ({
       delete updatedData.city;
       delete updatedData.pincode;
     }
-    onEdit(editItem._id, updatedData);
+    const result = onEdit(editItem._id, updatedData);
+    if (result instanceof Promise) {
+      const explicitValues = await result;
+      if (explicitValues === false) return;
+    } else if (result === false) {
+      return;
+    }
     setIsEditOpen(false);
   };
 
@@ -120,11 +126,7 @@ const ReTable = ({
             data.map((item, idx) => (
               <TableRow
                 key={idx}
-                className={
-                  onRowClick
-                    ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                    : "last:border-none"
-                }
+                className={onRowClick ? "cursor-pointer" : "last:border-none"}
                 onClick={onRowClick ? () => onRowClick(item) : undefined}
               >
                 {columns.map((col) => {

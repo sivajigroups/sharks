@@ -141,6 +141,9 @@ export default function StaffPage() {
         "Please fill all required fields and select at least one branch."
       );
     }
+    if (phone.length !== 10) {
+      return toast.error("Phone number must be exactly 10 digits.");
+    }
     try {
       const res = await fetch(`${API}/create/staff`, {
         method: "POST",
@@ -172,6 +175,9 @@ export default function StaffPage() {
       return toast.error(
         "Please fill all required fields and select at least one branch."
       );
+    }
+    if (phone.length !== 10) {
+      return toast.error("Phone number must be exactly 10 digits.");
     }
     try {
       const payload = { name, email, phone, branchIds };
@@ -271,7 +277,10 @@ export default function StaffPage() {
               <Input
                 placeholder="Phone"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  if (val.length <= 10) setPhone(val);
+                }}
                 required
               />
 

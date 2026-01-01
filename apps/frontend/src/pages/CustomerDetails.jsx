@@ -210,16 +210,25 @@ export default function CustomerDetails() {
 
   const validate = (f) => {
     const e = {};
-    if (!f.name?.trim()) e.name = "Name is required";
-    if (!f.phone?.trim()) e.phone = "Phone is required";
-    if (f.phone && !/^[0-9+\-\s]{7,15}$/.test(f.phone))
-      e.phone = "Invalid phone";
-    if (f.alternatePhone && !/^[0-9+\-\s]{7,15}$/.test(f.alternatePhone))
-      e.alternatePhone = "Invalid phone";
-    // if (f.address?.pincode && !/^\d{6}$/.test(f.address.pincode))
-    //   e["address.pincode"] = "Pincode must be 6 digits";
-    if (f.idProofType && !f.idProofNumber)
+
+    if (!f.name?.trim()) {
+      e.name = "Name is required";
+    }
+
+    if (!f.phone?.trim()) {
+      e.phone = "Phone is required";
+    } else if (!/^\d{10}$/.test(f.phone)) {
+      e.phone = "Phone number must be exactly 10 digits";
+    }
+
+    if (f.alternatePhone && !/^\d{10}$/.test(f.alternatePhone)) {
+      e.alternatePhone = "Alternate phone must be exactly 10 digits";
+    }
+
+    if (f.idProofType && !f.idProofNumber) {
       e.idProofNumber = "ID number required for selected ID proof";
+    }
+
     return e;
   };
 
@@ -473,7 +482,10 @@ export default function CustomerDetails() {
                   label="Phone"
                   editing={isEditing}
                   value={form?.phone ?? ""}
-                  onChange={(v) => onChange("phone", v)}
+                  onChange={(v) => {
+                    const val = v.replace(/\D/g, "");
+                    if (val.length <= 10) onChange("phone", val);
+                  }}
                   error={errors?.phone}
                   className="min-w-[240px] flex-1"
                 />
@@ -482,7 +494,10 @@ export default function CustomerDetails() {
                   label="Alt Phone"
                   editing={isEditing}
                   value={form?.alternatePhone ?? ""}
-                  onChange={(v) => onChange("alternatePhone", v)}
+                  onChange={(v) => {
+                    const val = v.replace(/\D/g, "");
+                    if (val.length <= 10) onChange("alternatePhone", val);
+                  }}
                   error={errors?.alternatePhone}
                   placeholder="Optional"
                   className="min-w-[240px] flex-1"

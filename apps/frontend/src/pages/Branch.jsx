@@ -53,8 +53,12 @@ const Branch = () => {
 
   // ADD BRANCH
   const handleInsert = async () => {
-    if (!name || !location || !contactNumber) {
-      toast.error("Please fill all fields.");
+    if (!name.trim() || !location.trim() || !contactNumber) {
+      toast.error("Please fill all fields correctly.");
+      return;
+    }
+    if (contactNumber.length !== 10) {
+      toast.error("Contact number must be 10 digits.");
       return;
     }
 
@@ -81,6 +85,19 @@ const Branch = () => {
 
   // EDIT BRANCH
   const handleEdit = async (id, updatedItem) => {
+    if (
+      !updatedItem.name?.trim() ||
+      !updatedItem.location?.trim() ||
+      !updatedItem.contactNumber
+    ) {
+      toast.error("All fields are required.");
+      return false;
+    }
+    if (updatedItem.contactNumber.length !== 10) {
+      toast.error("Contact number must be 10 digits.");
+      return false;
+    }
+
     try {
       const res = await fetch(`${API_BASE}/branch/${id}`, {
         method: "PUT",
@@ -96,6 +113,7 @@ const Branch = () => {
       fetchBranch();
     } catch (error) {
       toast.error(error.message || "Error updating branch");
+      return false;
     }
   };
 
@@ -205,7 +223,10 @@ const Branch = () => {
                     <Input
                       placeholder="Contact Number"
                       value={contactNumber}
-                      onChange={(e) => setContactNumber(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "");
+                        if (val.length <= 10) setContactNumber(val);
+                      }}
                     />
                     <DialogClose asChild>
                       <Button className="w-full" onClick={handleInsert}>
@@ -223,6 +244,37 @@ const Branch = () => {
               onEdit={handleEdit}
               onDelete={handleDelete}
               showViewButton={false}
+              renderEditForm={(formState, handleChange) => (
+                <>
+                  <Input
+                    name="name"
+                    placeholder="Branch Name"
+                    value={formState.name || ""}
+                    onChange={handleChange}
+                    className="mb-2"
+                  />
+                  <Input
+                    name="location"
+                    placeholder="Location"
+                    value={formState.location || ""}
+                    onChange={handleChange}
+                    className="mb-2"
+                  />
+                  <Input
+                    name="contactNumber"
+                    placeholder="Contact Number"
+                    value={formState.contactNumber || ""}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "");
+                      if (val.length <= 10) {
+                        e.target.value = val;
+                        handleChange(e);
+                      }
+                    }}
+                    className="mb-2"
+                  />
+                </>
+              )}
             />
           </CardContent>
         </Card>
