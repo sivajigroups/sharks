@@ -21,6 +21,19 @@ const addingBranch = async (req, res) => {
       });
     }
 
+    const existingBranch = await Branch.findOne({
+      $or: [{ name }, { contactNumber }],
+    });
+
+    if (existingBranch) {
+      return res.status(400).json({
+        message:
+          existingBranch.name === name
+            ? "Branch with this name already exists"
+            : "Branch with this contact number already exists",
+      });
+    }
+
     const branchDetails = new Branch({
       name,
       location,
@@ -92,6 +105,7 @@ const deleteBranch = async (req, res) => {
       .json({ message: "Error deleting branch", error: err.message });
   }
 };
+
 const updateBranch = async (req, res) => {
   try {
     const user = req.user;
