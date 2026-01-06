@@ -357,6 +357,12 @@ export default function UnifiedTransferDialog({
       // toast handled in parent usually, but safe to do here? parent does it.
     }
   };
+  const submitLabel = useMemo(() => {
+    if (transferScope === "theft") return "Confirm Theft";
+    if (transferScope === "scrap") return "Confirm Scrap";
+    if (transferScope === "convert") return "Convert Inventory";
+    return "Confirm Transfer";
+  }, [transferScope]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -640,9 +646,7 @@ export default function UnifiedTransferDialog({
                 !itemId || !brand || !fromBranch || Number(qty) > availableFrom
               }
             >
-              {transferScope === "convert"
-                ? "Convert Inventory"
-                : "Confirm Transfer"}
+              {submitLabel}
             </Button>
           </div>
         </form>

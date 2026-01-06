@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogTrigger,
@@ -160,69 +161,98 @@ const ReTable = ({
                   );
                 })}
 
-                <TableCell className="text-right space-x-2">
-                  {showViewButton && onView && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onView(item); // ✅ delegate to caller
-                      }}
-                    >
-                      {viewButtonText}
-                    </Button>
-                  )}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    {showViewButton && onView && (
+                      <Button
+                        size="sm"
+                        className="
+                          h-8 w-8 p-0 
+                          bg-black 
+                          text-white 
+                          hover:bg-zinc-800 
+                          shadow-sm hover:shadow-md 
+                          transition-all duration-200
+                          rounded-md
+                        "
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onView(item); // ✅ delegate to caller
+                        }}
+                        title={viewButtonText}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
 
-                  {/* ✅ Hide Edit/Delete when disableActions = true */}
-                  {!disableActions && (
-                    <>
-                      {showEditButton && (
-                        <Button
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditButtonClick(item);
-                          }}
-                        >
-                          Edit
-                        </Button>
-                      )}
-
-                      <Dialog>
-                        <DialogTrigger asChild>
+                    {/* ✅ Hide Edit/Delete when disableActions = true */}
+                    {!disableActions && (
+                      <>
+                        {showEditButton && (
                           <Button
-                            variant="destructive"
                             size="sm"
-                            onClick={(e) => e.stopPropagation()}
+                            className="
+                              h-8 w-8 p-0 
+                              bg-yellow-400 
+                              text-black 
+                              hover:bg-yellow-500 
+                              shadow-sm hover:shadow-md 
+                              transition-all duration-200
+                              rounded-md
+                            "
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditButtonClick(item);
+                            }}
+                            title="Edit"
                           >
-                            Delete
+                            <Pencil className="h-4 w-4" />
                           </Button>
-                        </DialogTrigger>
-                        <DialogContent onClick={(e) => e.stopPropagation()}>
-                          <DialogHeader>
-                            <DialogTitle>Are you sure?</DialogTitle>
-                          </DialogHeader>
-                          <div className="flex justify-end gap-2">
-                            <DialogClose asChild>
-                              <Button variant="outline">Cancel</Button>
-                            </DialogClose>
+                        )}
+
+                        <Dialog>
+                          <DialogTrigger asChild>
                             <Button
-                              className="w-[30%]"
                               size="sm"
-                              variant="destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDelete(item._id);
-                              }}
+                              className="
+                                h-8 w-8 p-0 
+                                bg-red-600 
+                                text-white 
+                                hover:bg-red-700 
+                                shadow-sm hover:shadow-md 
+                                transition-all duration-200
+                                rounded-md
+                              "
+                              onClick={(e) => e.stopPropagation()}
+                              title="Delete"
                             >
-                              Confirm
+                              <Trash2 className="h-4 w-4" />
                             </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </>
-                  )}
+                          </DialogTrigger>
+                          <DialogContent onClick={(e) => e.stopPropagation()}>
+                            <DialogHeader>
+                              <DialogTitle>Are you sure?</DialogTitle>
+                            </DialogHeader>
+                            <div className="flex justify-end gap-2">
+                              <DialogClose asChild>
+                                <Button variant="outline">Cancel</Button>
+                              </DialogClose>
+                              <Button
+                                className="w-[30%] bg-red-600 hover:bg-red-700 text-white"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDelete(item._id);
+                                }}
+                              >
+                                Confirm
+                              </Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))
