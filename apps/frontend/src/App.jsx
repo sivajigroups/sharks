@@ -13,7 +13,7 @@ import Attendance from "./pages/Attendance";
 import InventoryManager from "./pages/InventoryManager";
 import OrderManager from "./pages/orders/orderManager";
 import StaffDetail from "./pages/StaffDetail";
-import NewOrder from "./pages/orders/NewOrder";
+import CreateRentalOrder from "./pages/orders/CreateRentalOrder";
 import "./i18n";
 import SalesBilling from "./pages/billing/BillingPage";
 import CustomerDetails from "./pages/CustomerDetails";
@@ -55,7 +55,7 @@ function App() {
             <Route path="purchaseOrder" element={<PurchaseEntry />} />
             {/* <Route path="rentalOrder" element={<RentalOrdersPage />} /> */}
             {/* <Route path="rentalOrder" element={<OrderManager type="rental" title="Rental Orders" newOrderPath="/layout/rentalOrder/new" />} /> */}
-            <Route path="rentalOrder/new" element={<NewOrder />} />
+            <Route path="rentalOrder/new" element={<CreateRentalOrder />} />
             <Route path="barcodes" element={<PrintBarcodes />} />
             <Route
               path="salesOrder"

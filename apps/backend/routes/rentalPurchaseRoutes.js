@@ -4,6 +4,7 @@ const {
   markAsPaid,
   getAllRentals,
   markAsReturned,
+  getRentalInventory,
 } = require("../controllers/rentalPurchaseController");
 const { userAuth } = require("../middleware/auth");
 
@@ -13,5 +14,6 @@ rentalPurchaseRouter.post("/transaction", userAuth, createRentalPurchase);
 rentalPurchaseRouter.put("/transaction/:id", userAuth, markAsPaid);
 rentalPurchaseRouter.get("/transaction", userAuth, getAllRentals);
 rentalPurchaseRouter.patch("/transaction/:id/return", userAuth, markAsReturned);
+rentalPurchaseRouter.get("/rental-inventory", userAuth, getRentalInventory);
 
 module.exports = rentalPurchaseRouter;

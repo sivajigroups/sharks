@@ -244,6 +244,7 @@ export default function GenericCartPanel({
               days: item.days,
               quantity: item.qty,
               amount: item.pricePerDay * item.days * item.qty,
+              sku: item.sku || item.variant?.sku, // Robust SKU access
               deposit: Number(rentalDeposit || 0),
             }),
           });
