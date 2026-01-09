@@ -2,8 +2,16 @@ const mongoose = require("mongoose");
 
 const rentalTransactionSchema = new mongoose.Schema(
   {
-    customer: { type: mongoose.Schema.Types.ObjectId, ref: "Customer", required: true },
-    inventory: { type: mongoose.Schema.Types.ObjectId, ref: "Inventory", required: true },
+    customer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Customer",
+      required: true,
+    },
+    inventory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RentalInventory",
+      required: true,
+    },
     itemName: { type: String, required: true },
     rentDate: { type: Date, required: true },
     returnDate: { type: Date },

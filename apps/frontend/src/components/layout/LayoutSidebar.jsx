@@ -34,7 +34,7 @@ const LayoutSidebar = () => {
   };
 
   // 💡 Environment check
-  const RENTAL_ENABLED = import.meta.env.VITE_RENTAL_TRUE === "true";
+  const RENTAL_ENABLED = true; // import.meta.env.VITE_RENTAL_TRUE === "true";
 
   // ── Common / Base Sidebar
   const baseSidebar = [
@@ -119,10 +119,9 @@ const LayoutSidebar = () => {
           url: "/layout/users",
         },
         {
-          title:t("sidebar.BarcodeGenerator"),
+          title: t("sidebar.BarcodeGenerator"),
           icon: ShoppingCart,
           url: "/layout/barcodes",
-
         },
         {
           title: t("sidebar.Branches"),
@@ -134,11 +133,11 @@ const LayoutSidebar = () => {
           icon: ShoppingCart,
           url: "/layout/purchaseOrder",
         },
-         {
-        title: "Audit Logs",
-        icon: History,
-        url: "/layout/audit-logs",
-      },
+        {
+          title: "Audit Logs",
+          icon: History,
+          url: "/layout/audit-logs",
+        },
       ],
     },
   ];

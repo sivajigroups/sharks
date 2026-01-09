@@ -210,7 +210,7 @@ const updateRental = async (req, res) => {
       }
       const sku =
         v.sku?.toString().trim() ||
-        makeRentalSku({ name, brand: v.brand, size: v.size, color: v.color });
+        makeBaseSku({ name, brand: v.brand, size: v.size, color: v.color });
 
       return {
         sku,
@@ -357,7 +357,7 @@ const insertRental = async (req, res) => {
       }
       const sku =
         v.sku?.toString().trim() ||
-        makeRentalSku({ name, brand: v.brand, size: v.size, color: v.color });
+        makeBaseSku({ name, brand: v.brand, size: v.size, color: v.color });
       return {
         sku,
         brand: v.brand ?? "",
@@ -900,11 +900,9 @@ const salesToRental = async (req, res) => {
 
     const sVar = salesDoc.variants[sIdx];
     if (Number(sVar.stock) < qty) {
-      return res
-        .status(400)
-        .json({
-          message: `[E4] Not enough stock in sales. Have: ${sVar.stock}, Need: ${qty}`,
-        });
+      return res.status(400).json({
+        message: `[E4] Not enough stock in sales. Have: ${sVar.stock}, Need: ${qty}`,
+      });
     }
 
     // 2) Decrement sales stock
@@ -921,11 +919,9 @@ const salesToRental = async (req, res) => {
     if (!rentalDoc) {
       // creating a new Rental item requires a pricePerDay on the variant
       if (pricePerDay == null) {
-        return res
-          .status(400)
-          .json({
-            message: "[E5] pricePerDay is required for new rental item",
-          });
+        return res.status(400).json({
+          message: "[E5] pricePerDay is required for new rental item",
+        });
       }
 
       // Mint a SKU unique within this branch for the new document
@@ -987,11 +983,9 @@ const salesToRental = async (req, res) => {
       } else {
         // Need to add a new rental variant -> requires pricePerDay
         if (pricePerDay == null) {
-          return res
-            .status(400)
-            .json({
-              message: "[E5] pricePerDay is required for new rental variant",
-            });
+          return res.status(400).json({
+            message: "[E5] pricePerDay is required for new rental variant",
+          });
         }
 
         // Mint a unique SKU within this rental branch for the new variant

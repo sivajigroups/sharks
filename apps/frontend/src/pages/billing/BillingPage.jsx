@@ -33,7 +33,7 @@ function computeToDateISO(fromDateStr, days) {
 
 export default function BillingPage() {
   const API_BASE = import.meta.env.VITE_API_BASE;
-  const RENTAL_ENABLED = import.meta.env.VITE_RENTAL_TRUE === "true";
+  const RENTAL_ENABLED = true; // import.meta.env.VITE_RENTAL_TRUE === "true";
 
   const role = useSelector((state) => state.auth.role) || "";
   const userBranch = useSelector((state) => state.auth.branch) || null;
@@ -57,7 +57,7 @@ export default function BillingPage() {
         const url =
           mode === "sale"
             ? `${API_BASE}/inventory/sales`
-            : `${API_BASE}/inventory/rental`;
+            : `${API_BASE}/rental-inventory`; // Updated to use the new API we created
         const res = await fetch(url, { credentials: "include" });
         const json = await res.json();
         const items = json?.data || json || [];
@@ -154,6 +154,7 @@ export default function BillingPage() {
         toDate,
         days,
         pricePerDay: variant.rentPrice ?? variant.pricePerDay ?? 0,
+        sku: variant.sku, // Store SKU
       },
     ]);
     setOpenRentDlg(false);
