@@ -33,7 +33,7 @@ function computeToDateISO(fromDateStr, days) {
 
 export default function BillingPage() {
   const API_BASE = import.meta.env.VITE_API_BASE;
-  const RENTAL_ENABLED = true; // import.meta.env.VITE_RENTAL_TRUE === "true";
+  const RENTAL_ENABLED = import.meta.env.VITE_RENTAL_TRUE === "true"; // import.meta.env.VITE_RENTAL_TRUE === "true";
 
   const role = useSelector((state) => state.auth.role) || "";
   const userBranch = useSelector((state) => state.auth.branch) || null;
