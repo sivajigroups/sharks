@@ -13,7 +13,7 @@ import Attendance from "./pages/Attendance";
 import InventoryManager from "./pages/InventoryManager";
 import OrderManager from "./pages/orders/orderManager";
 import StaffDetail from "./pages/StaffDetail";
-import CreateRentalOrder from "./pages/orders/CreateRentalOrder";
+
 import "./i18n";
 import SalesBilling from "./pages/billing/BillingPage";
 import CustomerDetails from "./pages/CustomerDetails";
@@ -29,6 +29,7 @@ import AuditLogs from "./pages/admin/AuditLogs";
 import AuthInitializer from "./components/auth/AuthInitializer";
 import ProtectedRoute from "./components/auth/ProtectedRoute"; // ⭐ IMPORT
 import BillDetailPage from "./pages/billing/BillDetailPage";
+import RentalOrderDetail from "./pages/billing/RentalOrderDetail"; // ✅ Import
 import Ad from "./pages/Ad";
 
 function App() {
@@ -55,7 +56,8 @@ function App() {
             <Route path="purchaseOrder" element={<PurchaseEntry />} />
             {/* <Route path="rentalOrder" element={<RentalOrdersPage />} /> */}
             {/* <Route path="rentalOrder" element={<OrderManager type="rental" title="Rental Orders" newOrderPath="/layout/rentalOrder/new" />} /> */}
-            <Route path="rentalOrder/new" element={<CreateRentalOrder />} />
+            <Route path="rentalOrder/:id" element={<RentalOrderDetail />} />{" "}
+            {/* ✅ New Route */}
             <Route path="barcodes" element={<PrintBarcodes />} />
             <Route
               path="salesOrder"
@@ -103,7 +105,6 @@ function App() {
             <Route path="customers/:id" element={<CustomerDetails />} />
             <Route path="customers/inactive" element={<InactiveCustomers />} />
             <Route path="billing/:billId" element={<BillDetailPage />} />
-
             <Route path="audit-logs" element={<AuditLogs />} />
           </Route>
         </Route>{" "}

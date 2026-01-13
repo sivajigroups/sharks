@@ -1,4 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import { useNavigate } from "react-router-dom"; // ✅ Import useNavigate
+
 import {
   Table,
   TableHeader,
@@ -13,7 +21,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // ---------- CONSTANTS ----------
-const INR = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" });
+const INR = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+});
 const DT = new Intl.DateTimeFormat("en-IN", {
   year: "numeric",
   month: "short",
@@ -39,6 +50,8 @@ const keyOf = (q, page, limit, status) => `${q}::${page}::${limit}::${status}`;
 // ---------- COMPONENT ----------
 export default function RentalOrderList() {
   const API = import.meta.env.VITE_API_BASE;
+  const navigate = useNavigate(); // ✅ Hook
+
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -65,7 +78,12 @@ export default function RentalOrderList() {
   const writeCache = (k, val) => cacheRef.current.set(k, val);
 
   const fetchOrders = async (
-    { pageArg = page, limitArg = limit, qArg = debouncedQ, statusArg = status } = {},
+    {
+      pageArg = page,
+      limitArg = limit,
+      qArg = debouncedQ,
+      statusArg = status,
+    } = {},
     useCache = true
   ) => {
     const cacheKey = keyOf(qArg, pageArg, limitArg, statusArg);
@@ -108,7 +126,11 @@ export default function RentalOrderList() {
       setTotal(totalCount);
       setHasMore(pageArg * limitArg < totalCount);
 
-      writeCache(cacheKey, { rows: list, total: totalCount, hasMore: pageArg * limitArg < totalCount });
+      writeCache(cacheKey, {
+        rows: list,
+        total: totalCount,
+        hasMore: pageArg * limitArg < totalCount,
+      });
     } catch (e) {
       if (e.name !== "AbortError") setErr(e.message);
     } finally {
@@ -117,7 +139,12 @@ export default function RentalOrderList() {
   };
 
   useEffect(() => {
-    fetchOrders({ pageArg: page, limitArg: limit, qArg: debouncedQ, statusArg: status });
+    fetchOrders({
+      pageArg: page,
+      limitArg: limit,
+      qArg: debouncedQ,
+      statusArg: status,
+    });
   }, [page, limit, debouncedQ, status]);
 
   // ---------- UI ACTIONS ----------
@@ -128,7 +155,10 @@ export default function RentalOrderList() {
 
   const markReturned = async (id) => {
     if (!confirm("Mark this as Returned?")) return;
-    await fetch(`${API}/transaction/${id}/return`, { method: "PATCH", credentials: "include" });
+    await fetch(`${API}/transaction/${id}/return`, {
+      method: "PATCH",
+      credentials: "include",
+    });
     refresh();
   };
 
@@ -137,15 +167,13 @@ export default function RentalOrderList() {
     () =>
       rows.map((r) => ({
         id: r._id,
+        billNo: r.billNo || "—",
         customer: r.customer?.name ?? "-",
         phone: r.customer?.phone ?? "-",
-        inventory: r.inventory?.name ?? "-",
-        qty: r.quantity ?? 0,
-        days: r.days ?? 0,
-        total: INR.format(r.amount ?? 0),
+        itemsCount: r.items?.length ?? 0,
+        total: INR.format(r.totalAmount ?? 0),
         status: r.status ?? "-",
-        from: r.rentDate ? DT.format(new Date(r.rentDate)) : "-",
-        to: r.returnDate ? DT.format(new Date(r.returnDate)) : "-",
+        date: r.createdAt ? DT.format(new Date(r.createdAt)) : "-",
       })),
     [rows]
   );
@@ -159,10 +187,12 @@ export default function RentalOrderList() {
       <div className="p-6">
         {/* Title + Filters */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">Rental Orders</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
+            Rental Orders
+          </h1>
           <div className="flex flex-wrap items-center gap-2">
             <Input
-              placeholder="Search customer / phone / item"
+              placeholder="Search Bill No / Customer"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               className="w-64"
@@ -189,7 +219,11 @@ export default function RentalOrderList() {
                 </option>
               ))}
             </select>
-            <Button variant="outline" onClick={refresh} disabled={loading || isPending}>
+            <Button
+              variant="outline"
+              onClick={refresh}
+              disabled={loading || isPending}
+            >
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
@@ -198,26 +232,26 @@ export default function RentalOrderList() {
         {/* Table */}
         <div className="bg-white rounded-lg shadow-sm border">
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="table-fixed">
               <TableHeader className="sticky top-0 bg-gray-100 z-10">
                 <TableRow>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Inventory</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Days</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>From</TableHead>
-                  <TableHead>To</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="w-[140px]">Bill No</TableHead>
+                  <TableHead className="w-[150px]">Date</TableHead>
+                  <TableHead className="w-[180px]">Customer</TableHead>
+                  <TableHead className="w-[120px]">Phone</TableHead>
+                  <TableHead className="text-right w-[80px]">Items</TableHead>
+                  <TableHead className="text-right w-[120px]">
+                    Total Amount
+                  </TableHead>
+                  <TableHead className="w-[100px]">Status</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading &&
                   Array.from({ length: 6 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array(10)
+                      {Array(8)
                         .fill(0)
                         .map((_, j) => (
                           <TableCell key={j}>
@@ -228,7 +262,10 @@ export default function RentalOrderList() {
                   ))}
                 {!loading && formatted.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-10 text-gray-500">
+                    <TableCell
+                      colSpan={8}
+                      className="text-center py-10 text-gray-500"
+                    >
                       No rental records found.
                     </TableCell>
                   </TableRow>
@@ -236,25 +273,45 @@ export default function RentalOrderList() {
                 {!loading &&
                   formatted.map((r) => {
                     const meta = STATUS_META[r.status] || STATUS_META.Pending;
+
+                    const renderDate = (str) => {
+                      if (!str || str === "-") return "-";
+                      const parts = str.split(",");
+                      if (parts.length < 2) return str;
+                      return (
+                        <div className="flex flex-col text-xs">
+                          <span className="font-medium">{parts[0]}</span>
+                          <span className="text-gray-500">{parts[1]}</span>
+                        </div>
+                      );
+                    };
+
                     return (
-                      <TableRow key={r.id}>
-                        <TableCell>{r.customer}</TableCell>
+                      <TableRow
+                        key={r.id}
+                        onClick={() => navigate(`../rentalOrder/${r.id}`)}
+                        className="cursor-pointer hover:bg-gray-100"
+                      >
+                        <TableCell className="font-medium">
+                          {r.billNo}
+                        </TableCell>
+                        <TableCell>{renderDate(r.date)}</TableCell>
+                        <TableCell className="font-medium">
+                          {r.customer}
+                        </TableCell>
                         <TableCell>{r.phone}</TableCell>
-                        <TableCell>{r.inventory}</TableCell>
-                        <TableCell className="text-right">{r.qty}</TableCell>
-                        <TableCell className="text-right">{r.days}</TableCell>
-                        <TableCell className="text-right font-medium">{r.total}</TableCell>
+                        <TableCell className="text-right">
+                          {r.itemsCount}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {r.total}
+                        </TableCell>
                         <TableCell>
                           <Badge className={meta.cls}>{meta.label}</Badge>
                         </TableCell>
-                        <TableCell>{r.from}</TableCell>
-                        <TableCell>{r.to}</TableCell>
                         <TableCell>
-                          {r.status === "Pending" && (
-                            <Button size="sm" variant="destructive" onClick={() => markReturned(r.id)}>
-                              Mark Returned
-                            </Button>
-                          )}
+                          {/* Action buttons if needed, e.g. View/Delete */}
+                          {/* Accessing details is simpler via row click */}
                         </TableCell>
                       </TableRow>
                     );
@@ -269,11 +326,16 @@ export default function RentalOrderList() {
               {loading
                 ? "Loading..."
                 : rows.length
-                ? `Showing ${startIdx}-${endIdx} of ${total}`
-                : "—"}
+                  ? `Showing ${startIdx}-${endIdx} of ${total}`
+                  : "—"}
             </span>
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(1)}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page <= 1}
+                onClick={() => setPage(1)}
+              >
                 First
               </Button>
               <Button
@@ -303,7 +365,12 @@ export default function RentalOrderList() {
         {err && (
           <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
             {err}{" "}
-            <Button size="sm" variant="outline" className="ml-2" onClick={refresh}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="ml-2"
+              onClick={refresh}
+            >
               Retry
             </Button>
           </div>

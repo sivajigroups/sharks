@@ -61,9 +61,18 @@ export default function InventoryManager({ type = "sales", title }) {
       key: "updatedAt",
       label: t("inventory.lastUpdated") || "Last Updated",
       render: (val) =>
-        val
-          ? `${dayjs(val).format("DD/MM/YYYY")} (${dayjs(val).fromNow()})`
-          : "—",
+        val ? (
+          <div className="flex flex-col text-xs">
+            <span className="font-medium">
+              {dayjs(val).format("DD/MM/YYYY")}
+            </span>
+            <span className="text-gray-500">
+              {dayjs(val).format("hh:mm a")}
+            </span>
+          </div>
+        ) : (
+          "—"
+        ),
     },
   ];
 

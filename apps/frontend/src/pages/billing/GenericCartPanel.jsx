@@ -225,43 +225,54 @@ export default function GenericCartPanel({
           paymentMode,
         });
       } else {
-        // --- Rental Transaction ---
-        for (const item of cartItems) {
+        // --- Rental Transaction (Multi-Item) ---
+        // Prepare rental items
+        const rentalItems = cartItems.map((item) => {
+          // Calculate dates
           const rentDate = new Date(item.fromDate);
           const returnDate = new Date(rentDate);
           returnDate.setDate(rentDate.getDate() + (Number(item.days || 1) - 1));
 
-          const res = await fetch(`${API}/transaction`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({
-              customer: selectedCustomer._id,
-              inventory: item.inventoryId,
-              itemName: item.name,
-              rentDate,
-              returnDate,
-              days: item.days,
-              quantity: item.qty,
-              amount: item.pricePerDay * item.days * item.qty,
-              sku: item.sku || item.variant?.sku, // Robust SKU access
-              deposit: Number(rentalDeposit || 0),
-            }),
-          });
+          return {
+            inventory: item.inventoryId,
+            itemName: item.name,
+            sku: item.variant?.sku || item.sku,
+            rentDate: rentDate,
+            returnDate: returnDate,
+            days: item.days,
+            quantity: item.qty,
+            pricePerDay: item.pricePerDay,
+            amount: item.pricePerDay * item.days * item.qty,
+          };
+        });
 
-          const json = await res.json();
-          if (!res.ok)
-            throw new Error(
-              json?.message || "Failed to create rental transaction"
-            );
-        }
+        // Send SINGLE request
+        const res = await fetch(`${API}/transaction`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            customer: selectedCustomer._id,
+            items: rentalItems,
+            branch:
+              role.toLowerCase() === "admin"
+                ? selectedBranch?.id || selectedBranch?._id
+                : userBranch?.id || userBranch?._id,
+            deposit: Number(rentalDeposit || 0),
+            paymentMode,
+          }),
+        });
 
-        toast.success("Rental transactions created successfully");
+        const json = await res.json();
+        if (!res.ok)
+          throw new Error(json?.message || "Failed to create rental order");
+
+        toast.success(`Rental Order ${json.data.billNo} Created!`);
         setCartItems([]);
 
         // Generate PDF
         generateBillPDF({
-          billNo: `R-${Date.now()}`,
+          billNo: json.data.billNo || `R-${Date.now()}`,
           modeTitle,
           customer: selectedCustomer,
           items: cartItems,

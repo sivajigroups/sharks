@@ -34,7 +34,17 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Info, History } from "lucide-react";
+import { Info, History, TrendingUp } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /* ===================== COMPONENT ===================== */
@@ -56,6 +66,11 @@ export default function CustomerDetails() {
   const [bills, setBills] = useState([]);
   const [billsLoading, setBillsLoading] = useState(false);
   const [billsError, setBillsError] = useState("");
+
+  const [rentals, setRentals] = useState([]);
+  const [rentalsLoading, setRentalsLoading] = useState(false);
+  const [rentalsError, setRentalsError] = useState("");
+
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
 
@@ -93,6 +108,35 @@ export default function CustomerDetails() {
     }
     return json;
   }
+
+  const fetchRentalBills = async () => {
+    try {
+      setRentalsLoading(true);
+      setRentalsError("");
+      // Using the new filter added to backend
+      const res = await fetch(`${API}/transaction?customerId=${id}&limit=100`, {
+        credentials: "include",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || "Failed to fetch rentals");
+
+      const list = (json.data || []).map((r) => ({
+        id: r._id,
+        billNo: r.billNo,
+        date: r.createdAt,
+        // For rentals, totalAmount is the main field now
+        total: r.totalAmount || 0,
+        itemsCount: r.items?.length || 0,
+        status: r.status,
+        paymentStatus: r.paymentStatus,
+      }));
+      setRentals(list);
+    } catch (e) {
+      setRentalsError(e.message);
+    } finally {
+      setRentalsLoading(false);
+    }
+  };
 
   const fetchBills = async () => {
     try {
@@ -169,6 +213,7 @@ export default function CustomerDetails() {
     if (!id) return;
     fetchCustomer();
     fetchBills();
+    fetchRentalBills();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -275,9 +320,17 @@ export default function CustomerDetails() {
   // --- client filters
   const filteredBills = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let list = [...bills];
+
+    // Merge both lists with a type discriminator
+    const allItems = [
+      ...bills.map((b) => ({ ...b, type: "Sale" })),
+      ...rentals.map((r) => ({ ...r, type: "Rental" })),
+    ];
+
+    let list = allItems;
     if (status !== "all")
       list = list.filter((b) => b.status.toLowerCase() === status);
+
     if (q) {
       list = list.filter((b) => {
         const inBill =
@@ -292,8 +345,40 @@ export default function CustomerDetails() {
         return inBill || inItems;
       });
     }
+
+    // Sort by date descending
     return list.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-  }, [bills, query, status]);
+  }, [bills, rentals, query, status]);
+
+  // --- Chart Data Preparation
+  const chartData = useMemo(() => {
+    // 1. Initialize last 6 months
+    const stats = {};
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = d.toLocaleString("default", {
+        month: "short",
+        year: "2-digit",
+      }); // "Jan 25"
+      stats[key] = { name: key, Sale: 0, Rental: 0 };
+    }
+
+    // 2. Aggregate Data
+    filteredBills.forEach((b) => {
+      if (!b.date) return;
+      const d = new Date(b.date);
+      const key = d.toLocaleString("default", {
+        month: "short",
+        year: "2-digit",
+      });
+      if (stats[key]) {
+        stats[key][b.type] += b.total || 0;
+      }
+    });
+
+    return Object.values(stats);
+  }, [filteredBills]);
 
   /* ===================== RENDER ===================== */
   if (loading) {
@@ -560,21 +645,6 @@ export default function CustomerDetails() {
                     onChange={(v) => onChange("address.area", v)}
                     className="min-w-[200px] flex-1"
                   />
-                  {/* <Detail
-                    label="City"
-                    editing={isEditing}
-                    value={form?.address?.city ?? ""}
-                    onChange={(v) => onChange("address.city", v)}
-                    className="min-w-[200px] flex-1"
-                  />
-                  <Detail
-                    label="Pincode"
-                    editing={isEditing}
-                    value={form?.address?.pincode ?? ""}
-                    onChange={(v) => onChange("address.pincode", v)}
-                    error={errors?.["address.pincode"]}
-                    className="min-w-[160px] flex-1"
-                  /> */}
                 </div>
               </div>
             </CardContent>
@@ -583,6 +653,75 @@ export default function CustomerDetails() {
 
         {/* ===================== HISTORY TAB ===================== */}
         <TabsContent value="history" className="space-y-4">
+          {/* Analytics Chart */}
+          <Card className="border border-border rounded-2xl">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 bg-blue-100 text-blue-700 rounded-lg">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-medium">Spending Overview</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Last 6 Months Activity
+                  </p>
+                </div>
+              </div>
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={chartData}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="#E5E7EB"
+                    />
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: "#6B7280" }}
+                      dy={10}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: "#6B7280" }}
+                      tickFormatter={(v) => `₹${v / 1000}k`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "8px",
+                        border: "none",
+                        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                      }}
+                      cursor={{ fill: "#F3F4F6" }}
+                    />
+                    <Legend iconType="circle" />
+                    <Bar
+                      dataKey="Sale"
+                      stackId="a"
+                      fill="#3B82F6"
+                      radius={[0, 0, 4, 4]}
+                      barSize={32}
+                      name="Sales"
+                    />
+                    <Bar
+                      dataKey="Rental"
+                      stackId="a"
+                      fill="#F59E0B"
+                      radius={[4, 4, 0, 0]}
+                      barSize={32}
+                      name="Rentals"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="w-full border border-border rounded-2xl min-h-[520px]">
             {" "}
             {/* <- w-full + min-h */}
@@ -590,7 +729,7 @@ export default function CustomerDetails() {
               <div className="flex flex-wrap gap-3 items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Receipt className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="font-medium tracking-tight">Bills</h3>
+                  <h3 className="font-medium tracking-tight">History</h3>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <div className="relative">
@@ -613,58 +752,51 @@ export default function CustomerDetails() {
                     <option value="pending">Pending</option>
                     <option value="cancelled">Cancelled</option>
                   </select>
-                  <Button variant="outline" onClick={fetchBills}>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      fetchBills();
+                      fetchRentalBills();
+                    }}
+                  >
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Refresh
-                  </Button>
-                  {/* 
-                  duplicate invisible buttons for layout allignments */}
-                  <Button variant="outline" className="invisible">
-                    Show
-                  </Button>
-                  <Button variant="outline" className="invisible">
-                    Show
-                  </Button>
-                  <Button variant="outline" className="invisible">
-                    Show
-                  </Button>
-                  <Button variant="outline" className="invisible">
-                    Show
-                  </Button>
-                  <Button variant="outline" className="invisible">
-                    Show
-                  </Button>
-                  <Button variant="outline" className="invisible">
-                    Show
-                  </Button>
-                  <Button variant="outline" className="invisible">
-                    Show
-                  </Button>
-                  <Button variant="outline" className="invisible">
-                    Show
-                  </Button>
-                  <Button variant="outline" className="invisible">
-                    Show
-                  </Button>
-                  <Button variant="outline" className="invisible">
-                    Show
                   </Button>
                 </div>
               </div>
 
-              {billsLoading ? (
+              {billsLoading || rentalsLoading ? (
                 <MonoSkeletonRows rows={6} />
               ) : billsError ? (
                 <div className="text-red-600">{billsError}</div>
               ) : filteredBills.length === 0 ? (
                 <div className="text-sm text-muted-foreground">
-                  No bills found.
+                  <Table className="w-full table-fixed">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Bill No</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="text-right">Items</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                          No records found.
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <Table>
+                  <Table className="w-full table-fixed">
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Type</TableHead>
                         <TableHead>Bill No</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead className="text-right">Total</TableHead>
@@ -674,7 +806,29 @@ export default function CustomerDetails() {
                     </TableHeader>
                     <TableBody>
                       {filteredBills.map((b) => (
-                        <TableRow key={b.id}>
+                        <TableRow
+                          key={`${b.type}-${b.id}`}
+                          onClick={() => {
+                            if (b.type === "Rental") {
+                              navigate(`/layout/rentalOrder/${b.id}`);
+                            } else {
+                              navigate(`/layout/billing/${b.id}`);
+                            }
+                          }}
+                          className="cursor-pointer hover:bg-muted/50"
+                        >
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={
+                                b.type === "Rental"
+                                  ? "border-blue-200 bg-blue-50 text-blue-700"
+                                  : "border-gray-200 bg-gray-50 text-gray-700"
+                              }
+                            >
+                              {b.type}
+                            </Badge>
+                          </TableCell>
                           <TableCell className="font-medium">
                             {b.billNo}
                           </TableCell>
