@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { globalAuditPlugin } = require("../utils/globalAuditPlugin");
 
 // Sub-schema for individual items in a rental bill
 const rentalItemSchema = new mongoose.Schema({
@@ -31,7 +32,11 @@ const rentalTransactionSchema = new mongoose.Schema(
       ref: "Customer",
       required: true,
     },
-    branch: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" },
+    branch: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Branch",
+      required: true,
+    },
 
     // Items List
     items: [rentalItemSchema],
@@ -57,5 +62,7 @@ const rentalTransactionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+rentalTransactionSchema.plugin(globalAuditPlugin);
 
 module.exports = mongoose.model("RentalPurchase", rentalTransactionSchema);

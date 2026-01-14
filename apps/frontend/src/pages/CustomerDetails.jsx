@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -51,6 +51,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default function CustomerDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const API = import.meta.env.VITE_API_BASE;
 
   const [customer, setCustomer] = useState(null);
@@ -385,7 +386,7 @@ export default function CustomerDetails() {
     return (
       <div className="p-4">
         <Button variant="ghost" onClick={handleBack} className="mb-3">
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back
+          Back
         </Button>
 
         {/* Full-width skeleton card */}
@@ -434,7 +435,7 @@ export default function CustomerDetails() {
     return (
       <div className="p-4 space-y-4">
         <Button variant="ghost" onClick={handleBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back
+          Back
         </Button>
         <Card>
           <CardContent className="p-6">
@@ -451,9 +452,7 @@ export default function CustomerDetails() {
   return (
     <div className="w-full p-4">
       <div className="mb-3 flex items-center justify-between">
-        <Button variant="ghost" onClick={handleBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back
-        </Button>
+        <div className="ml-2"><p className="text-2xl font-bold">Customer</p></div>
 
         <div className="flex items-center gap-2">
           <Button
@@ -485,6 +484,9 @@ export default function CustomerDetails() {
               </Button>
             </>
           )}
+          <Button variant="outline" onClick={handleBack}>
+            Back
+          </Button>
         </div>
       </div>
       <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
@@ -520,7 +522,17 @@ export default function CustomerDetails() {
         </DialogContent>
       </Dialog>
 
-      <Tabs defaultValue="details" className="w-full">
+      <Tabs
+        value={searchParams.get("tab") || "details"}
+        onValueChange={(val) =>
+          setSearchParams((prev) => {
+            const p = new URLSearchParams(prev);
+            p.set("tab", val);
+            return p;
+          })
+        }
+        className="w-full"
+      >
         <TabsList>
           <TabsTrigger value="details" className="flex items-center gap-2">
             <Info className="h-4 w-4" />

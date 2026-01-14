@@ -11,6 +11,14 @@ const { RentalInventory } = require("../models/Inventory/RentalInventoryModel");
 const createRentalPurchase = async (req, res) => {
   try {
     const { customer, items, branch, deposit, paymentMode } = req.body;
+
+    // Resolve Branch ID (Admin sends body.branch, Staff uses req.user.branch)
+    const branchId = branch || req.user?.branch?._id || req.user?.branch;
+
+    if (!branchId) {
+      return res.status(400).json({ message: "Branch is required" });
+    }
+
     // items must be array: [{ inventory, itemName, sku, rentDate, returnDate, days, quantity, pricePerDay, amount }]
 
     if (!customer || !items || !Array.isArray(items) || items.length === 0) {
@@ -63,7 +71,7 @@ const createRentalPurchase = async (req, res) => {
     const newTransaction = new RentalPurchase({
       billNo,
       customer,
-      branch: branch || req.user?.branch,
+      branch: branchId,
       items: processedItems,
       subtotal,
       tax,
@@ -186,9 +194,13 @@ const markAsPaid = async (req, res) => {
 // ───────────────────────────────────────────────
 // MARK AS RETURNED (Whole Bill)
 // ───────────────────────────────────────────────
+// ───────────────────────────────────────────────
+// MARK AS RETURNED (Partial or Whole)
+// ───────────────────────────────────────────────
 const markAsReturned = async (req, res) => {
   try {
     const { id } = req.params;
+    const { itemIds } = req.body; // Expect array of item _ids for partial return
 
     const rental =
       await RentalPurchase.findById(id).populate("items.inventory");
@@ -196,15 +208,35 @@ const markAsReturned = async (req, res) => {
       return res.status(404).json({ message: "Rental Order not found" });
 
     if (rental.status === "Returned") {
-      return res.status(400).json({ message: "Rental is already returned" });
+      return res
+        .status(400)
+        .json({ message: "Rental is already fully returned" });
     }
 
-    // 1. Restore Stock for ALL items
-    for (const item of rental.items) {
-      // if item is already returned (future granular check), skip
+    let itemsToReturn = [];
+
+    // If itemIds provided, filter for those items
+    if (itemIds && Array.isArray(itemIds) && itemIds.length > 0) {
+      itemsToReturn = rental.items.filter((item) =>
+        itemIds.includes(item._id.toString())
+      );
+    } else {
+      // Logic for "Return All" (legacy or full return)
+      itemsToReturn = rental.items;
+    }
+
+    if (itemsToReturn.length === 0) {
+      return res.status(400).json({ message: "No valid items to return" });
+    }
+
+    // 1. Restore Stock & Update Status for Selected Items
+    for (const item of itemsToReturn) {
+      // Skip if already returned
       if (item.status === "Returned") continue;
 
       const rentalItem = await RentalInventory.findById(item.inventory);
+
+      // Stock restoration logic
       if (rentalItem && item.sku) {
         const variant = rentalItem.variants.find((v) => v.sku === item.sku);
         if (variant) {
@@ -212,24 +244,34 @@ const markAsReturned = async (req, res) => {
           await rentalItem.save();
         }
       } else if (rentalItem) {
-        // Fallback if no SKU found (legacy or error), try first variant
+        // Fallback if no SKU found
         if (rentalItem.variants.length > 0) {
           rentalItem.variants[0].stock += item.quantity;
           await rentalItem.save();
         }
       }
+
       item.status = "Returned";
       item.returnedAt = new Date();
     }
 
-    // 2. Update Bill Status
-    rental.status = "Returned";
-    // paymentStatus logic could handle 'deposit' return here if needed
+    // 2. Determine Top-Level Transaction Status
+    const allReturned = rental.items.every(
+      (item) => item.status === "Returned"
+    );
+    const anyReturned = rental.items.some((item) => item.status === "Returned");
+
+    if (allReturned) {
+      rental.status = "Returned";
+    } else if (anyReturned) {
+      rental.status = "Partially Returned";
+    }
+    // If none returned (shouldn't happen here), status stays as is
 
     await rental.save();
 
     res.status(200).json({
-      message: "Order marked as returned and stock restored",
+      message: "Selected items marked as returned and stock restored",
       rental,
     });
   } catch (error) {

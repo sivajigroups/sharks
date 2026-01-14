@@ -70,13 +70,37 @@ export default function RentalOrderDetail() {
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
   const [paidDialogOpen, setPaidDialogOpen] = useState(false);
   const [markPaidChecked, setMarkPaidChecked] = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]);
+
+  // Filter only pending items for selection
+  const pendingItems = data?.items?.filter((i) => i.status === "Pending") || [];
+  const isAllSelected =
+    pendingItems.length > 0 && selectedItems.length === pendingItems.length;
+
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedItems(pendingItems.map((i) => i._id));
+    } else {
+      setSelectedItems([]);
+    }
+  };
+
+  const handleSelectItem = (id, checked) => {
+    if (checked) {
+      setSelectedItems((prev) => [...prev, id]);
+    } else {
+      setSelectedItems((prev) => prev.filter((i) => i !== id));
+    }
+  };
 
   const handleReturnConfirm = async () => {
     try {
       setLoading(true); // show generic loading or local state
       const res = await fetch(`${API}/transaction/${id}/return`, {
         method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ itemIds: selectedItems }),
       });
       if (!res.ok) throw new Error("Failed to update status");
 
@@ -93,6 +117,7 @@ export default function RentalOrderDetail() {
 
       toast.success(markPaidChecked ? "Returned & Paid" : "Marked as Returned");
       setReturnDialogOpen(false);
+      setSelectedItems([]); // Reset selection
       fetchData(); // reload
     } catch (e) {
       toast.error(e.message);
@@ -240,8 +265,9 @@ export default function RentalOrderDetail() {
             <Button
               variant="destructive"
               onClick={() => setReturnDialogOpen(true)}
+              disabled={selectedItems.length === 0}
             >
-              Return All Items
+              Return Selected ({selectedItems.length})
             </Button>
           )}
 
@@ -292,6 +318,15 @@ export default function RentalOrderDetail() {
       <Table className="table-fixed">
         <TableHeader>
           <TableRow>
+            <TableHead className="w-[50px]">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                checked={isAllSelected}
+                onChange={(e) => handleSelectAll(e.target.checked)}
+                disabled={pendingItems.length === 0}
+              />
+            </TableHead>
             <TableHead>Item</TableHead>
             <TableHead className="text-right">Qty</TableHead>
             <TableHead className="text-right">Days</TableHead>
@@ -304,6 +339,20 @@ export default function RentalOrderDetail() {
         <TableBody>
           {items.map((item, idx) => (
             <TableRow key={idx}>
+              <TableCell>
+                {item.status === "Pending" ? (
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    checked={selectedItems.includes(item._id)}
+                    onChange={(e) =>
+                      handleSelectItem(item._id, e.target.checked)
+                    }
+                  />
+                ) : (
+                  <div className="h-4 w-4" /> // Placeholder to keep alignment
+                )}
+              </TableCell>
               <TableCell>
                 <div>
                   <p className="font-medium">{item.itemName}</p>
@@ -375,8 +424,8 @@ export default function RentalOrderDetail() {
           <DialogHeader>
             <DialogTitle>Confirm Return</DialogTitle>
             <DialogDescription>
-              Are you sure you want to mark all items in this rental order as
-              Returned? This action updates inventory stock.
+              Are you sure you want to mark {selectedItems.length} selected
+              item(s) as Returned? This action updates inventory stock.
             </DialogDescription>
           </DialogHeader>
 

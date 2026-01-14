@@ -157,7 +157,6 @@ export default function BillDetailPage() {
           <Skeleton className="h-6 w-20 rounded-full" />
         </div>
 
-      
         {/* Table Skeleton */}
         <Table className="table-fixed">
           <TableHeader>
@@ -243,10 +242,10 @@ export default function BillDetailPage() {
         </div>
 
         <div className="flex gap-2">
+          <Button onClick={downloadPdf}>Download PDF</Button>
           <Button variant="outline" onClick={() => navigate(-1)}>
             Back
           </Button>
-          <Button onClick={downloadPdf}>Download PDF</Button>
         </div>
       </div>
 

@@ -308,8 +308,8 @@ export default function BillingPage() {
                 </select>
               )}
 
-              {console.log("ROLE CHECK:", role)}
-              {console.log("USER BRANCH CHECK:", selectedBranch)}
+              {/* {console.log("ROLE CHECK:", role)}
+              {console.log("USER BRANCH CHECK:", selectedBranch)} */}
 
               {role.toLowerCase() === "staff" && (
                 <span className="text-sm px-2 py-1 bg-gray-100 rounded">
