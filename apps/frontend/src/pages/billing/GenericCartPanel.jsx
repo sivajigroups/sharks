@@ -93,7 +93,9 @@ export default function GenericCartPanel({
       );
       if (!res.ok) throw new Error("Failed to fetch customers");
       const json = await res.json();
-      setCustomers(json.data || []);
+      // Filter out blocked customers
+      const allCustomers = json.data || [];
+      setCustomers(allCustomers.filter((c) => !c.blocked));
     } catch (e) {
       setError(e.message);
     } finally {

@@ -684,7 +684,7 @@ const deleteCustomer = async (req, res) => {
 const editCustomer = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, phone, address, alternatePhone, idProofType, idProofNumber } =
+    const { name, phone, address, alternatePhone, idProofType, idProofNumber, blocked } =
       req.body;
 
     if (!name || !phone) {
@@ -714,6 +714,7 @@ const editCustomer = async (req, res) => {
     if (alternatePhone) customer.alternatePhone = alternatePhone;
     if (idProofType) customer.idProofType = idProofType;
     if (idProofNumber) customer.idProofNumber = idProofNumber;
+    if (blocked !== undefined) customer.blocked = blocked;
 
     await customer.save();
 

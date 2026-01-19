@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 
 import {
   ArrowLeft,
@@ -452,7 +453,9 @@ export default function CustomerDetails() {
   return (
     <div className="w-full p-4">
       <div className="mb-3 flex items-center justify-between">
-        <div className="ml-2"><p className="text-2xl font-bold">Customer</p></div>
+        <div className="ml-2">
+          <p className="text-2xl font-bold">Customer</p>
+        </div>
 
         <div className="flex items-center gap-2">
           <Button
@@ -556,11 +559,37 @@ export default function CustomerDetails() {
                     Customer Details
                   </h3>
                 </div>
+
                 {customer?.idProofType && (
                   <Badge variant="outline" className="text-xs">
                     {customer.idProofType}
                   </Badge>
                 )}
+              </div>
+
+              {/* Blocked Status - Visible always, editable in edit mode */}
+              <div className="mt-4 flex items-center gap-3 p-4 bg-muted/30 rounded-xl border border-border">
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">Customer Status</span>
+                  <span className="text-xs text-muted-foreground">
+                    {form?.blocked
+                      ? "Customer is currently blocked"
+                      : "Customer is active"}
+                  </span>
+                </div>
+                <div className="flex-1" />
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-sm font-medium ${form?.blocked ? "text-red-600" : "text-emerald-600"}`}
+                  >
+                    {form?.blocked ? "Blocked" : "Active"}
+                  </span>
+                  <Switch
+                    checked={form?.blocked || false}
+                    onCheckedChange={(checked) => onChange("blocked", checked)}
+                    disabled={!isEditing}
+                  />
+                </div>
               </div>
 
               {/* Horizontal fields */}
@@ -996,6 +1025,7 @@ function normalizeForm(data = {}) {
     alternatePhone: data?.alternatePhone || "",
     idProofType: data?.idProofType || "",
     idProofNumber: data?.idProofNumber || "",
+    blocked: data?.blocked || false,
     address: {
       street: data?.address?.street || "",
       area: data?.address?.area || "",
@@ -1012,6 +1042,7 @@ function denormalizeForm(f) {
     alternatePhone: f.alternatePhone?.trim() || undefined,
     idProofType: f.idProofType || undefined,
     idProofNumber: f.idProofNumber?.trim() || undefined,
+    blocked: f.blocked,
     address: {
       street: f.address?.street?.trim() || "",
       area: f.address?.area?.trim() || "",

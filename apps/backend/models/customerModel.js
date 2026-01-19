@@ -26,6 +26,7 @@ const customerSchema = new mongoose.Schema(
       reasonInactive: String,
       remarks: String,
     },
+    blocked: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
