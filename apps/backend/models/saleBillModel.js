@@ -27,13 +27,13 @@ const saleBillSchema = new mongoose.Schema(
     customer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Customer",
-      required: true,
+      required: false, // Changed from true to allow Walk-in customers
     },
 
     branch: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Branch",
-      required: true,      // ⭐ IMPORTANT for audit
+      required: true, // ⭐ IMPORTANT for audit
     },
 
     items: { type: [billItemSchema], required: true },
@@ -52,7 +52,7 @@ const saleBillSchema = new mongoose.Schema(
     billingDate: { type: Date, default: Date.now },
     notes: { type: String },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // ⭐ Attach Audit Plugin

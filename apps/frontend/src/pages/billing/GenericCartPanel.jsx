@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogHeader,
@@ -58,18 +59,19 @@ export default function GenericCartPanel({
   const [pincode, setPincode] = useState("");
   const [idProofType, setIdProofType] = useState("");
   const [idProofNumber, setIdProofNumber] = useState("");
+  const [isWalkIn, setIsWalkIn] = useState(false); // ⭐ New Walk-in state
 
   // ── Totals
   const subtotal = useMemo(() => {
     if (mode === "sale") {
       return cartItems.reduce(
         (acc, it) => acc + (it.price || 0) * (it.qty || 0),
-        0
+        0,
       );
     }
     return cartItems.reduce(
       (acc, it) => acc + (it.pricePerDay || 0) * (it.days || 0) * (it.qty || 0),
-      0
+      0,
     );
   }, [mode, cartItems]);
 
@@ -87,15 +89,15 @@ export default function GenericCartPanel({
     try {
       const res = await fetch(
         `${API}/customer/details?search=${encodeURIComponent(
-          q
+          q,
         )}&page=${pageNum}&limit=${limit}`,
-        { credentials: "include" }
+        { credentials: "include" },
       );
       if (!res.ok) throw new Error("Failed to fetch customers");
       const json = await res.json();
-      // Filter out blocked customers
+      // Allow blocked customers, but they will be marked in UI
       const allCustomers = json.data || [];
-      setCustomers(allCustomers.filter((c) => !c.blocked));
+      setCustomers(allCustomers);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -167,24 +169,33 @@ export default function GenericCartPanel({
   // ── Payment handler
   const handlePayment = async () => {
     if (!cartItems.length) return toast.error("Cart is empty");
-    if (!selectedCustomer?._id) return toast.error("Select a customer first");
+    if (!selectedCustomer?._id && !isWalkIn)
+      return toast.error("Select a customer first");
 
     setSaving(true);
     try {
       let billNo = "";
       let modeTitle = mode === "sale" ? "Sale Bill" : "Rental Bill";
 
+      // If Walk-in, we use null for customer ID
+      const customerId = isWalkIn ? null : selectedCustomer?._id;
+
+      // For PDF generation, create a dummy object if walk-in
+      const pdfCustomer = isWalkIn
+        ? { name: "Walk-in Customer", phone: "", address: {} }
+        : selectedCustomer;
+
       if (mode === "sale") {
         // --- Sale Bill ---
         const tax = +(
           cartItems.reduce(
             (acc, it) => acc + (it.price || 0) * (it.qty || 0),
-            0
+            0,
           ) * TAX_RATE
         ).toFixed(2);
 
         const payload = {
-          customerId: selectedCustomer._id,
+          customerId: customerId, // Can be null
           paymentMode,
           discount: 0,
           tax,
@@ -219,7 +230,7 @@ export default function GenericCartPanel({
         generateBillPDF({
           billNo,
           modeTitle,
-          customer: selectedCustomer,
+          customer: pdfCustomer,
           items: cartItems,
           subtotal,
           taxAmount,
@@ -348,9 +359,9 @@ export default function GenericCartPanel({
                           .map((i) =>
                             i.id === item.id
                               ? { ...i, qty: Math.max(0, (i.qty || 1) - 1) }
-                              : i
+                              : i,
                           )
-                          .filter((i) => (i.qty || 0) > 0)
+                          .filter((i) => (i.qty || 0) > 0),
                       )
                     }
                   >
@@ -362,8 +373,10 @@ export default function GenericCartPanel({
                     onClick={() =>
                       setCartItems((prev) =>
                         prev.map((i) =>
-                          i.id === item.id ? { ...i, qty: (i.qty || 0) + 1 } : i
-                        )
+                          i.id === item.id
+                            ? { ...i, qty: (i.qty || 0) + 1 }
+                            : i,
+                        ),
                       )
                     }
                   >
@@ -388,11 +401,11 @@ export default function GenericCartPanel({
                                     fromDate: newFrom,
                                     toDate: computeToDateISO(
                                       newFrom,
-                                      Math.max(1, Number(i.days || 1))
+                                      Math.max(1, Number(i.days || 1)),
                                     ),
                                   }
-                                : i
-                            )
+                                : i,
+                            ),
                           );
                         }}
                         className="border rounded px-1 py-0.5"
@@ -412,8 +425,8 @@ export default function GenericCartPanel({
                                     days: d,
                                     toDate: computeToDateISO(i.fromDate, d),
                                   }
-                                : i
-                            )
+                                : i,
+                            ),
                           );
                         }}
                         className="w-14 border rounded px-1 py-0.5"
@@ -467,11 +480,34 @@ export default function GenericCartPanel({
               className="w-full mt-2"
               onClick={() => setSelectOpen(true)}
             >
-              {selectedCustomer
-                ? `Customer: ${selectedCustomer.name}`
-                : "Select Customer"}
+              {selectedCustomer ? (
+                <span className="flex items-center gap-2">
+                  Customer: {selectedCustomer.name}
+                  {selectedCustomer.blocked && (
+                    <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded border border-red-200 font-bold">
+                      BLOCKED
+                    </span>
+                  )}
+                </span>
+              ) : (
+                "Select Customer"
+              )}
             </Button>
           </DialogTrigger>
+
+          {/* ⭐ WALK-IN TOGGLE (Sales Only) */}
+          {mode === "sale" && (
+            <div className="flex items-center gap-2 mt-2">
+              <Switch
+                checked={isWalkIn}
+                onCheckedChange={(checked) => {
+                  setIsWalkIn(checked);
+                  if (checked) setSelectedCustomer(null); // Clear selection
+                }}
+              />
+              <span className="text-xs font-medium">Walk-in Customer</span>
+            </div>
+          )}
 
           <DialogContent className="h-[80vh] flex flex-col">
             <DialogTitle>Select a Customer</DialogTitle>
@@ -509,11 +545,20 @@ export default function GenericCartPanel({
                 <DialogClose asChild key={c._id}>
                   <Button
                     variant="ghost"
-                    className="w-full justify-start"
+                    className="w-full justify-start h-auto py-2"
                     onClick={() => setSelectedCustomer(c)}
                   >
-                    <div className="text-left">
-                      <div className="font-semibold">{c.name}</div>
+                    <div className="text-left w-full">
+                      <div className="flex justify-between items-center">
+                        <div className="font-semibold flex items-center gap-2">
+                          {c.name}
+                          {c.blocked && (
+                            <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded border border-red-200 uppercase tracking-wider font-bold">
+                              Blocked
+                            </span>
+                          )}
+                        </div>
+                      </div>
                       <div className="text-xs text-gray-500">
                         {c.address &&
                           `${c.address.street}, ${c.address.area}, ${c.address.city} - ${c.address.pincode}`}
@@ -647,7 +692,9 @@ export default function GenericCartPanel({
         <Button
           className="w-full bg-black text-white mt-3"
           onClick={handlePayment}
-          disabled={!cartItems.length || !selectedCustomer || saving}
+          disabled={
+            !cartItems.length || (!selectedCustomer && !isWalkIn) || saving
+          }
         >
           {saving
             ? "Processing..."
@@ -675,167 +722,185 @@ export function generateBillPDF({
   paymentMode,
   rentalDeposit,
 }) {
-  const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
+  // Thermal printer config (80mm width) ~ 3.15 inches
+  // Standard thermal height is dynamic (roll), but PDF needs a fixed height.
+  // We'll calculate a rough height: Header (40) + Customer (30) + Items (N*10) + Totals (30) + Footer (20)
+  // Or just set a safe large height (e.g., 297mm like A4 height, or more)
+  const estimatedHeight = 120 + items.length * 15;
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: [80, Math.max(200, estimatedHeight)],
+  });
+
+  const pageWidth = 80;
+  const marginLeft = 4;
+  const marginRight = 76; // 80 - 4
   const centerX = pageWidth / 2;
-  const marginLeft = 20;
-  const marginRight = pageWidth - 20;
+
+  let currentY = 10;
 
   // --- HEADER ---
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.text("Sivaji Power Tools", centerX, 18, { align: "center" });
+  doc.setFontSize(12);
+  doc.text("Sivaji Power Tools", centerX, currentY, { align: "center" });
+  currentY += 5;
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text("Power Tools • Rentals • Services", centerX, 24, {
+  doc.setFontSize(8);
+  doc.text("Power Tools • Rentals • Services", centerX, currentY, {
     align: "center",
   });
-  // doc.text(
-  //   "Madurai, Tamil Nadu • Ph: +91 98765 43210 • Email: info@sivaijpowertools.com",
-  //   centerX,
-  //   30,
-  //   { align: "center" }
-  // );
+  currentY += 5;
 
   // Divider
   doc.setDrawColor(0);
-  doc.setLineWidth(0.3);
-  doc.line(marginLeft, 35, marginRight, 35);
+  doc.setLineWidth(0.2);
+  doc.line(marginLeft, currentY, marginRight, currentY);
+  currentY += 5;
 
   // --- TITLE ---
-  doc.setFontSize(14);
+  doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text(modeTitle, marginLeft, 48);
+  doc.text(modeTitle, centerX, currentY, { align: "center" });
+  currentY += 5;
 
   // --- BILL INFO ---
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  const infoY = 56;
-  doc.text(`Bill No: ${billNo}`, marginLeft, infoY);
+  doc.setFontSize(8);
+  doc.text(`Bill No: ${billNo}`, marginLeft, currentY);
+  currentY += 4;
   doc.text(
     `Date: ${new Date().toLocaleDateString("en-IN", {
       year: "numeric",
-      month: "long",
+      month: "short",
       day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     })}`,
     marginLeft,
-    infoY + 6
+    currentY,
   );
-  doc.text(`Payment Mode: ${paymentMode}`, marginLeft, infoY + 12);
+  currentY += 4;
+  doc.text(`Mode: ${paymentMode}`, marginLeft, currentY);
+  currentY += 6;
 
   // --- CUSTOMER INFO ---
-  const customerY = infoY + 22;
-  doc.setDrawColor(200);
-  doc.setLineWidth(0.3);
-  doc.rect(marginLeft, customerY - 5, pageWidth - 40, 28);
-
   doc.setFont("helvetica", "bold");
-  doc.text("Bill To:", marginLeft + 3, customerY);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-
-  const customerText = `${customer.name || ""}
-${customer.address?.street || ""}, ${customer.address?.area || ""}
-${customer.address?.city || ""} - ${customer.address?.pincode || ""}
-Ph: ${customer.phone || ""}${customer.email ? ` | Email: ${customer.email}` : ""}`;
-  doc.text(customerText, marginLeft + 3, customerY + 5, {
-    maxWidth: pageWidth - 50,
-  });
-
-  // --- ITEMS TABLE ---
-  const tableData = items.map((it, i) => [
-    i + 1,
-    it.name,
-    modeTitle.includes("Rental")
-      ? `${it.days} days × ₹${it.pricePerDay}/day`
-      : `${it.qty} × ₹${it.price}`,
-    modeTitle.includes("Rental")
-      ? (it.qty * it.days * it.pricePerDay).toFixed(2)
-      : (it.qty * it.price).toFixed(2),
-  ]);
-
-  autoTable(doc, {
-    startY: customerY + 32,
-    head: [["#", "Description", "Details", "Amount (₹)"]],
-    body: tableData,
-    headStyles: {
-      fillColor: [240, 240, 240],
-      textColor: 0,
-      fontStyle: "bold",
-      halign: "center",
-    },
-    bodyStyles: { fontSize: 9, cellPadding: 3 },
-    styles: {
-      lineColor: [220, 220, 220],
-      lineWidth: 0.2,
-    },
-    theme: "grid",
-    columnStyles: {
-      0: { cellWidth: 12, halign: "center" },
-      1: { cellWidth: 80 },
-      2: { cellWidth: 50 },
-      3: { cellWidth: 30, halign: "right" },
-    },
-    margin: { left: marginLeft, right: marginRight },
-  });
-
-  // --- TOTALS ---
-  let y = doc.lastAutoTable.finalY + 10;
-  const totalsX = marginRight - 70;
+  doc.text("Customer:", marginLeft, currentY);
+  currentY += 4;
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text("Subtotal:", totalsX, y);
-  doc.text(`₹${subtotal.toFixed(2)}`, marginRight, y, { align: "right" });
-  y += 6;
+  const customerName = customer?.name || "Guest";
+  const customerPhone = customer?.phone ? `Ph: ${customer.phone}` : "";
+  const addressLine = customer?.address?.city ? `${customer.address.city}` : "";
 
-  if (modeTitle.includes("Rental") && rentalDeposit) {
-    doc.text("Deposit:", totalsX, y);
-    doc.text(`₹${Number(rentalDeposit).toFixed(2)}`, marginRight, y, {
-      align: "right",
-    });
-    y += 6;
+  doc.text(customerName, marginLeft, currentY);
+  if (addressLine) {
+    doc.text(addressLine, marginRight, currentY, { align: "right" });
+  }
+  currentY += 4;
+  if (customerPhone) {
+    doc.text(customerPhone, marginLeft, currentY);
+    currentY += 4;
   }
 
-  doc.text("GST (13%):", totalsX, y);
-  doc.text(`₹${taxAmount.toFixed(2)}`, marginRight, y, { align: "right" });
-  y += 6;
+  currentY += 2;
+  doc.line(marginLeft, currentY, marginRight, currentY);
+  currentY += 5;
+
+  // --- ITEMS TABLE HEADERS ---
+  // --- ITEMS TABLE HEADERS ---
+  const colX = [marginLeft, marginLeft + 46, marginRight]; // Item, Qty (center), Amt (right)
 
   doc.setFont("helvetica", "bold");
-  doc.text("TOTAL:", totalsX, y);
-  doc.text(`₹${totalAmount.toFixed(2)}`, marginRight, y, { align: "right" });
+  doc.text("Item", colX[0], currentY);
+  doc.text("Qty", colX[1], currentY, { align: "center" });
+  doc.text("Amt", colX[2], currentY, { align: "right" });
+  currentY += 4;
+  doc.setLineWidth(0.2);
+  doc.line(marginLeft, currentY, marginRight, currentY);
+  currentY += 3;
 
-  doc.setLineWidth(0.4);
-  doc.line(totalsX - 5, y + 1, marginRight, y + 1);
+  // --- ITEMS LIST ---
+  doc.setFont("helvetica", "normal");
+
+  items.forEach((item) => {
+    // 1. Details string (dates etc)
+    let details = "";
+    if (modeTitle.includes("Rental")) {
+      details = `${item.days}d @ ${item.pricePerDay}`;
+    }
+
+    // 2. Split item name to fit width
+    const maxItemWidth = 42; // Allow slightly more space
+    const nameLines = doc.splitTextToSize(item.name, maxItemWidth);
+
+    // 3. Draw Name
+    doc.text(nameLines, colX[0], currentY);
+
+    // 4. Draw Qty (Centered)
+    doc.text(String(item.qty), colX[1], currentY, { align: "center" });
+
+    // 5. Draw Amount (Right)
+    const amount = modeTitle.includes("Rental")
+      ? (item.qty * item.days * item.pricePerDay).toFixed(2)
+      : (item.qty * (item.price || 0)).toFixed(2);
+
+    doc.text(amount, colX[2], currentY, { align: "right" });
+
+    // Calculate new Y based on name height (minimum 4mm spacing if single line)
+    const lineHeight = 4;
+    currentY += Math.max(lineHeight, nameLines.length * lineHeight);
+
+    // 6. Draw details if any (indented)
+    if (details) {
+      doc.setFontSize(7);
+      doc.setTextColor(100);
+      doc.text(details, colX[0], currentY - 1);
+      doc.setFontSize(8);
+      doc.setTextColor(0);
+      currentY += 3;
+    }
+
+    currentY += 1;
+  });
+
+  doc.line(marginLeft, currentY, marginRight, currentY);
+  currentY += 5;
+
+  // --- TOTALS ---
+  // Align labels to the left of the amount column
+  const totalsLabelX = 45;
+
+  doc.text("Subtotal:", totalsLabelX, currentY);
+  doc.text(subtotal.toFixed(2), marginRight, currentY, { align: "right" });
+  currentY += 4;
+
+  if (rentalDeposit) {
+    doc.text("Deposit:", totalsLabelX, currentY);
+    doc.text(Number(rentalDeposit).toFixed(2), marginRight, currentY, {
+      align: "right",
+    });
+    currentY += 4;
+  }
+
+  doc.text("Tax (13%):", totalsLabelX, currentY);
+  doc.text(taxAmount.toFixed(2), marginRight, currentY, { align: "right" });
+  currentY += 4;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("TOTAL:", totalsLabelX, currentY);
+  doc.text(`Rs. ${totalAmount}`, marginRight, currentY, { align: "right" });
+  currentY += 8;
 
   // --- FOOTER ---
-  const pageHeight = doc.internal.pageSize.getHeight();
-  y = pageHeight - 40;
   doc.setFont("helvetica", "italic");
-  doc.setFontSize(8);
-  doc.text("Thank you for your business with Sivaji Power Tools.", centerX, y, {
+  doc.setFontSize(7);
+  doc.text("Thank you for your business!", centerX, currentY, {
     align: "center",
   });
-  y += 6;
-  doc.setFont("helvetica", "normal");
-  doc.text(
-    "We appreciate your trust. For queries, contact us anytime.",
-    centerX,
-    y,
-    {
-      align: "center",
-    }
-  );
-  y += 6;
-  doc.setFontSize(7);
-  doc.setTextColor(100);
-  doc.text(
-    "Terms: All rentals include insurance. Deposits refundable post-inspection. GSTIN: 33ABCDE1234F1Z5",
-    centerX,
-    y,
-    { align: "center" }
-  );
 
-  doc.save(`Bill_${billNo}_${new Date().toISOString().split("T")[0]}.pdf`);
+  doc.save(`${billNo}.pdf`);
 }

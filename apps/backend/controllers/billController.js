@@ -11,14 +11,14 @@ const {
 // You can replace this with a counter collection if you prefer strict sequential.
 const Counter = mongoose.model(
   "Counter",
-  new mongoose.Schema({ _id: String, seq: { type: Number, default: 0 } })
+  new mongoose.Schema({ _id: String, seq: { type: Number, default: 0 } }),
 );
 async function nextBillNo() {
   const y = new Date().getFullYear();
   const c = await Counter.findOneAndUpdate(
     { _id: `bill-${y}` },
     { $inc: { seq: 1 } },
-    { upsert: true, new: true }
+    { upsert: true, new: true },
   );
   return `INV-${y}-${String(c.seq).padStart(6, "0")}`;
 }
@@ -38,7 +38,7 @@ const createSaleBill = async (req, res) => {
       branch: sentBranch, // ⭐ coming from FE admin selection
     } = req.body;
 
-    if (!customerId) throw new Error("customerId is required");
+    // if (!customerId) throw new Error("customerId is required"); // Removed for Walk-in
 
     // ⭐ FIX: STAFF uses req.user.branchId
     //         ADMIN uses req.body.branch
@@ -57,8 +57,11 @@ const createSaleBill = async (req, res) => {
       throw new Error("At least one item is required");
     }
 
-    const customer = await Customer.findById(customerId);
-    if (!customer) throw new Error("Customer not found");
+    let customer = null;
+    if (customerId) {
+      customer = await Customer.findById(customerId);
+      if (!customer) throw new Error("Customer not found");
+    }
 
     let billItems = [];
     let subtotal = 0;
@@ -79,7 +82,7 @@ const createSaleBill = async (req, res) => {
           arrayFilters: [{ "v._id": variantId }],
           new: false,
           projection: { name: 1, variants: { $elemMatch: { _id: variantId } } },
-        }
+        },
       ).lean();
 
       if (!inv) throw new Error("Variant not found or insufficient stock");
@@ -246,7 +249,7 @@ const generateBillPdf = async (req, res) => {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename=Bill-${bill.billNo}.pdf`
+        `attachment; filename=Bill-${bill.billNo}.pdf`,
       );
 
       // Pipe PDF to response
@@ -261,7 +264,7 @@ const generateBillPdf = async (req, res) => {
       doc.text(
         `Date: ${new Date(bill.billingDate || bill.createdAt).toLocaleDateString("en-IN")}`,
         50,
-        115
+        115,
       );
 
       doc.text(`Customer: ${bill.customer?.name || "N/A"}`, 50, 145);
