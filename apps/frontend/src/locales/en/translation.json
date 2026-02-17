@@ -25,6 +25,7 @@
     "purchase": "Purchase",
     "purchaseOrder": "Purchase Order",
     "rentalOrders": "Rental Orders",
+    "combinedOrders": "Combined Orders",
     "inactiveCustomers": "Inactive Customers"
   },
   "topbar": {

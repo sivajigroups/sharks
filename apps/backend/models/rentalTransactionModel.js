@@ -13,6 +13,7 @@ const rentalItemSchema = new mongoose.Schema({
   rentDate: { type: Date, required: true },
   returnDate: { type: Date }, // Expected return date initially
   days: { type: Number, required: true },
+  originalDays: { type: Number }, // To track initial agreement if changed later
   quantity: { type: Number, required: true, min: 1 },
   pricePerDay: { type: Number, required: true },
   amount: { type: Number, required: true }, // qty * days * pricePerDay
@@ -45,6 +46,7 @@ const rentalTransactionSchema = new mongoose.Schema(
     subtotal: { type: Number, default: 0 },
     tax: { type: Number, default: 0 },
     deposit: { type: Number, default: 0 },
+    discount: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true },
 
     // Top-level Status
@@ -58,9 +60,11 @@ const rentalTransactionSchema = new mongoose.Schema(
       enum: ["Pending", "Partial", "Paid"],
       default: "Pending",
     },
+    paidAmount: { type: Number, default: 0 },
+    balanceAmount: { type: Number, default: 0 },
     paymentMode: { type: String, default: "Cash" }, // Cash, UPI, etc.
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 rentalTransactionSchema.plugin(globalAuditPlugin);

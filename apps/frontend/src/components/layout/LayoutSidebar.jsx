@@ -78,11 +78,11 @@ const LayoutSidebar = () => {
       label: t("sidebar.Billing"),
       items: [
         {
-          title: t("sidebar.sales"),
+          title: t("sidebar.Billing"),
           icon: ShoppingCart,
           url: "/layout/billing",
         },
-        { title: "Order List", icon: ListOrdered, url: "/layout/order" },
+        { title: "Sales Orders", icon: ListOrdered, url: "/layout/order" },
         // 💡 show rental orders only if enabled
         ...(RENTAL_ENABLED
           ? [
@@ -93,6 +93,11 @@ const LayoutSidebar = () => {
               },
             ]
           : []),
+          {
+          title: t("sidebar.combinedOrders"),
+          icon: ListOrdered,
+          url: "/layout/combined-orders",
+          }
       ],
     },
     {

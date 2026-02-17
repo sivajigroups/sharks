@@ -5,7 +5,8 @@ const {
   getAllRentals,
   markAsReturned,
   getRentalInventory,
-  getSingleRental, // ✅ Import
+  getSingleRental,
+  updateRentalBill, // ✅ Import
 } = require("../controllers/rentalPurchaseController");
 const { userAuth } = require("../middleware/auth");
 
@@ -13,7 +14,8 @@ const rentalPurchaseRouter = express.Router();
 
 rentalPurchaseRouter.post("/transaction", userAuth, createRentalPurchase);
 rentalPurchaseRouter.get("/transaction/:id", userAuth, getSingleRental); // ✅ New Route
-rentalPurchaseRouter.put("/transaction/:id", userAuth, markAsPaid);
+rentalPurchaseRouter.put("/transaction/:id", userAuth, markAsPaid); // NOTE: This conflicts with :id/update if we are not careful, but update is usually PUT /:id
+rentalPurchaseRouter.put("/transaction/:id/update", userAuth, updateRentalBill);
 rentalPurchaseRouter.get("/transaction", userAuth, getAllRentals);
 rentalPurchaseRouter.patch("/transaction/:id/return", userAuth, markAsReturned);
 rentalPurchaseRouter.get("/rental-inventory", userAuth, getRentalInventory);

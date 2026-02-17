@@ -5,7 +5,7 @@ import React, {
   useState,
   useTransition,
 } from "react";
-import { useNavigate } from "react-router-dom"; // ✅ Import useNavigate
+import { useNavigate } from "react-router-dom";
 
 import {
   Table,
@@ -32,25 +32,34 @@ const DT = new Intl.DateTimeFormat("en-IN", {
   hour: "2-digit",
   minute: "2-digit",
 });
+
 const PAGE_SIZE_DEFAULT = 25;
 const MIN_TYPING_DELAY_MS = 400;
+
+// Map Combined Bill "status" to colors
 const STATUS_META = {
-  Pending: { label: "Pending", cls: "bg-yellow-200 text-yellow-800" },
-  Returned: { label: "Returned", cls: "bg-blue-200 text-blue-800" },
-  Paid: { label: "Paid", cls: "bg-green-200 text-green-800" },
+  Active: { label: "Active", cls: "bg-yellow-200 text-yellow-800" },
+  Closed: { label: "Closed", cls: "bg-gray-200 text-gray-800" },
+  "Partially Returned": {
+    label: "Partially Returned",
+    cls: "bg-blue-100 text-blue-800",
+  },
+  Paid: { label: "Paid", cls: "bg-green-200 text-green-800" }, // For payment status if needed
 };
+
 const STATUS_OPTIONS = [
   { value: "", label: "All Status" },
-  { value: "Pending", label: "Pending" },
-  { value: "Returned", label: "Returned" },
-  { value: "Paid", label: "Paid" },
+  { value: "Active", label: "Active" },
+  { value: "Closed", label: "Closed" },
+  { value: "Partially Returned", label: "Partially Returned" },
 ];
+
 const keyOf = (q, page, limit, status) => `${q}::${page}::${limit}::${status}`;
 
 // ---------- COMPONENT ----------
-export default function RentalOrderList() {
+export default function CombinedOrderList() {
   const API = import.meta.env.VITE_API_BASE;
-  const navigate = useNavigate(); // ✅ Hook
+  const navigate = useNavigate();
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -104,10 +113,10 @@ export default function RentalOrderList() {
     setErr("");
 
     try {
-      const url = new URL(`${API}/transaction`);
+      const url = new URL(`${API}/combined-bills`);
       url.searchParams.set("page", pageArg);
       url.searchParams.set("limit", limitArg);
-      if (qArg) url.searchParams.set("q", qArg);
+      if (qArg) url.searchParams.set("search", qArg); // NOTE: Combined API uses 'search'
       if (statusArg) url.searchParams.set("status", statusArg);
 
       const res = await fetch(url, {
@@ -120,7 +129,7 @@ export default function RentalOrderList() {
       if (!res.ok) throw new Error(`Failed (${res.status})`);
       const data = await res.json();
       const list = data.data || [];
-      const totalCount = data.pagination?.total || list.length;
+      const totalCount = data.total ?? list.length; // API returns 'total'
 
       setRows(list);
       setTotal(totalCount);
@@ -153,27 +162,18 @@ export default function RentalOrderList() {
     startTransition(() => fetchOrders({}, false));
   };
 
-  const markReturned = async (id) => {
-    if (!confirm("Mark this as Returned?")) return;
-    await fetch(`${API}/transaction/${id}/return`, {
-      method: "PATCH",
-      credentials: "include",
-    });
-    refresh();
-  };
-
   // ---------- FORMAT ----------
   const formatted = useMemo(
     () =>
       rows.map((r) => ({
         id: r._id,
         billNo: r.billNo || "—",
-        customer: r.customer?.name ?? "-",
+        customer: r.customer?.name ?? (r.customer ? "" : "Walk-in"),
         phone: r.customer?.phone ?? "-",
-        itemsCount: r.items?.length ?? 0,
+        itemsCount: (r.saleItems?.length || 0) + (r.rentalItems?.length || 0),
         total: INR.format(r.totalAmount ?? 0),
-        status: r.status ?? "-",
-        paymentStatus: r.paymentStatus || "Paid", // Default to Paid for old records
+        status: r.status ?? "-", // Use 'status' (Active/Closed)
+        paymentStatus: r.paymentStatus || "Paid",
         date: r.createdAt ? DT.format(new Date(r.createdAt)) : "-",
       })),
     [rows],
@@ -189,7 +189,7 @@ export default function RentalOrderList() {
         {/* Title + Filters */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
-            Rental Orders
+            Combined Orders
           </h1>
           <div className="flex flex-wrap items-center gap-2">
             <Input
@@ -268,17 +268,22 @@ export default function RentalOrderList() {
                       colSpan={8}
                       className="text-center py-10 text-gray-500"
                     >
-                      No rental records found.
+                      No combined orders found.
                     </TableCell>
                   </TableRow>
                 )}
                 {!loading &&
                   formatted.map((r) => {
-                    const meta = STATUS_META[r.status] || STATUS_META.Pending;
+                    const meta = STATUS_META[r.status] || {
+                      label: r.status,
+                      cls: "bg-gray-100 text-gray-800",
+                    };
 
                     const renderDate = (str) => {
                       if (!str || str === "-") return "-";
-                      const parts = str.split(",");
+                      // Try to split logic if format matches "DD MMM YYYY, HH:mm"
+                      // Default DT.format produces "DD MMM YYYY, HH:mm"
+                      const parts = str.split(", ");
                       if (parts.length < 2) return str;
                       return (
                         <div className="flex flex-col text-xs">
@@ -291,7 +296,7 @@ export default function RentalOrderList() {
                     return (
                       <TableRow
                         key={r.id}
-                        onClick={() => navigate(`../rentalOrder/${r.id}`)}
+                        onClick={() => navigate(`../combined-bill/${r.id}`)}
                         className="cursor-pointer hover:bg-gray-100"
                       >
                         <TableCell className="font-medium">
@@ -323,12 +328,15 @@ export default function RentalOrderList() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge className={meta.cls}>{meta.label}</Badge>
+                          <Badge
+                            className={meta.cls}
+                            variant="outline"
+                            style={{ border: "none" }}
+                          >
+                            {meta.label}
+                          </Badge>
                         </TableCell>
-                        <TableCell>
-                          {/* Action buttons if needed, e.g. View/Delete */}
-                          {/* Accessing details is simpler via row click */}
-                        </TableCell>
+                        <TableCell>{/* Actions placeholder */}</TableCell>
                       </TableRow>
                     );
                   })}

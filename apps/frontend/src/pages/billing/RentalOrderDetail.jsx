@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { generateBillPDF } from "@/utils/pdfGenerator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -72,6 +73,10 @@ export default function RentalOrderDetail() {
   const [markPaidChecked, setMarkPaidChecked] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editItems, setEditItems] = useState({}); // { itemId: { quantity, days } }
+  const [editDiscount, setEditDiscount] = useState(0);
+
   // Filter only pending items for selection
   const pendingItems = data?.items?.filter((i) => i.status === "Pending") || [];
   const isAllSelected =
@@ -141,6 +146,125 @@ export default function RentalOrderDetail() {
     } catch (e) {
       toast.error(e.message);
       setLoading(false);
+    }
+  };
+
+  const startEdit = () => {
+    const initial = {};
+    data.items.forEach((i) => {
+      initial[i._id] = { quantity: i.quantity, days: i.days };
+    });
+    setEditItems(initial);
+    setEditDiscount(data.discount || 0);
+    setIsEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setEditItems({});
+  };
+
+  const handleEditChange = (itemId, field, value) => {
+    setEditItems((prev) => ({
+      ...prev,
+      [itemId]: { ...prev[itemId], [field]: Number(value) },
+    }));
+  };
+
+  const confirmEdit = async () => {
+    try {
+      setLoading(true);
+      const itemsToUpdate = Object.entries(editItems).map(([itemId, val]) => ({
+        _id: itemId,
+        ...val,
+      }));
+
+      const res = await fetch(`${API}/transaction/${id}/update`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ items: itemsToUpdate, discount: editDiscount }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || "Update failed");
+
+      toast.success("Order updated successfully");
+      setIsEditing(false);
+      fetchData();
+    } catch (e) {
+      toast.error(e.message);
+      setLoading(false);
+    }
+  };
+
+  // ---------- DOWNLOAD PDF ----------
+  // ---------- DOWNLOAD PDF ----------
+  const downloadPdf = () => {
+    if (!data) return;
+    try {
+      toast.message("Preparing PDF…");
+
+      const items = (data.items || []).map((item) => ({
+        ...item,
+        name: item.itemName, // Map itemName to name for utility
+        qty: item.quantity,
+        price: item.pricePerDay, // For completeness
+        itemType: "rental", // Enforce rental type for formatting
+      }));
+
+      generateBillPDF({
+        billNo: data.billNo || id.slice(-6).toUpperCase(),
+        modeTitle: "RENTAL ORDER",
+        customer: data.customer,
+        items,
+        subtotal: data.subtotal,
+        rentalSubtotal: data.subtotal,
+        taxAmount: 0, // Rental usually has no tax in this system? Or it's calculated? GenericCartPanel has tax. RentalOrderDetail usage in step 16 didn't show tax line explicitly in total calc??
+        // Wait, step 16 code: `doc.text("Total:", ... data.totalAmount)`. It had tax?
+        // Step 16 `GenericCartPanel`: `const taxAmount = +(subtotal * TAX_RATE).toFixed(2);`
+        // Step 16 `RentalOrderDetail` *did not* have tax line in PDF generation! It had Subtotal, Deposit, Discount, Total.
+        // The shared utility *has* Tax line.
+        // If I pass taxAmount=0, it prints "Tax (13%): 0.00".
+        // Does Rental have tax?
+        // In `RentalOrderDetail.jsx` snapshot: "Subtotal" -> "Deposit" -> "Discount" -> "Total".
+        // There is NO tax line in the *existing* RentalOrderDetail PDF logic.
+        // However, `GenericCartPanel` *always* adds tax 13%.
+        // The user said "want same format in sale , rental...".
+        // If GenericCartPanel has tax, and user wants that format, maybe they want tax on rental too?
+        // But if the *data* doesn't have tax, printing 0 tax might be confusing if the total doesn't add up or if it's not applicable.
+        // `totalAmount` in `RentalOrderDetail` seems to be `subtotal + deposit - discount`.
+        // If I use the shared utility, it will print Tax line.
+        // If I want to *hide* tax line in shared utility if 0, I might need to update utility.
+        // Let's check `pdfGenerator.js` again.
+        // `doc.text("Tax (13%):", ...)` is always executed.
+        // I should probably make tax line conditional in `pdfGenerator` if taxAmount is 0?
+        // But `GenericCartPanel` always has tax (TAX_RATE = 0.13).
+        // Does `CombinedBill` have tax? Yes `bill.tax`.
+        // Does `SaleBill` have tax? Yes `bill.tax`.
+        // Only `Rental` seems to be missing tax in the *old* file.
+        // But `GenericCartPanel` *calculates* tax for rentals too: `const taxAmount = +(subtotal * TAX_RATE).toFixed(2);`.
+        // So `GenericCartPanel` *does* charge tax on rentals.
+        // Why `RentalOrderDetail` didn't show tax? Maybe `data` doesn't have it stored/calculated?
+        // `RentalOrderDetail` uses `data.totalAmount`.
+        // If I strictly follow "Same format as GenericCartPanel", I should probably align with GenericCartPanel which shows tax.
+        // But if `data` (backend) doesn't have tax, I can't invent it without changing the total.
+        // Use `data.tax || 0`. If it prints 0.00, it's consistent with "Standard Format" even if value is 0.
+        // I will stick to passing parameters.
+        totalAmount: data.totalAmount,
+        rentalDeposit: data.deposit,
+        discount: data.discount,
+        paymentMode: data.paymentMode || "Cash", // Default
+        paymentStatus: data.paymentStatus,
+        date: data.createdAt,
+      });
+
+      toast.success("Downloaded");
+    } catch (error) {
+      console.error(error);
+      toast.error("PDF download failed");
     }
   };
 
@@ -261,7 +385,22 @@ export default function RentalOrderDetail() {
         </div>
 
         <div className="flex gap-2">
-          {isPending && (
+          {!isEditing && isPending && (
+            <Button variant="outline" onClick={startEdit}>
+              Edit Bill
+            </Button>
+          )}
+
+          {isEditing && (
+            <>
+              <Button variant="ghost" onClick={cancelEdit}>
+                Cancel
+              </Button>
+              <Button onClick={confirmEdit}>Save Changes</Button>
+            </>
+          )}
+
+          {!isEditing && isPending && (
             <Button
               variant="destructive"
               onClick={() => setReturnDialogOpen(true)}
@@ -271,7 +410,7 @@ export default function RentalOrderDetail() {
             </Button>
           )}
 
-          {status === "Returned" && paymentStatus !== "Paid" && (
+          {!isEditing && paymentStatus !== "Paid" && (
             <Button
               className="bg-green-600 hover:bg-green-700 text-white"
               onClick={() => setPaidDialogOpen(true)}
@@ -279,6 +418,9 @@ export default function RentalOrderDetail() {
               Mark as Paid
             </Button>
           )}
+          <Button variant="outline" onClick={downloadPdf}>
+            Download PDF
+          </Button>
           <Button variant="outline" onClick={() => navigate(-1)}>
             Back
           </Button>
@@ -364,8 +506,39 @@ export default function RentalOrderDetail() {
                   )}
                 </div>
               </TableCell>
-              <TableCell className="text-right">{item.quantity}</TableCell>
-              <TableCell className="text-right">{item.days}</TableCell>
+              <TableCell className="text-right">
+                {isEditing && item.status === "Pending" ? (
+                  <input
+                    type="number"
+                    className="w-16 border rounded p-1 text-right"
+                    value={editItems[item._id]?.quantity ?? item.quantity}
+                    onChange={(e) =>
+                      handleEditChange(item._id, "quantity", e.target.value)
+                    }
+                  />
+                ) : (
+                  item.quantity
+                )}
+              </TableCell>
+              <TableCell className="text-right">
+                {isEditing && item.status === "Pending" ? (
+                  <input
+                    type="number"
+                    className="w-16 border rounded p-1 text-right"
+                    value={editItems[item._id]?.days ?? item.days}
+                    onChange={(e) =>
+                      handleEditChange(item._id, "days", e.target.value)
+                    }
+                  />
+                ) : (
+                  item.days
+                )}
+                {item.originalDays && item.originalDays !== item.days && (
+                  <span className="block text-xs text-gray-400">
+                    (Orig: {item.originalDays})
+                  </span>
+                )}
+              </TableCell>
               <TableCell>
                 <div className="text-xs">
                   <div>
@@ -411,9 +584,34 @@ export default function RentalOrderDetail() {
               <span>{INR.format(deposit)}</span>
             </div>
           )}
+
+          {/* Discount Field */}
+          {isEditing ? (
+            <div className="flex justify-between text-sm items-center py-1">
+              <span>Discount / Adj.</span>
+              <input
+                type="number"
+                className="w-20 border rounded p-1 text-right"
+                value={editDiscount}
+                onChange={(e) => setEditDiscount(Number(e.target.value))}
+              />
+            </div>
+          ) : (
+            (data.discount || 0) > 0 && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span>Discount</span>
+                <span>-{INR.format(data.discount)}</span>
+              </div>
+            )
+          )}
+
           <div className="flex justify-between font-bold text-lg border-t pt-2">
             <span>Total</span>
-            <span>{INR.format(totalAmount || 0)}</span>
+            <span>
+              {isEditing
+                ? INR.format((subtotal || 0) + (deposit || 0) - editDiscount)
+                : INR.format(totalAmount || 0)}
+            </span>
           </div>
         </div>
       </div>

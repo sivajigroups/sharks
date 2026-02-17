@@ -4,8 +4,6 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 require("dotenv").config();
 
-
-
 require("./models/auditModel");
 
 const { startRequestContext } = require("./utils/auditContext");
@@ -18,7 +16,9 @@ const adminRouter = require("./routes/adminRoute");
 const billRouter = require("./routes/historyRoute");
 const transferRouter = require("./routes/transfer");
 const rentalPurchaseRouter = require("./routes/rentalPurchaseRoutes");
-const {userAuth} = require("./middleware/auth");
+const combinedBillRouter = require("./routes/combinedBillRoutes");
+const paymentRouter = require("./routes/paymentRoutes");
+const { userAuth } = require("./middleware/auth");
 
 const app = express();
 
@@ -42,7 +42,7 @@ app.use(startRequestContext);
 //       }
 //     },
 //     credentials: true,
-//   })
+//   }),
 // );
 
 app.use("/api", userRouter);
@@ -50,8 +50,10 @@ app.use("/api", staffRouter);
 app.use("/api", saleRouter);
 app.use("/api", adminRouter);
 app.use("/api", rentalPurchaseRouter);
+app.use("/api/combined-bills", combinedBillRouter);
 app.use("/api", billRouter);
 app.use("/api", transferRouter);
+app.use("/api", paymentRouter);
 
 dbConnect()
   .then(() => {

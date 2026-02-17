@@ -49,6 +49,15 @@ const saleBillSchema = new mongoose.Schema(
       default: "Cash",
     },
 
+    paymentStatus: {
+      type: String,
+      enum: ["Pending", "Partial", "Paid"],
+      default: "Paid",
+    },
+
+    paidAmount: { type: Number, default: 0 },
+    balanceAmount: { type: Number, default: 0 },
+
     billingDate: { type: Date, default: Date.now },
     notes: { type: String },
   },

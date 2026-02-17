@@ -73,8 +73,23 @@ export default function CustomerDetails() {
   const [rentalsLoading, setRentalsLoading] = useState(false);
   const [rentalsError, setRentalsError] = useState("");
 
+  const [combinedBills, setCombinedBills] = useState([]);
+  const [combinedLoading, setCombinedLoading] = useState(false);
+  const [combinedError, setCombinedError] = useState("");
+
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+
+  const totalOutstanding = useMemo(() => {
+    let total = 0;
+    bills.forEach((b) => (total += Number(b.balanceAmount || 0)));
+    rentals.forEach((r) => (total += Number(r.balanceAmount || 0)));
+    combinedBills.forEach((c) => (total += Number(c.balanceAmount || 0)));
+    return total;
+  }, [bills, rentals, combinedBills]);
 
   // --- data loaders
   const fetchCustomer = async () => {
@@ -131,12 +146,46 @@ export default function CustomerDetails() {
         itemsCount: r.items?.length || 0,
         status: r.status,
         paymentStatus: r.paymentStatus,
+        paidAmount: r.paidAmount || 0,
+        balanceAmount: r.balanceAmount || r.totalAmount || 0,
       }));
       setRentals(list);
     } catch (e) {
       setRentalsError(e.message);
     } finally {
       setRentalsLoading(false);
+    }
+  };
+
+  const fetchCombinedBills = async () => {
+    try {
+      setCombinedLoading(true);
+      setCombinedError("");
+      const res = await fetch(`${API}/combined-bills/customer/${id}`, {
+        credentials: "include",
+      });
+      const json = await res.json();
+      if (!res.ok)
+        throw new Error(json.message || "Failed to fetch combined bills");
+
+      const list = (json.data || []).map((b) => ({
+        id: b._id,
+        billNo: b.billNo,
+        date: b.createdAt,
+        total: b.totalAmount || 0,
+        itemsCount: (b.saleItems?.length || 0) + (b.rentalItems?.length || 0),
+        status: b.status,
+        type: "Combined",
+        saleSubtotal: b.saleSubtotal || 0,
+        rentalSubtotal: b.rentalSubtotal || 0,
+        paidAmount: b.paidAmount || 0,
+        balanceAmount: b.balanceAmount || b.totalAmount || 0,
+      }));
+      setCombinedBills(list);
+    } catch (e) {
+      setCombinedError(e.message);
+    } finally {
+      setCombinedLoading(false);
     }
   };
 
@@ -176,7 +225,7 @@ export default function CustomerDetails() {
 
       const raw = json.data || json || [];
       const mineOnly = raw.filter(
-        (b) => asString(billCustomerId(b.customer)) === asString(id)
+        (b) => asString(billCustomerId(b.customer)) === asString(id),
       );
 
       const list = mineOnly.map((b) => ({
@@ -194,13 +243,17 @@ export default function CustomerDetails() {
                     sum +
                     Number(it.unitPrice ?? it.price ?? 0) *
                       Number(it.quantity ?? it.qty ?? 0),
-                  0
+                  0,
                 )
-              : 0)
+              : 0),
         ),
         items: Array.isArray(b.items) ? b.items : [],
         itemsCount: Array.isArray(b.items) ? b.items.length : b.itemsCount || 0,
         status: (b.status || "Paid").toString(),
+        paidAmount: b.paidAmount || 0,
+        balanceAmount:
+          b.balanceAmount ??
+          Number(b.totalAmount) - (Number(b.paidAmount) || 0),
       }));
 
       setBills(list);
@@ -216,6 +269,7 @@ export default function CustomerDetails() {
     fetchCustomer();
     fetchBills();
     fetchRentalBills();
+    fetchCombinedBills();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -320,6 +374,47 @@ export default function CustomerDetails() {
   };
 
   // --- client filters
+  const handleCollectPayment = async () => {
+    if (!paymentAmount || Number(paymentAmount) <= 0) {
+      toast.error("Enter a valid amount");
+      return;
+    }
+
+    if (Number(paymentAmount) > totalOutstanding) {
+      toast.error("Amount exceeds total outstanding");
+      return;
+    }
+
+    try {
+      setPaymentProcessing(true);
+      const res = await fetch(`${API}/payment/collect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          customerId: id,
+          amount: Number(paymentAmount),
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || "Payment failed");
+
+      toast.success(json.message);
+      setPaymentDialogOpen(false);
+      setPaymentAmount("");
+
+      // Refresh data
+      fetchBills();
+      fetchRentalBills();
+      fetchCombinedBills();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setPaymentProcessing(false);
+    }
+  };
+
   const filteredBills = useMemo(() => {
     const q = query.trim().toLowerCase();
 
@@ -327,6 +422,7 @@ export default function CustomerDetails() {
     const allItems = [
       ...bills.map((b) => ({ ...b, type: "Sale" })),
       ...rentals.map((r) => ({ ...r, type: "Rental" })),
+      ...combinedBills,
     ];
 
     let list = allItems;
@@ -342,7 +438,7 @@ export default function CustomerDetails() {
           (it.name || it.item || it.title || "")
             .toString()
             .toLowerCase()
-            .includes(q)
+            .includes(q),
         );
         return inBill || inItems;
       });
@@ -350,7 +446,7 @@ export default function CustomerDetails() {
 
     // Sort by date descending
     return list.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-  }, [bills, rentals, query, status]);
+  }, [bills, rentals, combinedBills, query, status]);
 
   // --- Chart Data Preparation
   const chartData = useMemo(() => {
@@ -375,7 +471,12 @@ export default function CustomerDetails() {
         year: "2-digit",
       });
       if (stats[key]) {
-        stats[key][b.type] += b.total || 0;
+        if (b.type === "Combined") {
+          stats[key]["Sale"] += b.saleSubtotal || 0;
+          stats[key]["Rental"] += b.rentalSubtotal || 0;
+        } else {
+          stats[key][b.type] += b.total || 0;
+        }
       }
     });
 
@@ -455,9 +556,24 @@ export default function CustomerDetails() {
       <div className="mb-3 flex items-center justify-between">
         <div className="ml-2">
           <p className="text-2xl font-bold">Customer</p>
+          <p className="text-sm text-muted-foreground">
+            Total Outstanding:{" "}
+            <span className="font-bold text-red-600">
+              ₹{totalOutstanding.toLocaleString()}
+            </span>
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
+          {totalOutstanding > 0 && (
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => setPaymentDialogOpen(true)}
+            >
+              Collect Payment
+            </Button>
+          )}
+
           <Button
             variant="destructive"
             onClick={() => setConfirmDeleteOpen(true)}
@@ -521,6 +637,45 @@ export default function CustomerDetails() {
             >
               Confirm Delete
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Collect Partial Payment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex justify-between text-sm">
+              <span>Total Outstanding:</span>
+              <span className="font-bold">₹{totalOutstanding}</span>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Payment Amount</label>
+              <input
+                type="number"
+                className="w-full border rounded p-2"
+                placeholder="Enter amount"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setPaymentDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleCollectPayment}
+                disabled={paymentProcessing}
+              >
+                {paymentProcessing ? "Processing..." : "Collect Payment"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -798,6 +953,7 @@ export default function CustomerDetails() {
                     onClick={() => {
                       fetchBills();
                       fetchRentalBills();
+                      fetchCombinedBills();
                     }}
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
@@ -806,10 +962,12 @@ export default function CustomerDetails() {
                 </div>
               </div>
 
-              {billsLoading || rentalsLoading ? (
+              {billsLoading || rentalsLoading || combinedLoading ? (
                 <MonoSkeletonRows rows={6} />
-              ) : billsError ? (
-                <div className="text-red-600">{billsError}</div>
+              ) : billsError || combinedError ? (
+                <div className="text-red-600">
+                  {billsError} {combinedError}
+                </div>
               ) : filteredBills.length === 0 ? (
                 <div className="text-sm text-muted-foreground">
                   <Table className="w-full table-fixed">
@@ -852,6 +1010,8 @@ export default function CustomerDetails() {
                           onClick={() => {
                             if (b.type === "Rental") {
                               navigate(`/layout/rentalOrder/${b.id}`);
+                            } else if (b.type === "Combined") {
+                              navigate(`/layout/combined-bill/${b.id}`);
                             } else {
                               navigate(`/layout/billing/${b.id}`);
                             }
@@ -864,7 +1024,9 @@ export default function CustomerDetails() {
                               className={
                                 b.type === "Rental"
                                   ? "border-blue-200 bg-blue-50 text-blue-700"
-                                  : "border-gray-200 bg-gray-50 text-gray-700"
+                                  : b.type === "Combined"
+                                    ? "border-purple-200 bg-purple-50 text-purple-700"
+                                    : "border-gray-200 bg-gray-50 text-gray-700"
                               }
                             >
                               {b.type}

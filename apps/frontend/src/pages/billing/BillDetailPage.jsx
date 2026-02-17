@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { generateBillPDF } from "@/utils/pdfGenerator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,6 +35,9 @@ export default function BillDetailPage() {
   const [loading, setLoading] = useState(true);
   const [bill, setBill] = useState(null);
   const [err, setErr] = useState("");
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDiscount, setEditDiscount] = useState(0);
 
   // ---------- FETCH SINGLE BILL ----------
   // ---------- FETCH SINGLE BILL ----------
@@ -76,61 +80,91 @@ export default function BillDetailPage() {
   }, [billId, API]);
 
   // ---------- DOWNLOAD PDF ----------
-  const downloadPdf = async () => {
+  const downloadPdf = () => {
+    if (!bill) return;
     try {
       toast.message("Preparing PDF…");
+      const items = bill.items.map((i) => ({
+        name: i.productName || i.name,
+        qty: i.quantity || i.qty,
+        price: i.unitPrice || i.price,
+        itemType: "sale",
+      }));
 
-      // Try backend PDF first
-      const res = await fetch(`${API}/bills/${billId}/pdf`, {
+      generateBillPDF({
+        billNo: bill.billNo,
+        modeTitle: "SALE BILL",
+        customer: bill.customer,
+        items,
+        subtotal: bill.subtotal,
+        saleSubtotal: bill.subtotal, // Use subtotal as sale subtotal
+        taxAmount: bill.tax,
+        totalAmount: bill.totalAmount,
+        discount: bill.discount,
+        paymentMode: bill.paymentMode,
+        paymentStatus: bill.paymentStatus,
+        date: bill.billingDate,
+      });
+
+      toast.success("Downloaded");
+    } catch (e) {
+      console.error(e);
+      toast.error("PDF download failed");
+    }
+  };
+
+  const handleMarkAsPaid = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API}/bills/${billId}/pay`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error("Failed to mark as paid");
+      toast.success("Marked as Paid");
+      // Reload bill
+      const reloadRes = await fetch(`${API}/bills/${billId}`, {
         credentials: "include",
       });
+      const reloadJson = await reloadRes.json();
+      setBill(reloadJson.data);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `Bill-${bill.billNo}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success("Downloaded");
-        return;
-      }
+  const startEdit = () => {
+    setEditDiscount(bill.discount || 0);
+    setIsEditing(true);
+  };
 
-      // Fallback → client PDF
-      const { jsPDF } = await import("jspdf");
-      const autoTable = (await import("jspdf-autotable")).default;
+  const cancelEdit = () => {
+    setIsEditing(false);
+  };
 
-      const doc = new jsPDF();
-      doc.text("INVOICE", 14, 20);
-
-      doc.setFontSize(11);
-      doc.text(`Bill No: ${bill.billNo}`, 14, 30);
-      doc.text(`Customer: ${bill.customer?.name}`, 14, 38);
-      doc.text(`Phone: ${bill.customer?.phone}`, 14, 46);
-      doc.text(`Date: ${DT.format(new Date(bill.billingDate))}`, 14, 54);
-
-      autoTable(doc, {
-        startY: 65,
-        head: [["Item", "Qty", "Rate", "Amount"]],
-        body: bill.items.map((i) => [
-          i.productName || i.name,
-          i.quantity || i.qty,
-          INR.format(i.unitPrice || i.price),
-          INR.format((i.quantity || i.qty) * (i.unitPrice || i.price)),
-        ]),
+  const handleSaveChanges = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API}/bills/${billId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ discount: editDiscount }),
       });
 
-      doc.text(
-        `Total: ${INR.format(bill.totalAmount)}`,
-        14,
-        doc.lastAutoTable.finalY + 15
-      );
+      if (!res.ok) throw new Error("Failed to update bill");
 
-      doc.save(`Bill-${bill.billNo}.pdf`);
-      toast.success("Downloaded");
-    } catch {
-      toast.error("PDF download failed");
+      const json = await res.json();
+      setBill(json.data);
+      setIsEditing(false);
+      toast.success("Bill updated successfully");
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -242,7 +276,32 @@ export default function BillDetailPage() {
         </div>
 
         <div className="flex gap-2">
-          <Button onClick={downloadPdf}>Download PDF</Button>
+          {!isEditing && (
+            <Button variant="outline" onClick={startEdit}>
+              Edit Bill
+            </Button>
+          )}
+
+          {isEditing && (
+            <>
+              <Button variant="ghost" onClick={cancelEdit}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveChanges}>Save Changes</Button>
+            </>
+          )}
+
+          {bill.paymentStatus !== "Paid" && !isEditing && (
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={handleMarkAsPaid}
+            >
+              Mark as Paid
+            </Button>
+          )}
+          <Button onClick={downloadPdf} variant="outline">
+            Download PDF
+          </Button>
           <Button variant="outline" onClick={() => navigate(-1)}>
             Back
           </Button>
@@ -250,10 +309,20 @@ export default function BillDetailPage() {
       </div>
 
       {/* Customer */}
-      <div className="border rounded-lg p-4">
+      <div className="border rounded-lg p-4 relative">
         <p className="font-medium">{bill.customer?.name}</p>
         <p className="text-sm text-gray-500">{bill.customer?.phone}</p>
-        <Badge className="mt-2">{bill.paymentMode}</Badge>
+        <Badge className="mt-2 mr-2">{bill.paymentMode}</Badge>
+        <Badge
+          className={
+            bill.paymentStatus === "Paid"
+              ? "bg-green-100 text-green-800"
+              : "bg-red-100 text-red-800"
+          }
+          variant="outline"
+        >
+          {bill.paymentStatus || "Paid"}
+        </Badge>
       </div>
 
       {/* Items */}
@@ -295,9 +364,33 @@ export default function BillDetailPage() {
             <span>Tax</span>
             <span>{INR.format(bill.tax)}</span>
           </div>
-          <div className="flex justify-between font-bold">
-            <span>Total</span>
-            <span>{INR.format(bill.totalAmount)}</span>
+          {isEditing ? (
+            <div className="flex justify-between items-center py-1 text-sm">
+              <span>Discount</span>
+              <input
+                type="number"
+                className="w-20 border rounded p-1 text-right"
+                value={editDiscount}
+                onChange={(e) => setEditDiscount(Number(e.target.value))}
+              />
+            </div>
+          ) : (
+            bill.discount > 0 && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span>Discount</span>
+                <span>-{INR.format(bill.discount)}</span>
+              </div>
+            )
+          )}
+          <div className="flex justify-between font-bold border-t pt-2">
+            <span>{isEditing ? "New Total" : "Total"}</span>
+            <span>
+              {isEditing
+                ? INR.format(
+                    (bill.subtotal || 0) + (bill.tax || 0) - editDiscount,
+                  )
+                : INR.format(bill.totalAmount)}
+            </span>
           </div>
         </div>
       </div>

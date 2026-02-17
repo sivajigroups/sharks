@@ -12,8 +12,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 
 const TAX_RATE = 0.13;
 
@@ -27,12 +25,11 @@ function computeToDateISO(fromDateStr, days) {
 }
 
 export default function GenericCartPanel({
-  mode,
   cartItems,
   setCartItems,
-  role, // ⭐ new
-  userBranch, // ⭐ new
-  selectedBranch, // ⭐ new
+  role,
+  userBranch,
+  selectedBranch,
 }) {
   const API = import.meta.env.VITE_API_BASE;
 
@@ -61,27 +58,41 @@ export default function GenericCartPanel({
   const [idProofNumber, setIdProofNumber] = useState("");
   const [isWalkIn, setIsWalkIn] = useState(false); // ⭐ New Walk-in state
 
-  // ── Totals
-  const subtotal = useMemo(() => {
-    if (mode === "sale") {
-      return cartItems.reduce(
-        (acc, it) => acc + (it.price || 0) * (it.qty || 0),
+  // ── Auto-detect cart contents
+  const hasSaleItems = useMemo(
+    () => cartItems.some((item) => item.itemType === "sale"),
+    [cartItems],
+  );
+  const hasRentalItems = useMemo(
+    () => cartItems.some((item) => item.itemType === "rental"),
+    [cartItems],
+  );
+
+  // ── Separate totals
+  const saleSubtotal = useMemo(() => {
+    return cartItems
+      .filter((item) => item.itemType === "sale")
+      .reduce((acc, it) => acc + (it.price || 0) * (it.qty || 0), 0);
+  }, [cartItems]);
+
+  const rentalSubtotal = useMemo(() => {
+    return cartItems
+      .filter((item) => item.itemType === "rental")
+      .reduce(
+        (acc, it) =>
+          acc + (it.pricePerDay || 0) * (it.days || 0) * (it.qty || 0),
         0,
       );
-    }
-    return cartItems.reduce(
-      (acc, it) => acc + (it.pricePerDay || 0) * (it.days || 0) * (it.qty || 0),
-      0,
-    );
-  }, [mode, cartItems]);
+  }, [cartItems]);
 
+  const subtotal = saleSubtotal + rentalSubtotal;
   const taxAmount = +(subtotal * TAX_RATE).toFixed(2);
   const totalAmount = useMemo(() => {
     const base = subtotal + taxAmount;
-    return +(
-      mode === "rental" ? base + Number(rentalDeposit || 0) : base
-    ).toFixed(2);
-  }, [mode, subtotal, taxAmount, rentalDeposit]);
+    return +(base + (hasRentalItems ? Number(rentalDeposit || 0) : 0)).toFixed(
+      2,
+    );
+  }, [subtotal, taxAmount, rentalDeposit, hasRentalItems]);
 
   // ── Fetch customers
   const fetchCustomers = async (q = "", pageNum = 1) => {
@@ -167,81 +178,43 @@ export default function GenericCartPanel({
   };
 
   // ── Payment handler
-  const handlePayment = async () => {
+  const handlePayment = async (paymentStatus = "Paid") => {
     if (!cartItems.length) return toast.error("Cart is empty");
-    if (!selectedCustomer?._id && !isWalkIn)
+
+    // If rental items present, customer is required (no walk-in)
+    if (hasRentalItems && !selectedCustomer?._id) {
+      return toast.error("Customer required for rental items");
+    }
+
+    // If only sale items, customer can be walk-in
+    if (!selectedCustomer?._id && !isWalkIn) {
       return toast.error("Select a customer first");
+    }
 
     setSaving(true);
     try {
-      let billNo = "";
-      let modeTitle = mode === "sale" ? "Sale Bill" : "Rental Bill";
-
-      // If Walk-in, we use null for customer ID
       const customerId = isWalkIn ? null : selectedCustomer?._id;
-
-      // For PDF generation, create a dummy object if walk-in
       const pdfCustomer = isWalkIn
         ? { name: "Walk-in Customer", phone: "", address: {} }
         : selectedCustomer;
 
-      if (mode === "sale") {
-        // --- Sale Bill ---
-        const tax = +(
-          cartItems.reduce(
-            (acc, it) => acc + (it.price || 0) * (it.qty || 0),
-            0,
-          ) * TAX_RATE
-        ).toFixed(2);
+      const branch =
+        role.toLowerCase() === "admin"
+          ? selectedBranch?.id || selectedBranch?._id
+          : userBranch?.id || userBranch?._id;
 
-        const payload = {
-          customerId: customerId, // Can be null
-          paymentMode,
-          discount: 0,
-          tax,
+      // ── Separate sale and rental items
+      const saleItems = cartItems
+        .filter((item) => item.itemType === "sale")
+        .map((i) => ({
+          inventoryId: i.inventoryId,
+          variantId: i.variantId,
+          quantity: i.qty,
+        }));
 
-          // ⭐ FIX — SEND ONLY BRANCH ID, NOT OBJECT
-          branch:
-            role.toLowerCase() === "admin"
-              ? selectedBranch?.id || selectedBranch?._id
-              : userBranch?.id || userBranch?._id,
-
-          items: cartItems.map((i) => ({
-            inventoryId: i.inventoryId,
-            variantId: i.variantId,
-            quantity: i.qty,
-          })),
-        };
-
-        const res = await fetch(`${API}/bills`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(payload),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.message || "Failed to create bill");
-
-        toast.success(`Sale Bill ${json.data.billNo} created`);
-        billNo = json.data.billNo;
-        setCartItems([]);
-
-        // Generate PDF
-        generateBillPDF({
-          billNo,
-          modeTitle,
-          customer: pdfCustomer,
-          items: cartItems,
-          subtotal,
-          taxAmount,
-          totalAmount,
-          paymentMode,
-        });
-      } else {
-        // --- Rental Transaction (Multi-Item) ---
-        // Prepare rental items
-        const rentalItems = cartItems.map((item) => {
-          // Calculate dates
+      const rentalItems = cartItems
+        .filter((item) => item.itemType === "rental")
+        .map((item) => {
           const rentDate = new Date(item.fromDate);
           const returnDate = new Date(rentDate);
           returnDate.setDate(rentDate.getDate() + (Number(item.days || 1) - 1));
@@ -259,20 +232,76 @@ export default function GenericCartPanel({
           };
         });
 
-        // Send SINGLE request
+      let billNo = "";
+      let modeTitle = "";
+
+      // ── Determine which API to call
+      if (hasSaleItems && hasRentalItems) {
+        // COMBINED BILL - both types
+        modeTitle = "Combined Bill";
+        const payload = {
+          customerId,
+          branch,
+          saleItems,
+          rentalItems,
+          deposit: Number(rentalDeposit || 0),
+          discount: 0,
+          tax: taxAmount,
+          paymentMode,
+          paymentStatus,
+        };
+
+        const res = await fetch(`${API}/combined-bills`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        if (!res.ok)
+          throw new Error(json?.message || "Failed to create combined bill");
+
+        toast.success(`Combined Bill ${json.data.billNo} created`);
+        billNo = json.data.billNo;
+      } else if (hasSaleItems) {
+        // SALE ONLY - use existing sale bill API
+        modeTitle = "Sale Bill";
+        const payload = {
+          customerId,
+          paymentMode,
+          paymentStatus,
+          discount: 0,
+          tax: taxAmount,
+          branch,
+          items: saleItems,
+        };
+
+        const res = await fetch(`${API}/bills`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        if (!res.ok)
+          throw new Error(json?.message || "Failed to create sale bill");
+
+        toast.success(`Sale Bill ${json.data.billNo} created`);
+        billNo = json.data.billNo;
+      } else if (hasRentalItems) {
+        // RENTAL ONLY - use existing rental API
+        modeTitle = "Rental Bill";
         const res = await fetch(`${API}/transaction`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            customer: selectedCustomer._id,
+            customer: customerId,
             items: rentalItems,
-            branch:
-              role.toLowerCase() === "admin"
-                ? selectedBranch?.id || selectedBranch?._id
-                : userBranch?.id || userBranch?._id,
+            branch,
             deposit: Number(rentalDeposit || 0),
             paymentMode,
+            paymentStatus,
           }),
         });
 
@@ -280,22 +309,28 @@ export default function GenericCartPanel({
         if (!res.ok)
           throw new Error(json?.message || "Failed to create rental order");
 
-        toast.success(`Rental Order ${json.data.billNo} Created!`);
-        setCartItems([]);
-
-        // Generate PDF
-        generateBillPDF({
-          billNo: json.data.billNo || `R-${Date.now()}`,
-          modeTitle,
-          customer: selectedCustomer,
-          items: cartItems,
-          subtotal,
-          taxAmount,
-          totalAmount,
-          paymentMode,
-          rentalDeposit,
-        });
+        toast.success(`Rental Order ${json.data.billNo} created`);
+        billNo = json.data.billNo;
       }
+
+      // Clear cart
+      setCartItems([]);
+
+      // Generate PDF
+      generateBillPDF({
+        billNo,
+        modeTitle,
+        customer: pdfCustomer,
+        items: cartItems,
+        saleSubtotal,
+        rentalSubtotal,
+        subtotal,
+        taxAmount,
+        totalAmount,
+        paymentMode,
+        paymentStatus,
+        rentalDeposit: hasRentalItems ? rentalDeposit : 0,
+      });
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -306,9 +341,7 @@ export default function GenericCartPanel({
   // ── Render UI
   return (
     <div className="w-[340px] bg-white shadow-md rounded-md p-4 text-sm flex flex-col h-full max-h-screen">
-      <h2 className="text-lg font-semibold mb-2">
-        {mode === "sale" ? "Sale Cart" : "Rental Cart"}
-      </h2>
+      <h2 className="text-lg font-semibold mb-2">Billing Cart</h2>
 
       {/* Cart items */}
       <div className="flex-1 overflow-y-auto pr-1 scrollbar-hide scroll-smooth space-y-2">
@@ -320,12 +353,23 @@ export default function GenericCartPanel({
           cartItems.map((item) => (
             <div key={item.id} className="flex justify-between border-b pb-1">
               <div>
-                <div className="font-medium">{item.name}</div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{item.name}</span>
+                  <span
+                    className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                      item.itemType === "sale"
+                        ? "bg-green-100 text-green-700 border border-green-300"
+                        : "bg-blue-100 text-blue-700 border border-blue-300"
+                    }`}
+                  >
+                    {item.itemType === "sale" ? "SALE" : "RENTAL"}
+                  </span>
+                </div>
                 <div className="text-[10px] text-gray-500">
                   {item.variant?.brand} • {item.variant?.size}
                   {item.variant?.color ? ` • ${item.variant.color}` : ""}
                 </div>
-                {mode === "rental" ? (
+                {item.itemType === "rental" ? (
                   <div className="text-xs text-gray-600 mt-1">
                     {item.fromDate} → {item.toDate} ({item.days}{" "}
                     {item.days > 1 ? "days" : "day"}) • Qty {item.qty} • ₹
@@ -342,7 +386,7 @@ export default function GenericCartPanel({
               <div className="flex flex-col items-center">
                 <div className="font-semibold">
                   ₹
-                  {mode === "sale"
+                  {item.itemType === "sale"
                     ? ((item.qty || 0) * (item.price || 0)).toFixed(2)
                     : (
                         (item.qty || 0) *
@@ -385,7 +429,7 @@ export default function GenericCartPanel({
                 </div>
 
                 {/* rental date quick edit */}
-                {mode === "rental" && (
+                {item.itemType === "rental" && (
                   <div className="mt-1 text-[10px] text-gray-500">
                     <div className="flex gap-1 items-center">
                       <input
@@ -443,12 +487,25 @@ export default function GenericCartPanel({
 
       {/* Totals & customer section */}
       <div className="pt-2 space-y-1 border-t mt-2">
+        {hasSaleItems && hasRentalItems && (
+          <>
+            <div className="flex justify-between text-xs text-gray-600">
+              <span>Sale Items:</span>
+              <span>₹{saleSubtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-xs text-gray-600">
+              <span>Rental Items:</span>
+              <span>₹{rentalSubtotal.toFixed(2)}</span>
+            </div>
+          </>
+        )}
+
         <div className="flex justify-between font-semibold text-base">
           <span>Subtotal:</span>
           <span>₹{subtotal.toFixed(2)}</span>
         </div>
 
-        {mode === "rental" && (
+        {hasRentalItems && (
           <div className="flex justify-between text-xs text-gray-600">
             <span>Deposit:</span>
             <span className="flex items-center gap-2">
@@ -496,7 +553,7 @@ export default function GenericCartPanel({
           </DialogTrigger>
 
           {/* ⭐ WALK-IN TOGGLE (Sales Only) */}
-          {mode === "sale" && (
+          {!hasRentalItems && (
             <div className="flex items-center gap-2 mt-2">
               <Switch
                 checked={isWalkIn}
@@ -688,20 +745,30 @@ export default function GenericCartPanel({
           </select>
         </div>
 
-        {/* Payment Button */}
-        <Button
-          className="w-full bg-black text-white mt-3"
-          onClick={handlePayment}
-          disabled={
-            !cartItems.length || (!selectedCustomer && !isWalkIn) || saving
-          }
-        >
-          {saving
-            ? "Processing..."
-            : mode === "sale"
-              ? "Payment (Sale)"
-              : "Payment (Rental)"}
-        </Button>
+        {/* Payment Buttons */}
+        <div className="flex gap-2 mt-3">
+          <Button
+            className="flex-1 bg-gray-200 text-gray-800 hover:bg-gray-300"
+            onClick={() => handlePayment("Pending")}
+            disabled={
+              !cartItems.length ||
+              (!selectedCustomer && !isWalkIn) ||
+              saving ||
+              isWalkIn
+            }
+          >
+            {saving ? "..." : "Pay Later"}
+          </Button>
+          <Button
+            className="flex-1 bg-black text-white hover:bg-gray-800"
+            onClick={() => handlePayment("Paid")}
+            disabled={
+              !cartItems.length || (!selectedCustomer && !isWalkIn) || saving
+            }
+          >
+            {saving ? "Processing..." : "Pay Now"}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -711,196 +778,4 @@ export default function GenericCartPanel({
    ✅ PDF BILL GENERATOR FUNCTION
 ------------------------------------------------------------------ */
 
-export function generateBillPDF({
-  billNo,
-  modeTitle,
-  customer,
-  items,
-  subtotal,
-  taxAmount,
-  totalAmount,
-  paymentMode,
-  rentalDeposit,
-}) {
-  // Thermal printer config (80mm width) ~ 3.15 inches
-  // Standard thermal height is dynamic (roll), but PDF needs a fixed height.
-  // We'll calculate a rough height: Header (40) + Customer (30) + Items (N*10) + Totals (30) + Footer (20)
-  // Or just set a safe large height (e.g., 297mm like A4 height, or more)
-  const estimatedHeight = 120 + items.length * 15;
-  const doc = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: [80, Math.max(200, estimatedHeight)],
-  });
-
-  const pageWidth = 80;
-  const marginLeft = 4;
-  const marginRight = 76; // 80 - 4
-  const centerX = pageWidth / 2;
-
-  let currentY = 10;
-
-  // --- HEADER ---
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text("Sivaji Power Tools", centerX, currentY, { align: "center" });
-  currentY += 5;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text("Power Tools • Rentals • Services", centerX, currentY, {
-    align: "center",
-  });
-  currentY += 5;
-
-  // Divider
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.2);
-  doc.line(marginLeft, currentY, marginRight, currentY);
-  currentY += 5;
-
-  // --- TITLE ---
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text(modeTitle, centerX, currentY, { align: "center" });
-  currentY += 5;
-
-  // --- BILL INFO ---
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text(`Bill No: ${billNo}`, marginLeft, currentY);
-  currentY += 4;
-  doc.text(
-    `Date: ${new Date().toLocaleDateString("en-IN", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })}`,
-    marginLeft,
-    currentY,
-  );
-  currentY += 4;
-  doc.text(`Mode: ${paymentMode}`, marginLeft, currentY);
-  currentY += 6;
-
-  // --- CUSTOMER INFO ---
-  doc.setFont("helvetica", "bold");
-  doc.text("Customer:", marginLeft, currentY);
-  currentY += 4;
-
-  doc.setFont("helvetica", "normal");
-  const customerName = customer?.name || "Guest";
-  const customerPhone = customer?.phone ? `Ph: ${customer.phone}` : "";
-  const addressLine = customer?.address?.city ? `${customer.address.city}` : "";
-
-  doc.text(customerName, marginLeft, currentY);
-  if (addressLine) {
-    doc.text(addressLine, marginRight, currentY, { align: "right" });
-  }
-  currentY += 4;
-  if (customerPhone) {
-    doc.text(customerPhone, marginLeft, currentY);
-    currentY += 4;
-  }
-
-  currentY += 2;
-  doc.line(marginLeft, currentY, marginRight, currentY);
-  currentY += 5;
-
-  // --- ITEMS TABLE HEADERS ---
-  // --- ITEMS TABLE HEADERS ---
-  const colX = [marginLeft, marginLeft + 46, marginRight]; // Item, Qty (center), Amt (right)
-
-  doc.setFont("helvetica", "bold");
-  doc.text("Item", colX[0], currentY);
-  doc.text("Qty", colX[1], currentY, { align: "center" });
-  doc.text("Amt", colX[2], currentY, { align: "right" });
-  currentY += 4;
-  doc.setLineWidth(0.2);
-  doc.line(marginLeft, currentY, marginRight, currentY);
-  currentY += 3;
-
-  // --- ITEMS LIST ---
-  doc.setFont("helvetica", "normal");
-
-  items.forEach((item) => {
-    // 1. Details string (dates etc)
-    let details = "";
-    if (modeTitle.includes("Rental")) {
-      details = `${item.days}d @ ${item.pricePerDay}`;
-    }
-
-    // 2. Split item name to fit width
-    const maxItemWidth = 42; // Allow slightly more space
-    const nameLines = doc.splitTextToSize(item.name, maxItemWidth);
-
-    // 3. Draw Name
-    doc.text(nameLines, colX[0], currentY);
-
-    // 4. Draw Qty (Centered)
-    doc.text(String(item.qty), colX[1], currentY, { align: "center" });
-
-    // 5. Draw Amount (Right)
-    const amount = modeTitle.includes("Rental")
-      ? (item.qty * item.days * item.pricePerDay).toFixed(2)
-      : (item.qty * (item.price || 0)).toFixed(2);
-
-    doc.text(amount, colX[2], currentY, { align: "right" });
-
-    // Calculate new Y based on name height (minimum 4mm spacing if single line)
-    const lineHeight = 4;
-    currentY += Math.max(lineHeight, nameLines.length * lineHeight);
-
-    // 6. Draw details if any (indented)
-    if (details) {
-      doc.setFontSize(7);
-      doc.setTextColor(100);
-      doc.text(details, colX[0], currentY - 1);
-      doc.setFontSize(8);
-      doc.setTextColor(0);
-      currentY += 3;
-    }
-
-    currentY += 1;
-  });
-
-  doc.line(marginLeft, currentY, marginRight, currentY);
-  currentY += 5;
-
-  // --- TOTALS ---
-  // Align labels to the left of the amount column
-  const totalsLabelX = 45;
-
-  doc.text("Subtotal:", totalsLabelX, currentY);
-  doc.text(subtotal.toFixed(2), marginRight, currentY, { align: "right" });
-  currentY += 4;
-
-  if (rentalDeposit) {
-    doc.text("Deposit:", totalsLabelX, currentY);
-    doc.text(Number(rentalDeposit).toFixed(2), marginRight, currentY, {
-      align: "right",
-    });
-    currentY += 4;
-  }
-
-  doc.text("Tax (13%):", totalsLabelX, currentY);
-  doc.text(taxAmount.toFixed(2), marginRight, currentY, { align: "right" });
-  currentY += 4;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("TOTAL:", totalsLabelX, currentY);
-  doc.text(`Rs. ${totalAmount}`, marginRight, currentY, { align: "right" });
-  currentY += 8;
-
-  // --- FOOTER ---
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(7);
-  doc.text("Thank you for your business!", centerX, currentY, {
-    align: "center",
-  });
-
-  doc.save(`${billNo}.pdf`);
-}
+import { generateBillPDF } from "@/utils/pdfGenerator";

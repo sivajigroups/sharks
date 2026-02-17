@@ -32,6 +32,7 @@ const createSaleBill = async (req, res) => {
       customerId,
       items = [],
       paymentMode = "Cash",
+      paymentStatus = "Paid",
       discount = 0,
       tax = 0,
       notes,
@@ -110,6 +111,15 @@ const createSaleBill = async (req, res) => {
     const billNo = await nextBillNo();
     const totalAmount = subtotal - discount + tax;
 
+    // Calculate Payment/Balance
+    let paidAmount = 0;
+    let balanceAmount = totalAmount;
+
+    if (paymentStatus === "Paid") {
+      paidAmount = totalAmount;
+      balanceAmount = 0;
+    }
+
     const billDoc = await SaleBill.create({
       billNo,
       customer: customerId,
@@ -119,7 +129,10 @@ const createSaleBill = async (req, res) => {
       discount,
       tax,
       totalAmount,
+      paidAmount,
+      balanceAmount,
       paymentMode,
+      paymentStatus: paymentStatus || "Paid",
       notes,
     });
 
@@ -358,10 +371,63 @@ const generateBillPdf = async (req, res) => {
   }
 };
 
+const markAsPaid = async (req, res) => {
+  try {
+    const { billId } = req.params;
+    const bill = await SaleBill.findByIdAndUpdate(
+      billId,
+      { paymentStatus: "Paid" },
+      { new: true },
+    );
+    if (!bill) {
+      return res.status(404).json({ message: "Bill not found" });
+    }
+    res.status(200).json({ message: "Bill marked as paid", data: bill });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// -----------------------------------------------------------------------------
+// Update Bill (Discount Only)
+// -----------------------------------------------------------------------------
+const updateBill = async (req, res) => {
+  try {
+    const { billId } = req.params;
+    const { discount } = req.body;
+
+    const bill = await SaleBill.findById(billId);
+    if (!bill) {
+      return res.status(404).json({ message: "Bill not found" });
+    }
+
+    if (discount !== undefined) {
+      bill.discount = Number(discount);
+      bill.totalAmount = (bill.subtotal || 0) + (bill.tax || 0) - bill.discount;
+
+      // Update Balance
+      bill.balanceAmount = bill.totalAmount - (bill.paidAmount || 0);
+      if (bill.balanceAmount <= 0) {
+        bill.balanceAmount = 0;
+        bill.paymentStatus = "Paid";
+      } else {
+        bill.paymentStatus = bill.paidAmount > 0 ? "Partial" : "Pending";
+      }
+    }
+
+    await bill.save();
+    return res.status(200).json({ message: "Bill updated", data: bill });
+  } catch (error) {
+    return res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
 module.exports = {
   createSaleBill,
   getBillsByCustomer,
   listBills,
   getBillById,
   generateBillPdf,
+  markAsPaid,
+  updateBill,
 };

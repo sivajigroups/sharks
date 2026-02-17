@@ -29,7 +29,9 @@ import AuditLogs from "./pages/admin/AuditLogs";
 import AuthInitializer from "./components/auth/AuthInitializer";
 import ProtectedRoute from "./components/auth/ProtectedRoute"; // ⭐ IMPORT
 import BillDetailPage from "./pages/billing/BillDetailPage";
-import RentalOrderDetail from "./pages/billing/RentalOrderDetail"; // ✅ Import
+import RentalOrderDetail from "./pages/billing/RentalOrderDetail";
+import CombinedBillDetailPage from "./pages/billing/CombinedBillDetailPage"; // ✅ Import
+import CombinedOrderList from "./pages/billing/CombinedOrderList";
 import Ad from "./pages/Ad";
 
 function App() {
@@ -105,6 +107,12 @@ function App() {
             <Route path="customers/:id" element={<CustomerDetails />} />
             <Route path="customers/inactive" element={<InactiveCustomers />} />
             <Route path="billing/:billId" element={<BillDetailPage />} />
+            <Route
+              path="combined-bill/:id"
+              element={<CombinedBillDetailPage />}
+            />
+            <Route path="combined-orders" element={<CombinedOrderList />} />{" "}
+            {/* ✅ New Route */}
             <Route path="audit-logs" element={<AuditLogs />} />
           </Route>
         </Route>{" "}

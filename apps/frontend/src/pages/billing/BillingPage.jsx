@@ -45,8 +45,7 @@ export default function BillingPage() {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const [saleCart, setSaleCart] = useState([]);
-  const [rentalCart, setRentalCart] = useState([]);
+  const [cartItems, setCartItems] = useState([]); // Unified cart state
   const [searchTerm, setSearchTerm] = useState("");
 
   // ── Fetch inventories ──
@@ -67,7 +66,7 @@ export default function BillingPage() {
             name: t.name,
             branch: t.branch,
             branchType: typeof t.branch,
-          }))
+          })),
         );
         setInventories(json?.data || json || []);
       } catch {
@@ -97,9 +96,10 @@ export default function BillingPage() {
   }, [role, API_BASE, userBranch]);
 
   // ── Add to cart handlers ──
+  // ── Add to cart handlers ──
   const handleAddSale = (tool, variant) => {
     const id = `sale-${tool._id}-${variant._id}`;
-    setSaleCart((prev) => {
+    setCartItems((prev) => {
       const existing = prev.find((i) => i.id === id);
       if (existing)
         return prev.map((i) => (i.id === id ? { ...i, qty: i.qty + 1 } : i));
@@ -107,7 +107,7 @@ export default function BillingPage() {
         ...prev,
         {
           id,
-          mode: "sale",
+          itemType: "sale", // ⭐ NEW
           name: tool.name,
           inventoryId: tool._id,
           variantId: variant._id,
@@ -117,6 +117,7 @@ export default function BillingPage() {
         },
       ];
     });
+    toast.success(`${tool.name} added to cart`);
   };
 
   // Rental logic
@@ -140,11 +141,11 @@ export default function BillingPage() {
     const toDate = computeToDateISO(rentStart, days);
     const { tool, variant } = pendingRental || {};
     const id = `rent-${tool._id}-${variant._id}-${rentStart}-${days}`;
-    setRentalCart((prev) => [
+    setCartItems((prev) => [
       ...prev,
       {
         id,
-        mode: "rental",
+        itemType: "rental", // ⭐ NEW
         name: tool.name,
         inventoryId: tool._id,
         variantId: variant._id,
@@ -154,9 +155,10 @@ export default function BillingPage() {
         toDate,
         days,
         pricePerDay: variant.rentPrice ?? variant.pricePerDay ?? 0,
-        sku: variant.sku, // Store SKU
+        sku: variant.sku,
       },
     ]);
+    toast.success(`${tool.name} added to cart`);
     setOpenRentDlg(false);
   };
 
@@ -173,7 +175,7 @@ export default function BillingPage() {
         mode === "sale"
           ? handleAddSale(match.tool, match.variant)
           : startAddRental(match.tool, match.variant);
-        toast.success(`${match.tool.name} added to cart`);
+        // toast moved to handlers
         setSearchTerm(""); // clear after successful scan
       } else {
         toast.info("Search mode active");
@@ -190,7 +192,7 @@ export default function BillingPage() {
     if (role.toLowerCase() === "staff" && (userBranch?.id || userBranch?._id)) {
       const uBranchId = userBranch.id || userBranch._id;
       temp = temp.filter(
-        (t) => String(getBranchId(t.branch)) === String(uBranchId)
+        (t) => String(getBranchId(t.branch)) === String(uBranchId),
       );
     }
 
@@ -201,7 +203,7 @@ export default function BillingPage() {
       selectedBranch.id !== "All"
     ) {
       temp = temp.filter(
-        (t) => String(getBranchId(t.branch)) === String(selectedBranch.id)
+        (t) => String(getBranchId(t.branch)) === String(selectedBranch.id),
       );
     }
 
@@ -219,8 +221,8 @@ export default function BillingPage() {
     });
   }, [inventories, searchTerm, role, userBranch, selectedBranch]);
 
-  const cartItems = mode === "sale" ? saleCart : rentalCart;
-  const setCartItems = mode === "sale" ? setSaleCart : setRentalCart;
+  // const cartItems = mode === "sale" ? saleCart : rentalCart; // REMOVED
+  // const setCartItems = mode === "sale" ? setSaleCart : setRentalCart; // REMOVED
 
   // ── UI ──
   return (
@@ -230,7 +232,7 @@ export default function BillingPage() {
       {/* left bill pannel */}
       <div className="w-[360px] min-w-[360px] bg-white border-r p-2 flex flex-col">
         <GenericCartPanel
-          mode={mode}
+          // mode={mode} // REMOVED
           cartItems={cartItems}
           setCartItems={setCartItems}
           role={role} // ⭐ add this
@@ -338,7 +340,7 @@ export default function BillingPage() {
             filtered.map((t) => ({
               name: t.name,
               branch: t.branch,
-            }))
+            })),
           )}
           {loading ? (
             <p>Loading...</p>
@@ -348,12 +350,12 @@ export default function BillingPage() {
             filtered.map((tool) => {
               const branchName =
                 branches.find(
-                  (b) => b._id === String(tool.branch?._id || tool.branch)
+                  (b) => b._id === String(tool.branch?._id || tool.branch),
                 )?.name || "—";
 
               const totalStock = tool.variants?.reduce(
                 (sum, v) => sum + (v.stock || 0),
-                0
+                0,
               );
 
               return (

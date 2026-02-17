@@ -10,7 +10,14 @@ const { RentalInventory } = require("../models/Inventory/RentalInventoryModel");
 // ───────────────────────────────────────────────
 const createRentalPurchase = async (req, res) => {
   try {
-    const { customer, items, branch, deposit, paymentMode } = req.body;
+    const {
+      customer,
+      items,
+      branch,
+      deposit,
+      paymentMode,
+      paymentStatus = "Pending",
+    } = req.body;
 
     // Resolve Branch ID (Admin sends body.branch, Staff uses req.user.branch)
     const branchId = branch || req.user?.branch?._id || req.user?.branch;
@@ -31,7 +38,7 @@ const createRentalPurchase = async (req, res) => {
       createdAt: { $gte: startOfYear },
     });
     const billNo = `RNT-${new Date().getFullYear()}-${String(
-      count + 1
+      count + 1,
     ).padStart(6, "0")}`;
 
     // 2. Calculate Totals
@@ -57,6 +64,7 @@ const createRentalPurchase = async (req, res) => {
         rentDate: rDate,
         returnDate: retDate,
         days: Number(it.days),
+        originalDays: Number(it.days), // Initialize originalDays
         quantity: Number(it.quantity || it.qty),
         pricePerDay: Number(it.pricePerDay),
         amount: lineTotal,
@@ -66,6 +74,15 @@ const createRentalPurchase = async (req, res) => {
 
     const tax = 0; // if tax needed, add here
     const totalAmount = subtotal + tax + Number(deposit || 0);
+
+    // Calculate Payment/Balance
+    let paidAmount = 0;
+    let balanceAmount = totalAmount;
+
+    if (paymentStatus === "Paid") {
+      paidAmount = totalAmount;
+      balanceAmount = 0;
+    }
 
     // 3. Create Transaction
     const newTransaction = new RentalPurchase({
@@ -77,8 +94,10 @@ const createRentalPurchase = async (req, res) => {
       tax,
       deposit: Number(deposit || 0),
       totalAmount,
+      paidAmount,
+      balanceAmount,
       status: "Pending",
-      paymentStatus: "Pending",
+      paymentStatus: paymentStatus || "Pending",
       paymentMode: paymentMode || "Cash",
     });
 
@@ -89,7 +108,7 @@ const createRentalPurchase = async (req, res) => {
       if (item.sku) {
         await RentalInventory.findOneAndUpdate(
           { _id: item.inventory, "variants.sku": item.sku },
-          { $inc: { "variants.$.stock": -item.quantity } }
+          { $inc: { "variants.$.stock": -item.quantity } },
         );
       } else {
         // Fallback: Decrement the first variant or handle legacy
@@ -169,7 +188,7 @@ const markAsPaid = async (req, res) => {
         /* amount, // invalid field name, removing */
         paymentDate: paymentDate || new Date(),
       },
-      { new: true }
+      { new: true },
     );
 
     if (!updated) {
@@ -218,7 +237,7 @@ const markAsReturned = async (req, res) => {
     // If itemIds provided, filter for those items
     if (itemIds && Array.isArray(itemIds) && itemIds.length > 0) {
       itemsToReturn = rental.items.filter((item) =>
-        itemIds.includes(item._id.toString())
+        itemIds.includes(item._id.toString()),
       );
     } else {
       // Logic for "Return All" (legacy or full return)
@@ -257,7 +276,7 @@ const markAsReturned = async (req, res) => {
 
     // 2. Determine Top-Level Transaction Status
     const allReturned = rental.items.every(
-      (item) => item.status === "Returned"
+      (item) => item.status === "Returned",
     );
     const anyReturned = rental.items.some((item) => item.status === "Returned");
 
@@ -297,7 +316,7 @@ const updateAmount = async (req, res) => {
     const updated = await RentalPurchase.findByIdAndUpdate(
       id,
       { totalAmount: amount }, // Updated to totalAmount
-      { new: true }
+      { new: true },
     );
     if (!updated) {
       return res.status(404).json({ message: "Rental purchase not found" });
@@ -366,6 +385,103 @@ const getSingleRental = async (req, res) => {
 };
 
 // ───────────────────────────────────────────────
+// UPDATE RENTAL BILL (Days/Qty)
+// ───────────────────────────────────────────────
+const updateRentalBill = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { items: updatedItems, discount } = req.body; // Array of { _id, days, quantity } & discount
+
+    const rental = await RentalPurchase.findById(id);
+    if (!rental) {
+      return res.status(404).json({ message: "Rental Bill not found" });
+    }
+
+    if (rental.status === "Closed" || rental.status === "Returned") {
+      // Allow editing even if returned? Maybe not. For now, block.
+      // User said "didn't use for a day", implying active or just returned.
+      // Let's allow editing "Pending" or "Partially Returned".
+    }
+
+    let subtotal = 0;
+
+    for (const item of rental.items) {
+      const update = updatedItems.find((u) => u._id === item._id.toString());
+      if (update) {
+        // Handle Stock Update if quantity changes
+        if (
+          update.quantity !== undefined &&
+          update.quantity !== item.quantity
+        ) {
+          const diff = item.quantity - update.quantity; // Positive if reducing qty (returning to stock)
+          if (diff !== 0 && item.inventory) {
+            const rentalItem = await RentalInventory.findById(item.inventory);
+            if (rentalItem && item.sku) {
+              const variant = rentalItem.variants.find(
+                (v) => v.sku === item.sku,
+              );
+              if (variant) {
+                variant.stock += diff;
+                await rentalItem.save();
+              }
+            }
+          }
+          item.quantity = Number(update.quantity);
+        }
+
+        if (update.days !== undefined) {
+          // If originalDays is not set (legacy or first edit), set it to the OLD days value
+          if (!item.originalDays) {
+            item.originalDays = item.days;
+          }
+          item.days = Number(update.days);
+          // Recalculate return date
+          const rDate = new Date(item.rentDate);
+          const newRetDate = new Date(rDate);
+          newRetDate.setDate(rDate.getDate() + (item.days - 1));
+          item.returnDate = newRetDate;
+        }
+
+        // Recalculate Amount
+        item.amount = item.pricePerDay * item.quantity * item.days;
+      }
+      subtotal += item.amount;
+    }
+
+    rental.subtotal = subtotal;
+    if (discount !== undefined) {
+      rental.discount = Number(discount);
+    }
+    rental.totalAmount =
+      subtotal +
+      (rental.tax || 0) +
+      (Number(rental.deposit) || 0) -
+      (rental.discount || 0);
+
+    // Update Balance
+    rental.balanceAmount = rental.totalAmount - (rental.paidAmount || 0);
+    if (rental.balanceAmount <= 0) {
+      rental.balanceAmount = 0;
+      rental.paymentStatus = "Paid";
+    } else {
+      rental.paymentStatus = rental.paidAmount > 0 ? "Partial" : "Pending";
+    }
+
+    await rental.save();
+
+    res.status(200).json({
+      message: "Rental updated successfully",
+      data: rental,
+    });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Error updating rental", error: error.message });
+  }
+};
+
+// ───────────────────────────────────────────────
 // EXPORTS
 // ───────────────────────────────────────────────
 module.exports = {
@@ -375,5 +491,7 @@ module.exports = {
   markAsReturned,
   updateAmount,
   getRentalInventory,
-  getSingleRental, // ✅ Export
+  getRentalInventory,
+  getSingleRental,
+  updateRentalBill,
 };
