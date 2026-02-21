@@ -208,6 +208,32 @@ const markAsPaid = async (req, res) => {
 };
 
 // ───────────────────────────────────────────────
+// MARK RENTAL AS UNPAID (REVERT)
+// ───────────────────────────────────────────────
+const markAsUnpaid = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const rental = await RentalPurchase.findById(id);
+    if (!rental) {
+      return res.status(404).json({ message: "Rental not found" });
+    }
+    rental.paymentStatus = "Pending";
+    rental.paidAmount = 0;
+    rental.balanceAmount = rental.totalAmount;
+    await rental.save();
+    res.status(200).json({
+      message: "Rental marked as unpaid successfully",
+      data: rental,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error updating rental",
+      error: error.message,
+    });
+  }
+};
+
+// ───────────────────────────────────────────────
 // MARK AS RETURNED — AUTO CALCULATE EXTRA DAYS COST
 // ───────────────────────────────────────────────
 // ───────────────────────────────────────────────
@@ -487,10 +513,10 @@ const updateRentalBill = async (req, res) => {
 module.exports = {
   createRentalPurchase,
   markAsPaid,
+  markAsUnpaid,
   getAllRentals,
   markAsReturned,
   updateAmount,
-  getRentalInventory,
   getRentalInventory,
   getSingleRental,
   updateRentalBill,

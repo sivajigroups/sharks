@@ -429,6 +429,32 @@ async function markCombinedBillAsPaid(req, res) {
 }
 
 // ────────────────────────────────────────────────────────────────────
+// MARK COMBINED BILL AS UNPAID (REVERT)
+// ────────────────────────────────────────────────────────────────────
+async function markCombinedBillAsUnpaid(req, res) {
+  try {
+    const { id } = req.params;
+    const bill = await CombinedBill.findById(id);
+    if (!bill) {
+      return res.status(404).json({ message: "Combined bill not found" });
+    }
+    bill.paymentStatus = "Pending";
+    bill.paidAmount = 0;
+    bill.balanceAmount = bill.totalAmount;
+    await bill.save();
+    return res.status(200).json({
+      message: "Combined bill marked as unpaid",
+      data: bill,
+    });
+  } catch (error) {
+    console.error("❌ Mark combined bill as unpaid error:", error);
+    return res.status(500).json({
+      message: error.message || "Failed to mark combined bill as unpaid",
+    });
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────
 // UPDATE COMBINED BILL (RENTAL ITEMS ONLY)
 // ────────────────────────────────────────────────────────────────────
 async function updateCombinedBill(req, res) {
@@ -544,7 +570,7 @@ module.exports = {
   getCombinedBillById,
   getCombinedBillsByCustomer,
   markRentalItemsReturned,
-  markRentalItemsReturned,
   markCombinedBillAsPaid,
+  markCombinedBillAsUnpaid,
   updateCombinedBill,
 };

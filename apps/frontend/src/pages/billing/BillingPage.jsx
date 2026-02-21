@@ -26,8 +26,8 @@ import { Select } from "@/components/ui/select";
 function computeToDateISO(fromDateStr, days) {
   if (!fromDateStr || !days || days < 1) return "";
   const d = new Date(fromDateStr);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + (Number(days) - 1));
+  d.setUTCHours(12, 0, 0, 0); // Use noon UTC to avoid timezone shifts
+  d.setUTCDate(d.getUTCDate() + (Number(days) - 1));
   return d.toISOString().slice(0, 10);
 }
 
@@ -129,7 +129,12 @@ export default function BillingPage() {
 
   const startAddRental = (tool, variant) => {
     setPendingRental({ tool, variant });
-    setRentStart("");
+    // Default to today's date (local time)
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    setRentStart(`${yyyy}-${mm}-${dd}`);
     setRentDays(1);
     setRentQty(1);
     setOpenRentDlg(true);

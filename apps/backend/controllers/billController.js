@@ -376,13 +376,39 @@ const markAsPaid = async (req, res) => {
     const { billId } = req.params;
     const bill = await SaleBill.findByIdAndUpdate(
       billId,
-      { paymentStatus: "Paid" },
+      {
+        paymentStatus: "Paid",
+        paidAmount: await SaleBill.findById(billId).then(
+          (b) => b?.totalAmount || 0,
+        ),
+        balanceAmount: 0,
+      },
       { new: true },
     );
     if (!bill) {
       return res.status(404).json({ message: "Bill not found" });
     }
     res.status(200).json({ message: "Bill marked as paid", data: bill });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// -----------------------------------------------------------------------------
+// Mark Bill as Unpaid (Revert)
+// -----------------------------------------------------------------------------
+const markAsUnpaid = async (req, res) => {
+  try {
+    const { billId } = req.params;
+    const bill = await SaleBill.findById(billId);
+    if (!bill) {
+      return res.status(404).json({ message: "Bill not found" });
+    }
+    bill.paymentStatus = "Pending";
+    bill.paidAmount = 0;
+    bill.balanceAmount = bill.totalAmount;
+    await bill.save();
+    res.status(200).json({ message: "Bill marked as unpaid", data: bill });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -429,5 +455,6 @@ module.exports = {
   getBillById,
   generateBillPdf,
   markAsPaid,
+  markAsUnpaid,
   updateBill,
 };

@@ -149,6 +149,24 @@ export default function RentalOrderDetail() {
     }
   };
 
+  const handleMarkAsUnpaid = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API}/transaction/${id}/unpay`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error("Failed to revert payment");
+      toast.success("Reverted to Unpaid");
+      fetchData();
+    } catch (e) {
+      toast.error(e.message);
+      setLoading(false);
+    }
+  };
+
   const startEdit = () => {
     const initial = {};
     data.items.forEach((i) => {
@@ -416,6 +434,15 @@ export default function RentalOrderDetail() {
               onClick={() => setPaidDialogOpen(true)}
             >
               Mark as Paid
+            </Button>
+          )}
+          {!isEditing && paymentStatus === "Paid" && (
+            <Button
+              variant="outline"
+              className="border-red-400 text-red-600 hover:bg-red-50"
+              onClick={handleMarkAsUnpaid}
+            >
+              Mark as Unpaid
             </Button>
           )}
           <Button variant="outline" onClick={downloadPdf}>

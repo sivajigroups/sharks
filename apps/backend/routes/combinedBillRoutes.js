@@ -8,6 +8,7 @@ const {
   getCombinedBillsByCustomer,
   markRentalItemsReturned,
   markCombinedBillAsPaid,
+  markCombinedBillAsUnpaid,
   updateCombinedBill,
 } = require("../controllers/combinedBillController");
 
@@ -31,8 +32,10 @@ router.get("/customer/:customerId", getCombinedBillsByCustomer);
 router.post("/:id/return", markRentalItemsReturned);
 
 // Mark combined bill as paid
-// Mark combined bill as paid
 router.put("/:id", markCombinedBillAsPaid);
+
+// Mark combined bill as unpaid (revert)
+router.put("/:id/unpay", markCombinedBillAsUnpaid);
 
 // Update combined bill (Rental Items)
 router.put("/:id/update", updateCombinedBill);

@@ -256,11 +256,17 @@ export function generateBillPDF({
     currentY += 4;
   }
 
-  doc.text("Tax (13%):", totalsLabelX, currentY);
-  doc.text(Number(taxAmount).toFixed(2), marginRight, currentY, {
-    align: "right",
-  });
-  currentY += 4;
+  if (taxAmount > 0) {
+    doc.text(
+      `Tax (${((taxAmount / subtotal) * 100).toFixed(0)}%):`,
+      totalsLabelX,
+      currentY,
+    );
+    doc.text(Number(taxAmount).toFixed(2), marginRight, currentY, {
+      align: "right",
+    });
+    currentY += 4;
+  }
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);

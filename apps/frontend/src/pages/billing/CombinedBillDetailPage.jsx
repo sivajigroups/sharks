@@ -165,6 +165,29 @@ export default function CombinedBillDetailPage() {
     }
   };
 
+  const handleMarkAsUnpaid = async () => {
+    try {
+      toast.loading("Reverting payment...");
+      const res = await fetch(`${API}/combined-bills/${id}/unpay`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.message || "Failed to revert payment");
+      }
+
+      toast.dismiss();
+      toast.success("Reverted to Unpaid");
+      fetchBill();
+    } catch (e) {
+      toast.dismiss();
+      toast.error(e.message);
+    }
+  };
+
   const startEdit = () => {
     const initial = {};
     if (bill.rentalItems) {
@@ -358,6 +381,16 @@ export default function CombinedBillDetailPage() {
               onClick={() => setPaidDialogOpen(true)}
             >
               Mark as Paid
+            </Button>
+          )}
+
+          {bill.paymentStatus === "Paid" && (
+            <Button
+              variant="outline"
+              className="border-red-400 text-red-600 hover:bg-red-50"
+              onClick={handleMarkAsUnpaid}
+            >
+              Mark as Unpaid
             </Button>
           )}
 
@@ -584,10 +617,12 @@ export default function CombinedBillDetailPage() {
               <span>{INR.format(bill.deposit)}</span>
             </div>
           )}
-          <div className="flex justify-between text-sm text-gray-600">
-            <span>Tax</span>
-            <span>{INR.format(bill.tax)}</span>
-          </div>
+          {bill.tax > 0 && (
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Tax</span>
+              <span>{INR.format(bill.tax)}</span>
+            </div>
+          )}
           {bill.discount > 0 && !isEditing && (
             <div className="flex justify-between text-sm text-green-600">
               <span>Discount</span>

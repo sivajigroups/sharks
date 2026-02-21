@@ -136,6 +136,28 @@ export default function BillDetailPage() {
     }
   };
 
+  const handleMarkAsUnpaid = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API}/bills/${billId}/unpay`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error("Failed to revert payment");
+      toast.success("Reverted to Unpaid");
+      const reloadRes = await fetch(`${API}/bills/${billId}`, {
+        credentials: "include",
+      });
+      const reloadJson = await reloadRes.json();
+      setBill(reloadJson.data);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const startEdit = () => {
     setEditDiscount(bill.discount || 0);
     setIsEditing(true);
@@ -299,6 +321,15 @@ export default function BillDetailPage() {
               Mark as Paid
             </Button>
           )}
+          {bill.paymentStatus === "Paid" && !isEditing && (
+            <Button
+              variant="outline"
+              className="border-red-400 text-red-600 hover:bg-red-50"
+              onClick={handleMarkAsUnpaid}
+            >
+              Mark as Unpaid
+            </Button>
+          )}
           <Button onClick={downloadPdf} variant="outline">
             Download PDF
           </Button>
@@ -360,10 +391,12 @@ export default function BillDetailPage() {
             <span>Subtotal</span>
             <span>{INR.format(bill.subtotal)}</span>
           </div>
-          <div className="flex justify-between">
-            <span>Tax</span>
-            <span>{INR.format(bill.tax)}</span>
-          </div>
+          {bill.tax > 0 && (
+            <div className="flex justify-between">
+              <span>Tax</span>
+              <span>{INR.format(bill.tax)}</span>
+            </div>
+          )}
           {isEditing ? (
             <div className="flex justify-between items-center py-1 text-sm">
               <span>Discount</span>

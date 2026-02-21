@@ -9,6 +9,7 @@ const {
   getBillById,
   generateBillPdf,
   markAsPaid,
+  markAsUnpaid,
   updateBill,
 } = require("../controllers/billController");
 const { userAuth } = require("../middleware/auth");
@@ -19,6 +20,7 @@ billRouter.get("/bills", listBills);
 billRouter.get("/bills/customer/:customerId", getBillsByCustomer);
 billRouter.get("/bills/:billId", getBillById);
 billRouter.put("/bills/:billId/pay", userAuth, markAsPaid);
+billRouter.put("/bills/:billId/unpay", userAuth, markAsUnpaid);
 billRouter.put("/bills/:billId", userAuth, updateBill);
 billRouter.get("/bills/:billId/pdf", generateBillPdf);
 module.exports = billRouter;
