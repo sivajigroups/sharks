@@ -77,8 +77,9 @@ export default function RentalOrderDetail() {
   const [editItems, setEditItems] = useState({}); // { itemId: { quantity, days } }
   const [editDiscount, setEditDiscount] = useState(0);
 
-  // Filter only pending items for selection
-  const pendingItems = data?.items?.filter((i) => i.status === "Pending") || [];
+  // Filter only pending/active items for selection
+  const pendingItems =
+    data?.rentalItems?.filter((i) => i.status === "Pending" || i.status === "Active") || [];
   const isAllSelected =
     pendingItems.length > 0 && selectedItems.length === pendingItems.length;
 
@@ -169,7 +170,7 @@ export default function RentalOrderDetail() {
 
   const startEdit = () => {
     const initial = {};
-    data.items.forEach((i) => {
+    data.rentalItems.forEach((i) => {
       initial[i._id] = { quantity: i.quantity, days: i.days };
     });
     setEditItems(initial);
@@ -225,7 +226,7 @@ export default function RentalOrderDetail() {
     try {
       toast.message("Preparing PDF…");
 
-      const items = (data.items || []).map((item) => ({
+      const items = (data.rentalItems || []).map((item) => ({
         ...item,
         name: item.itemName, // Map itemName to name for utility
         qty: item.quantity,
@@ -378,7 +379,7 @@ export default function RentalOrderDetail() {
   const {
     billNo,
     customer,
-    items = [],
+    rentalItems: items = [],
     totalAmount,
     subtotal,
     deposit,
@@ -403,7 +404,7 @@ export default function RentalOrderDetail() {
         </div>
 
         <div className="flex gap-2">
-          {!isEditing && isPending && (
+          {!isEditing && (
             <Button variant="outline" onClick={startEdit}>
               Edit Bill
             </Button>
@@ -418,11 +419,10 @@ export default function RentalOrderDetail() {
             </>
           )}
 
-          {!isEditing && isPending && (
+          {!isEditing && selectedItems.length > 0 && (
             <Button
               variant="destructive"
               onClick={() => setReturnDialogOpen(true)}
-              disabled={selectedItems.length === 0}
             >
               Return Selected ({selectedItems.length})
             </Button>
@@ -509,7 +509,7 @@ export default function RentalOrderDetail() {
           {items.map((item, idx) => (
             <TableRow key={idx}>
               <TableCell>
-                {item.status === "Pending" ? (
+                {item.status === "Pending" || item.status === "Active" ? (
                   <input
                     type="checkbox"
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
@@ -534,7 +534,7 @@ export default function RentalOrderDetail() {
                 </div>
               </TableCell>
               <TableCell className="text-right">
-                {isEditing && item.status === "Pending" ? (
+                {isEditing && (item.status === "Pending" || item.status === "Active") ? (
                   <input
                     type="number"
                     className="w-16 border rounded p-1 text-right"
@@ -548,7 +548,7 @@ export default function RentalOrderDetail() {
                 )}
               </TableCell>
               <TableCell className="text-right">
-                {isEditing && item.status === "Pending" ? (
+                {isEditing && (item.status === "Pending" || item.status === "Active") ? (
                   <input
                     type="number"
                     className="w-16 border rounded p-1 text-right"

@@ -84,7 +84,7 @@ export default function BillDetailPage() {
     if (!bill) return;
     try {
       toast.message("Preparing PDF…");
-      const items = bill.items.map((i) => ({
+      const items = bill.saleItems.map((i) => ({
         name: i.productName || i.name,
         qty: i.quantity || i.qty,
         price: i.unitPrice || i.price,
@@ -367,7 +367,7 @@ export default function BillDetailPage() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {bill.items.map((i, idx) => (
+          {bill.saleItems.map((i, idx) => (
             <TableRow key={idx}>
               <TableCell>{i.productName || i.name}</TableCell>
               <TableCell className="text-right">

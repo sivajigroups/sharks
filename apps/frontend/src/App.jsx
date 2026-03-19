@@ -17,7 +17,7 @@ import StaffDetail from "./pages/StaffDetail";
 import "./i18n";
 import SalesBilling from "./pages/billing/BillingPage";
 import CustomerDetails from "./pages/CustomerDetails";
-import OrderList from "./pages/billing/OrderList";
+import AllOrdersPage from "./pages/billing/AllOrdersPage";
 import SalesInventoryReport from "./pages/reports/InventoryReport";
 import PurchaseEntry from "./pages/PurchaseEntry";
 import InventoryReport from "./pages/reports/InventoryReport";
@@ -53,8 +53,8 @@ function App() {
             <Route path="customers" element={<Customers />} />
             <Route path="branches" element={<Branch />} />
             <Route path="billing" element={<BillingPage />} />
-            <Route path="order" element={<OrderList />} />
-            <Route path="rentalOrderList" element={<RentalOrderList />} />
+            <Route path="order" element={<AllOrdersPage />} />
+            <Route path="rentalOrderList" element={<AllOrdersPage />} />
             <Route path="purchaseOrder" element={<PurchaseEntry />} />
             {/* <Route path="rentalOrder" element={<RentalOrdersPage />} /> */}
             {/* <Route path="rentalOrder" element={<OrderManager type="rental" title="Rental Orders" newOrderPath="/layout/rentalOrder/new" />} /> */}

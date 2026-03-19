@@ -60,14 +60,14 @@ export default function BillingPage() {
         const res = await fetch(url, { credentials: "include" });
         const json = await res.json();
         const items = json?.data || json || [];
-        console.log(
-          "INVENTORY RAW DATA →",
-          items.map((t) => ({
-            name: t.name,
-            branch: t.branch,
-            branchType: typeof t.branch,
-          })),
-        );
+        // console.log(
+        //   "INVENTORY RAW DATA →",
+        //   items.map((t) => ({
+        //     name: t.name,
+        //     branch: t.branch,
+        //     branchType: typeof t.branch,
+        //   })),
+        // );
         setInventories(json?.data || json || []);
       } catch {
         toast.error("Failed to fetch inventory");
@@ -247,9 +247,9 @@ export default function BillingPage() {
       </div>
 
       {/* Right Section */}
-      <div className="flex-1 overflow-y-auto p-4 transition-all w-229 duration-300 ease-in-out">
+      <div className="flex-1 flex flex-col p-4 transition-all w-229 duration-300 ease-in-out h-full overflow-hidden">
         {/* Billing Type + Search */}
-        <Card className="mb-4">
+        <Card className="mb-4 shrink-0">
           <CardContent className="p-4 flex items-center gap-3 flex-wrap">
             <span className="text-sm font-medium">Billing Type:</span>
             <div className="inline-flex rounded-md border">
@@ -328,25 +328,26 @@ export default function BillingPage() {
           </CardContent>
         </Card>
 
-        {/* Items Grid */}
-        <div
-          className="
-            grid gap-2 
-            sm:grid-cols-2 
-            md:grid-cols-2 
-            lg:grid-cols-3 
-            xl:grid-cols-4
-            2xl:grid-cols-6
-            auto-rows-[140px]
-          "
-        >
-          {console.log(
+        {/* Items Grid Container */}
+        <div className="flex-1 overflow-y-auto pr-2 pb-2">
+          <div
+            className="
+              grid gap-2 
+              sm:grid-cols-2 
+              md:grid-cols-2 
+              lg:grid-cols-3 
+              xl:grid-cols-4
+              2xl:grid-cols-6
+              auto-rows-[140px]
+            "
+          >
+          {/* console.log(
             "FINAL FILTERED LIST:",
             filtered.map((t) => ({
               name: t.name,
               branch: t.branch,
             })),
-          )}
+          ) */}
           {loading ? (
             <p>Loading...</p>
           ) : filtered.length === 0 ? (
@@ -472,6 +473,7 @@ export default function BillingPage() {
               );
             })
           )}
+          </div>
         </div>
       </div>
 

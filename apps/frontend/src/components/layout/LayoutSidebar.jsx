@@ -82,22 +82,7 @@ const LayoutSidebar = () => {
           icon: ShoppingCart,
           url: "/layout/billing",
         },
-        { title: "Sales Orders", icon: ListOrdered, url: "/layout/order" },
-        // 💡 show rental orders only if enabled
-        ...(RENTAL_ENABLED
-          ? [
-              {
-                title: t("sidebar.rentalOrders"),
-                icon: ListOrdered,
-                url: "/layout/rentalOrderList",
-              },
-            ]
-          : []),
-          {
-          title: t("sidebar.combinedOrders"),
-          icon: ListOrdered,
-          url: "/layout/combined-orders",
-          }
+        { title: "Order List", icon: ListOrdered, url: "/layout/order" },
       ],
     },
     {
@@ -159,15 +144,6 @@ const LayoutSidebar = () => {
           url: "/layout/billing",
         },
         { title: "Order List", icon: ListOrdered, url: "/layout/order" },
-        ...(RENTAL_ENABLED
-          ? [
-              {
-                title: t("sidebar.rentalOrders"),
-                icon: ListOrdered,
-                url: "/layout/rentalOrderList",
-              },
-            ]
-          : []),
       ],
     },
     {

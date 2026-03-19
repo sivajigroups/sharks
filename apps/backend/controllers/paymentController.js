@@ -1,6 +1,4 @@
-const { SaleBill } = require("../models/saleBillModel");
-const RentalPurchase = require("../models/rentalTransactionModel");
-const { CombinedBill } = require("../models/combinedBillModel");
+const { Bill } = require("../models/billModel");
 
 // Helper to update bill payment
 const updateBillPayment = async (bill, amount) => {
@@ -26,25 +24,10 @@ const collectCustomerPayment = async (req, res) => {
     }
 
     // 1. Fetch all pending bills for customer
-    const sales = await SaleBill.find({
+    const allBills = await Bill.find({
       customer: customerId,
       paymentStatus: { $ne: "Paid" },
     }).sort({ createdAt: 1 });
-
-    const rentals = await RentalPurchase.find({
-      customer: customerId,
-      paymentStatus: { $ne: "Paid" },
-    }).sort({ createdAt: 1 });
-
-    const combined = await CombinedBill.find({
-      customer: customerId,
-      paymentStatus: { $ne: "Paid" },
-    }).sort({ createdAt: 1 });
-
-    // Merge and sort by date
-    let allBills = [...sales, ...rentals, ...combined].sort(
-      (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
-    );
 
     const paidBills = [];
 

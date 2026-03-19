@@ -78,11 +78,11 @@ export default function UnifiedTransferDialog({
 
   // --- Data Processing (reused from TransferSkuDialog) ---
 
-  // Group by Item ID
+  // Group by Item Name (to merge branches for the same item in the dropdown)
   const itemsById = useMemo(() => {
     const map = new Map();
     for (const row of inventories) {
-      const id = normId(row._id);
+      const id = row.name ? row.name.toLowerCase().trim() : normId(row._id);
       if (!id) continue;
       if (!map.has(id)) map.set(id, []);
       map.get(id).push(row);
@@ -281,6 +281,19 @@ export default function UnifiedTransferDialog({
       return toast.error(t("inventory.reasonRequired") || "Reason is required");
     }
 
+    // Find the exact document ID for the fromBranch
+    let realItemId = null;
+    const rows = itemsById.get(itemId) || [];
+    for (const r of rows) {
+      if (normId(r.branch) === fromBranch || normId(r.branchId) === fromBranch) {
+        realItemId = normId(r._id);
+        break;
+      }
+    }
+    if (!realItemId) {
+      return toast.error("Document not found for selected branch");
+    }
+
     // Conversion logic
     if (transferScope === "convert") {
       const sku = getSku();
@@ -310,11 +323,11 @@ export default function UnifiedTransferDialog({
           toBranchId: fromBranch, // same branch
           quantity: q,
           // sales->rental
-          salesItemId: isSalesToRental ? itemId : undefined,
+          salesItemId: isSalesToRental ? realItemId : undefined,
           salesSku: isSalesToRental ? sku : undefined,
           pricePerDay: isSalesToRental && price ? Number(price) : undefined,
           // rental->sales
-          rentalItemId: !isSalesToRental ? itemId : undefined,
+          rentalItemId: !isSalesToRental ? realItemId : undefined,
           rentalSku: !isSalesToRental ? sku : undefined,
           salePrice: !isSalesToRental && price ? Number(price) : undefined,
         };
@@ -342,7 +355,7 @@ export default function UnifiedTransferDialog({
     try {
       const payload = {
         type: transferScope, // 'branch', 'theft', 'scrap'
-        itemId,
+        itemId: realItemId,
         brand,
         size,
         color,

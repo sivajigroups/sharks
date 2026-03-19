@@ -1064,8 +1064,6 @@ const salesToRental = async (req, res) => {
  * }
  */
 const rentalToSales = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
   try {
     const {
       rentalItemId,
@@ -1095,7 +1093,7 @@ const rentalToSales = async (req, res) => {
     const rentalDoc = await RentalInventory.findOne({
       _id: rentalItemId,
       branch: fromBranchId,
-    }).session(session);
+    });
 
     if (!rentalDoc) {
       return res.status(404).json({ message: "Rental item not found" });
@@ -1125,7 +1123,7 @@ const rentalToSales = async (req, res) => {
     let salesDoc = await SalesInventory.findOne({
       name,
       branch: toBranchId,
-    }).session(session);
+    });
 
     if (!salesDoc) {
       // creating a new Sales item requires a price on the variant
@@ -1216,12 +1214,13 @@ const rentalToSales = async (req, res) => {
       }
     }
 
-    // 4) Save both atomically
-    await rentalDoc.save({ session });
-    await salesDoc.save({ session });
-
-    await session.commitTransaction();
-    session.endSession();
+    // 4) Save WITHOUT transaction
+    await rentalDoc.save();
+    try {
+      await salesDoc.save();
+    } catch (saveErr) {
+      throw saveErr;
+    }
 
     return res.status(200).json({
       message: `Transferred ${qty} ${name} from rental → sales`,
@@ -1235,8 +1234,7 @@ const rentalToSales = async (req, res) => {
       },
     });
   } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
+    console.error("RentalToSales Logic Error:", err);
     return res
       .status(400)
       .json({ message: "Transfer failed", error: err.message });

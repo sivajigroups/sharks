@@ -184,22 +184,22 @@ export default function CombinedOrderList() {
 
   // ---------- RENDER ----------
   return (
-    <div className="w-full h-full overflow-auto bg-gray-50">
-      <div className="p-6">
+    <div className="w-full h-full overflow-auto bg-gray-50/50">
+      <div className="p-2 pb-6">
         {/* Title + Filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 bg-white p-3 rounded-2xl border border-gray-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] ring-1 ring-gray-900/5 transition-all">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 hidden sm:block ml-2">
             Combined Orders
           </h1>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto ml-auto">
             <Input
               placeholder="Search Bill No / Customer"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              className="w-64"
+              className="w-full sm:w-60 bg-gray-50/50 border-gray-200 focus:bg-white transition-colors rounded-xl h-10 px-4 text-sm font-medium"
             />
             <select
-              className="border rounded-md px-2 py-1 text-sm"
+              className="border border-gray-200 rounded-xl px-3 py-2 text-sm font-medium bg-gray-50/50 hover:bg-gray-100/80 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer h-10 min-w-[120px]"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
             >
@@ -210,7 +210,7 @@ export default function CombinedOrderList() {
               ))}
             </select>
             <select
-              className="border rounded-md px-2 py-1 text-sm"
+              className="border border-gray-200 rounded-xl px-3 py-2 text-sm font-medium bg-gray-50/50 hover:bg-gray-100/80 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer h-10 min-w-[110px]"
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
             >
@@ -221,7 +221,8 @@ export default function CombinedOrderList() {
               ))}
             </select>
             <Button
-              variant="outline"
+              variant="default"
+              className="rounded-xl h-10 px-6 bg-[#0f172a] hover:bg-[#1e293b] text-white shadow-md transition-all font-medium whitespace-nowrap"
               onClick={refresh}
               disabled={loading || isPending}
             >
@@ -231,7 +232,7 @@ export default function CombinedOrderList() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-lg shadow-sm border">
+        <div className="bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.04)] border border-gray-100 overflow-hidden ring-1 ring-gray-900/5 cursor-default">
           <div className="overflow-x-auto">
             <Table className="table-fixed">
               <TableHeader className="sticky top-0 bg-gray-100 z-10">

@@ -81,6 +81,8 @@ export default function InventoryManager({ type = "sales", title }) {
   const [inventories, setInventories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 15;
 
   // Create/Edit dialog
   const [open, setOpen] = useState(false);
@@ -209,7 +211,7 @@ export default function InventoryManager({ type = "sales", title }) {
           : [];
       setBranches(list);
     } catch (err) {
-      console.error(err);
+      // console.error(err);
       toast.error(
         t("inventory.branchFetchError") || "Failed to load branches."
       );
@@ -355,7 +357,7 @@ export default function InventoryManager({ type = "sales", title }) {
       await fetchInventories();
       setOpen(false);
     } catch (err) {
-      console.error(err);
+      // console.error(err);
       toast.error(
         t(editId ? "inventory.updateError" : "inventory.insertError") ||
           (editId ? "Update failed" : "Insert failed")
@@ -477,6 +479,17 @@ export default function InventoryManager({ type = "sales", title }) {
       JSON.stringify(inv).toLowerCase().includes(q)
     );
   }, [tableData, searchTerm]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, selectedBranchId]);
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const paginatedData = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
 
   const selectedBranchLabel =
     selectedBranchId === "ALL"
@@ -861,14 +874,39 @@ export default function InventoryManager({ type = "sales", title }) {
               </TableBody>
             </Table>
           ) : (
-            <ReTable
-              data={filtered}
-              columns={columns}
-              onDelete={handleDelete}
-              onEditClick={openForm}
-              showViewButton={false}
-              disableActions={selectedBranchId === "ALL"} // 👈 this hides edit/delete
-            />
+            <>
+              <ReTable
+                data={paginatedData}
+                columns={columns}
+                onDelete={handleDelete}
+                onEditClick={openForm}
+                showViewButton={false}
+                disableActions={selectedBranchId === "ALL"} // 👈 this hides edit/delete
+              />
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4 border-t pt-4">
+                  <Button
+                    variant="outline"
+                    disabled={page === 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm font-medium text-gray-500">
+                    Page {page} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    disabled={page === totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

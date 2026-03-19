@@ -1,6 +1,6 @@
 // controllers/combinedBillController.js
 const mongoose = require("mongoose");
-const { CombinedBill } = require("../models/combinedBillModel");
+const { Bill } = require("../models/billModel");
 const { SalesInventory } = require("../models/Inventory/SalesInventoryModel");
 const { RentalInventory } = require("../models/Inventory/RentalInventoryModel");
 
@@ -198,8 +198,9 @@ async function createCombinedBill(req, res) {
       balanceAmount = 0;
     }
 
-    const bill = new CombinedBill({
+    const bill = new Bill({
       billNo,
+      type: "Combined",
       customer: customerId || null,
       branch,
       saleItems: processedSaleItems,
@@ -246,7 +247,7 @@ async function getCombinedBills(req, res) {
   try {
     const { page = 1, limit = 10, search = "", status } = req.query;
 
-    const query = {};
+    const query = { type: "Combined" };
     if (search) {
       query.$or = [
         { billNo: { $regex: search, $options: "i" } },
@@ -257,14 +258,14 @@ async function getCombinedBills(req, res) {
       query.status = status;
     }
 
-    const bills = await CombinedBill.find(query)
+    const bills = await Bill.find(query)
       .populate("customer", "name phone address")
       .populate("branch", "branchName")
       .sort({ createdAt: -1 })
       .limit(Number(limit))
       .skip((Number(page) - 1) * Number(limit));
 
-    const total = await CombinedBill.countDocuments(query);
+    const total = await Bill.countDocuments(query);
 
     return res.status(200).json({
       data: bills,
@@ -287,7 +288,7 @@ async function getCombinedBillById(req, res) {
   try {
     const { id } = req.params;
 
-    const bill = await CombinedBill.findById(id)
+    const bill = await Bill.findById(id)
       .populate("customer", "name phone address idProofType idProofNumber")
       .populate("branch", "branchName location")
       .populate("saleItems.inventoryId", "productName")
@@ -313,7 +314,7 @@ async function getCombinedBillsByCustomer(req, res) {
   try {
     const { customerId } = req.params;
 
-    const bills = await CombinedBill.find({ customer: customerId })
+    const bills = await Bill.find({ customer: customerId, type: "Combined" })
       .populate("branch", "branchName")
       .sort({ createdAt: -1 });
 
@@ -337,7 +338,7 @@ async function markRentalItemsReturned(req, res) {
     const { id } = req.params;
     const { rentalItemIds = [] } = req.body; // Array of rental item _ids to return
 
-    const bill = await CombinedBill.findById(id);
+    const bill = await Bill.findById(id);
     if (!bill) {
       throw new Error("Combined bill not found");
     }
@@ -406,7 +407,7 @@ async function markCombinedBillAsPaid(req, res) {
   try {
     const { id } = req.params;
 
-    const bill = await CombinedBill.findByIdAndUpdate(
+    const bill = await Bill.findByIdAndUpdate(
       id,
       { paymentStatus: "Paid" },
       { new: true },
@@ -434,7 +435,7 @@ async function markCombinedBillAsPaid(req, res) {
 async function markCombinedBillAsUnpaid(req, res) {
   try {
     const { id } = req.params;
-    const bill = await CombinedBill.findById(id);
+    const bill = await Bill.findById(id);
     if (!bill) {
       return res.status(404).json({ message: "Combined bill not found" });
     }
@@ -462,7 +463,7 @@ async function updateCombinedBill(req, res) {
     const { id } = req.params;
     const { rentalItems: updatedItems } = req.body; // Array of { _id, days, quantity }
 
-    const bill = await CombinedBill.findById(id);
+    const bill = await Bill.findById(id);
     if (!bill) {
       return res.status(404).json({ message: "Combined bill not found" });
     }

@@ -302,19 +302,135 @@ export default function CombinedBillDetailPage() {
   // ---------- UI STATE: LOADING / ERROR ----------
   if (loading) {
     return (
-      <div className="m-3 p-4 bg-white rounded-lg shadow-md space-y-6">
+      <div className="m-3 p-4 bg-white rounded-lg shadow-md space-y-6 animate-pulse">
+        {/* Header Skeleton */}
         <div className="flex justify-between items-start">
           <div className="space-y-2">
-            <Skeleton className="h-8 w-48" />
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-8 w-40" />
+              <Skeleton className="h-6 w-20 rounded-full" />
+            </div>
             <Skeleton className="h-4 w-32" />
           </div>
           <div className="flex gap-2">
-            <Skeleton className="h-10 w-20" />
-            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-24" />
           </div>
         </div>
-        <Skeleton className="h-24 w-full rounded-lg" />
-        <Skeleton className="h-48 w-full rounded-lg" />
+
+        {/* Customer Info Skeleton */}
+        <div className="border rounded-lg p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+            <div className="flex justify-end md:justify-end items-start">
+              <Skeleton className="h-6 w-24 rounded-full" />
+            </div>
+          </div>
+        </div>
+
+        {/* Tables Skeleton */}
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <h3 className="font-semibold text-gray-700 border-b pb-2">
+              <Skeleton className="h-6 w-32" />
+            </h3>
+            <Table className="table-fixed">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-right">Rate</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2].map((i) => (
+                  <TableRow key={`sale-sk-${i}`}>
+                    <TableCell>
+                      <Skeleton className="h-5 w-32" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-5 w-8 ml-auto" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-5 w-16 ml-auto" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-5 w-20 ml-auto" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="font-semibold text-gray-700 border-b pb-2">
+              <Skeleton className="h-6 w-32" />
+            </h3>
+            <Table className="table-fixed">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]"><Skeleton className="h-4 w-4" /></TableHead>
+                  <TableHead>Item</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-right">Days</TableHead>
+                  <TableHead>Dates</TableHead>
+                  <TableHead className="text-right">Rate/Day</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-center w-[100px]">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2].map((i) => (
+                  <TableRow key={`rent-sk-${i}`}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-4" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-32" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-5 w-8 ml-auto" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-5 w-8 ml-auto" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-24" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-5 w-16 ml-auto" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-5 w-20 ml-auto" />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Skeleton className="h-5 w-16 mx-auto" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        {/* Summary Skeleton */}
+        <div className="flex justify-end pt-4">
+          <div className="w-72 space-y-3">
+            <div className="flex justify-between"><Skeleton className="h-4 w-24"/><Skeleton className="h-4 w-20"/></div>
+            <div className="flex justify-between"><Skeleton className="h-4 w-24"/><Skeleton className="h-4 w-20"/></div>
+            <div className="flex justify-between"><Skeleton className="h-4 w-24"/><Skeleton className="h-4 w-20"/></div>
+            <div className="border-t pt-3 flex justify-between items-center"><Skeleton className="h-6 w-20"/><Skeleton className="h-6 w-28"/></div>
+            <div className="flex justify-between mt-2"><Skeleton className="h-3 w-20"/><Skeleton className="h-3 w-16"/></div>
+          </div>
+        </div>
       </div>
     );
   }

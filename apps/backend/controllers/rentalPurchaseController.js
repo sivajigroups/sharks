@@ -1,5 +1,5 @@
 // controllers/rentalPurchaseController.js
-const RentalPurchase = require("../models/rentalTransactionModel");
+const { Bill } = require("../models/billModel");
 const { RentalInventory } = require("../models/Inventory/RentalInventoryModel");
 
 // ───────────────────────────────────────────────
@@ -34,8 +34,9 @@ const createRentalPurchase = async (req, res) => {
 
     // 1. Generate Bill No (RNT-YYYY-XXXX)
     const startOfYear = new Date(new Date().getFullYear(), 0, 1);
-    const count = await RentalPurchase.countDocuments({
+    const count = await Bill.countDocuments({
       createdAt: { $gte: startOfYear },
+      type: "Rental",
     });
     const billNo = `RNT-${new Date().getFullYear()}-${String(
       count + 1,
@@ -85,18 +86,20 @@ const createRentalPurchase = async (req, res) => {
     }
 
     // 3. Create Transaction
-    const newTransaction = new RentalPurchase({
+    const newTransaction = new Bill({
       billNo,
+      type: "Rental",
       customer,
       branch: branchId,
-      items: processedItems,
+      rentalItems: processedItems,
       subtotal,
+      rentalSubtotal: subtotal,
       tax,
       deposit: Number(deposit || 0),
       totalAmount,
       paidAmount,
       balanceAmount,
-      status: "Pending",
+      status: "Active", // Rentals start as active usually, but staying close to logic
       paymentStatus: paymentStatus || "Pending",
       paymentMode: paymentMode || "Cash",
     });
@@ -143,7 +146,7 @@ const getAllRentals = async (req, res) => {
     } = req.query;
     const skip = (page - 1) * limit;
 
-    const query = {};
+    const query = { type: "Rental" };
 
     if (q) {
       query.$or = [{ billNo: { $regex: q, $options: "i" } }];
@@ -153,8 +156,8 @@ const getAllRentals = async (req, res) => {
     if (branch) query.branch = branch;
     if (customerId) query.customer = customerId; // ✅ Add this
 
-    const total = await RentalPurchase.countDocuments(query);
-    const rentals = await RentalPurchase.find(query)
+    const total = await Bill.countDocuments(query);
+    const rentals = await Bill.find(query)
       .populate("customer", "name phone")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -180,7 +183,7 @@ const markAsPaid = async (req, res) => {
     const { id } = req.params;
     const { paymentDate, amount } = req.body;
 
-    const updated = await RentalPurchase.findByIdAndUpdate(
+    const updated = await Bill.findByIdAndUpdate(
       id,
       {
         paymentStatus: "Paid",
@@ -213,7 +216,7 @@ const markAsPaid = async (req, res) => {
 const markAsUnpaid = async (req, res) => {
   try {
     const { id } = req.params;
-    const rental = await RentalPurchase.findById(id);
+    const rental = await Bill.findById(id);
     if (!rental) {
       return res.status(404).json({ message: "Rental not found" });
     }
@@ -248,7 +251,7 @@ const markAsReturned = async (req, res) => {
     const { itemIds } = req.body; // Expect array of item _ids for partial return
 
     const rental =
-      await RentalPurchase.findById(id).populate("items.inventory");
+      await Bill.findById(id).populate("rentalItems.inventory");
     if (!rental)
       return res.status(404).json({ message: "Rental Order not found" });
 
@@ -262,12 +265,12 @@ const markAsReturned = async (req, res) => {
 
     // If itemIds provided, filter for those items
     if (itemIds && Array.isArray(itemIds) && itemIds.length > 0) {
-      itemsToReturn = rental.items.filter((item) =>
+      itemsToReturn = rental.rentalItems.filter((item) =>
         itemIds.includes(item._id.toString()),
       );
     } else {
       // Logic for "Return All" (legacy or full return)
-      itemsToReturn = rental.items;
+      itemsToReturn = rental.rentalItems;
     }
 
     if (itemsToReturn.length === 0) {
@@ -301,10 +304,10 @@ const markAsReturned = async (req, res) => {
     }
 
     // 2. Determine Top-Level Transaction Status
-    const allReturned = rental.items.every(
+    const allReturned = rental.rentalItems.every(
       (item) => item.status === "Returned",
     );
-    const anyReturned = rental.items.some((item) => item.status === "Returned");
+    const anyReturned = rental.rentalItems.some((item) => item.status === "Returned");
 
     if (allReturned) {
       rental.status = "Returned";
@@ -339,7 +342,7 @@ const updateAmount = async (req, res) => {
       return res.status(400).json({ message: "Invalid amount value" });
     }
 
-    const updated = await RentalPurchase.findByIdAndUpdate(
+    const updated = await Bill.findByIdAndUpdate(
       id,
       { totalAmount: amount }, // Updated to totalAmount
       { new: true },
@@ -390,9 +393,9 @@ const getRentalInventory = async (req, res) => {
 const getSingleRental = async (req, res) => {
   try {
     const { id } = req.params;
-    const rental = await RentalPurchase.findById(id)
+    const rental = await Bill.findById(id)
       .populate("customer", "name phone address")
-      .populate("items.inventory", "name rentPrice category"); // populate item details
+      .populate("rentalItems.inventory", "name rentPrice category"); // populate item details
 
     if (!rental) {
       return res.status(404).json({ message: "Rental Bill not found" });
@@ -418,7 +421,7 @@ const updateRentalBill = async (req, res) => {
     const { id } = req.params;
     const { items: updatedItems, discount } = req.body; // Array of { _id, days, quantity } & discount
 
-    const rental = await RentalPurchase.findById(id);
+    const rental = await Bill.findById(id);
     if (!rental) {
       return res.status(404).json({ message: "Rental Bill not found" });
     }
@@ -431,7 +434,7 @@ const updateRentalBill = async (req, res) => {
 
     let subtotal = 0;
 
-    for (const item of rental.items) {
+    for (const item of rental.rentalItems) {
       const update = updatedItems.find((u) => u._id === item._id.toString());
       if (update) {
         // Handle Stock Update if quantity changes
@@ -475,6 +478,7 @@ const updateRentalBill = async (req, res) => {
     }
 
     rental.subtotal = subtotal;
+    rental.rentalSubtotal = subtotal;
     if (discount !== undefined) {
       rental.discount = Number(discount);
     }

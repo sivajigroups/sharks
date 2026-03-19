@@ -90,16 +90,18 @@ export default function AuditLogs() {
       .filter((l) =>
         search
           ? JSON.stringify(l).toLowerCase().includes(search.toLowerCase())
-          : true
+          : true,
       )
       .filter((l) =>
-        filterAction === "ALL" ? true : (l.action || "UNKNOWN") === filterAction
+        filterAction === "ALL"
+          ? true
+          : (l.action || "UNKNOWN") === filterAction,
       )
       .filter((l) =>
-        filterUser === "ALL" ? true : l.modifiedBy?._id === filterUser
+        filterUser === "ALL" ? true : l.modifiedBy?._id === filterUser,
       )
       .filter((l) =>
-        filterBranch === "ALL" ? true : l.branch?._id === filterBranch
+        filterBranch === "ALL" ? true : l.branch?._id === filterBranch,
       );
   }, [logs, search, filterUser, filterBranch, filterAction]);
 
@@ -107,7 +109,7 @@ export default function AuditLogs() {
   const totalPages = Math.ceil(filteredLogs.length / pageSize);
   const paginatedLogs = filteredLogs.slice(
     (page - 1) * pageSize,
-    page * pageSize
+    page * pageSize,
   );
 
   return (

@@ -1,6 +1,6 @@
 // controllers/saleBill.controller.js
 const mongoose = require("mongoose");
-const { SaleBill } = require("../models/saleBillModel");
+const { Bill } = require("../models/billModel");
 const { SalesInventory } = require("../models/Inventory/SalesInventoryModel");
 const { Customer } = require("../models/customerModel");
 const {
@@ -120,11 +120,12 @@ const createSaleBill = async (req, res) => {
       balanceAmount = 0;
     }
 
-    const billDoc = await SaleBill.create({
+    const billDoc = await Bill.create({
       billNo,
+      type: "Sale",
       customer: customerId,
       branch: branchId, // ⭐ HERE branch is saved correctly
-      items: billItems,
+      saleItems: billItems,
       subtotal,
       discount,
       tax,
@@ -152,14 +153,14 @@ const getBillsByCustomer = async (req, res) => {
       return res.status(400).json({ message: "customerId is required" });
     }
 
-    const filter = {};
+    const filter = { type: "Sale" };
     if (ObjectId.isValid(customerId)) {
       filter.customer = new ObjectId(customerId);
     } else {
       filter.customer = customerId;
     }
 
-    const bills = await SaleBill.find(filter)
+    const bills = await Bill.find(filter)
       .sort({ createdAt: -1 })
       .populate("customer")
       .lean();
@@ -179,22 +180,22 @@ const listBills = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const search = (req.query.search || "").trim();
 
-    const match = {};
+    const match = { type: "Sale" };
     if (search) {
       match.$or = [
         { billNo: new RegExp(search, "i") },
-        { "items.sku": new RegExp(search, "i") },
+        { "saleItems.sku": new RegExp(search, "i") },
       ];
     }
 
     const [rows, total] = await Promise.all([
-      SaleBill.find(match)
+      Bill.find(match)
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .populate("customer", "name phone")
         .lean(),
-      SaleBill.countDocuments(match),
+      Bill.countDocuments(match),
     ]);
 
     res.json({
@@ -219,7 +220,7 @@ const getBillById = async (req, res) => {
       return res.status(400).json({ message: "Invalid bill ID" });
     }
 
-    const bill = await SaleBill.findById(billId)
+    const bill = await Bill.findById(billId)
       .populate("customer", "name phone email address")
       .populate("branch", "branchName")
       .lean();
@@ -245,7 +246,7 @@ const generateBillPdf = async (req, res) => {
       return res.status(400).json({ message: "Invalid bill ID" });
     }
 
-    const bill = await SaleBill.findById(billId)
+    const bill = await Bill.findById(billId)
       .populate("customer", "name phone email address")
       .lean();
 
@@ -299,7 +300,7 @@ const generateBillPdf = async (req, res) => {
 
       yPos += 25;
 
-      (bill.items || []).forEach((item, idx) => {
+      (bill.saleItems || []).forEach((item, idx) => {
         const itemName = item.productName || item.name || "Item";
         const qty = item.quantity || item.qty || 0;
         const price = item.unitPrice || item.price || 0;
@@ -374,11 +375,11 @@ const generateBillPdf = async (req, res) => {
 const markAsPaid = async (req, res) => {
   try {
     const { billId } = req.params;
-    const bill = await SaleBill.findByIdAndUpdate(
+    const bill = await Bill.findByIdAndUpdate(
       billId,
       {
         paymentStatus: "Paid",
-        paidAmount: await SaleBill.findById(billId).then(
+        paidAmount: await Bill.findById(billId).then(
           (b) => b?.totalAmount || 0,
         ),
         balanceAmount: 0,
@@ -400,7 +401,7 @@ const markAsPaid = async (req, res) => {
 const markAsUnpaid = async (req, res) => {
   try {
     const { billId } = req.params;
-    const bill = await SaleBill.findById(billId);
+    const bill = await Bill.findById(billId);
     if (!bill) {
       return res.status(404).json({ message: "Bill not found" });
     }
@@ -422,7 +423,7 @@ const updateBill = async (req, res) => {
     const { billId } = req.params;
     const { discount } = req.body;
 
-    const bill = await SaleBill.findById(billId);
+    const bill = await Bill.findById(billId);
     if (!bill) {
       return res.status(404).json({ message: "Bill not found" });
     }
